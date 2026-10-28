@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Vectorier_Editor_Avalonia.ViewModels;
@@ -7,31 +7,28 @@ using Vectorier_Editor_Avalonia.ViewModels;
 namespace Vectorier_Editor_Avalonia;
 
 /// <summary>
-/// Given a view model, returns the corresponding view if possible.
+/// Maps view models to views. The mapping is explicit (no reflection) so it keeps working when the
+/// browser build is trimmed.
 /// </summary>
-[RequiresUnreferencedCode(
-    "Default implementation of ViewLocator involves reflection which may be trimmed away.",
-    Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
 public class ViewLocator : IDataTemplate
 {
+    private static readonly Dictionary<Type, Func<Control>> Factories = new();
+
+    public static void Register<TViewModel>(Func<Control> factory) => Factories[typeof(TViewModel)] = factory;
+
     public Control? Build(object? param)
     {
         if (param is null)
             return null;
 
-        var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-        var type = Type.GetType(name);
-
-        if (type != null)
+        for (var type = param.GetType(); type != null; type = type.BaseType)
         {
-            return (Control)Activator.CreateInstance(type)!;
+            if (Factories.TryGetValue(type, out var factory))
+                return factory();
         }
 
-        return new TextBlock { Text = "Not Found: " + name };
+        return new TextBlock { Text = "No view registered for " + param.GetType().Name };
     }
 
-    public bool Match(object? data)
-    {
-        return data is ViewModelBase;
-    }
+    public bool Match(object? data) => data is ViewModelBase;
 }

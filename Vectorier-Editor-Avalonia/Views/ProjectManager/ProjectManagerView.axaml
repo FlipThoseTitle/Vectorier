@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier_Editor_Avalonia.ViewModels.ProjectManager"
+             x:Class="Vectorier_Editor_Avalonia.Views.ProjectManager.ProjectManagerView"
+             x:DataType="vm:ProjectManagerViewModel"
+             Background="{DynamicResource AppWindowBackground}">
+    <DockPanel>
+        <!-- Navigation bar -->
+        <Border DockPanel.Dock="Left" Width="92" Background="{DynamicResource AppHeaderBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Top" Classes="tool" HorizontalAlignment="Stretch" Margin="4,6,4,2" Padding="4,6"
+                        Command="{Binding BackToProjectsCommand}" ToolTip.Tip="Back to Project Selection">
+                    <StackPanel Spacing="2">
+                        <PathIcon Data="{StaticResource Icon.ArrowLeft}" Width="18" Height="18" />
+                        <TextBlock Text="Projects" FontSize="11" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Separator DockPanel.Dock="Top" Margin="8,2" />
+                <Button DockPanel.Dock="Bottom" Classes="tool" HorizontalAlignment="Stretch" Margin="4,2,4,8" Padding="4,6"
+                        Command="{Binding OpenEmptyEditorCommand}" ToolTip.Tip="Open the Level Editor with a new level">
+                    <StackPanel Spacing="2">
+                        <PathIcon Data="{StaticResource Icon.Pencil}" Width="18" Height="18" />
+                        <TextBlock Text="Editor" FontSize="11" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PmPageViewModel">
+                            <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                <PathIcon Data="{Binding Icon}" Width="20" Height="20" HorizontalAlignment="Center" />
+                                <TextBlock Text="{Binding Title}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Header -->
+        <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+                Background="{DynamicResource AppPanelAltBackground}">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <PathIcon Data="{Binding SelectedPage.Icon, FallbackValue={x:Null}}" Width="22" Height="22" />
+                    <TextBlock Classes="title" Text="{Binding SelectedPage.Title, FallbackValue=''}" />
+                    <Border Background="{DynamicResource AppAccent}" CornerRadius="3" Padding="6,1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Project.Name}" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6"
+                            IsVisible="{Binding SelectedPage.HasSearch, FallbackValue=False}">
+                    <PathIcon Data="{StaticResource Icon.Search}" />
+                    <TextBox Width="240" PlaceholderText="Search…" Text="{Binding SelectedPage.SearchText, FallbackValue=''}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Page -->
+        <Panel Margin="10">
+            <ContentControl Content="{Binding SelectedPage}" />
+            <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Height="3"
+                         IsVisible="{Binding SelectedPage.IsLoading, FallbackValue=False}" />
+        </Panel>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build (Desktop)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj", "-c", "Debug"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build self-contained (win-x64)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+               "-c", "Release", "-r", "win-x64", "--self-contained"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Publish (win-x64)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["publish", "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+               "-p:PublishProfile=win-x64"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Publish (Browser)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["publish", "${workspaceFolder}/Vectorier-Editor-Avalonia.Browser", "-c", "Release", "-o", "${workspaceFolder}/publish/browser"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

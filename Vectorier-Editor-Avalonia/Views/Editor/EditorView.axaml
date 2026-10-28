@@ -1,0 +1,362 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier_Editor_Avalonia.ViewModels.Editor"
+             xmlns:scene="using:Vectorier_Editor_Avalonia.Controls.Scene"
+             xmlns:models="using:Vectorier_Editor_Avalonia.Models.Scene"
+             xmlns:views="using:Vectorier_Editor_Avalonia.Views.Editor"
+             x:Class="Vectorier_Editor_Avalonia.Views.Editor.EditorView"
+             x:DataType="vm:EditorViewModel"
+             Background="{DynamicResource AppWindowBackground}">
+    <UserControl.Styles>
+        <Style Selector="Border.element-cell">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- The chosen element type is shown in blue. -->
+        <Style Selector="Border.element-cell.active">
+            <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        </Style>
+        <Style Selector="Border.element-cell.hidden">
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="Border.eye:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AppHover}" />
+        </Style>
+    </UserControl.Styles>
+    <DockPanel>
+        <!-- ===== Menu ===== -->
+        <Menu DockPanel.Dock="Top" Background="{DynamicResource AppToolbarBackground}">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New Level" Command="{Binding NewLevelCommand}" InputGesture="Ctrl+N" />
+                <MenuItem Header="_Open..." Command="{Binding OpenCommand}" InputGesture="Ctrl+O">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.FolderOpen}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="_Save" Command="{Binding SaveCommand}" InputGesture="Ctrl+S">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Save}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Save _As..." Command="{Binding SaveAsCommand}" InputGesture="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="_Play Level" Command="{Binding PlayLevelCommand}" InputGesture="F5">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Play}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Play Level in _Hunter Mode" Command="{Binding PlayLevelHunterCommand}" InputGesture="Shift+F5">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Hunter}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Level Settings..." Command="{Binding OpenLevelSettingsCommand}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Tune}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="_Quit" Command="{Binding QuitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Undo}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Redo}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" InputGesture="Ctrl+X">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Cut}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Copy" Command="{Binding CopyCommand}" InputGesture="Ctrl+C">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Copy}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Paste" Command="{Binding PasteCommand}" InputGesture="Ctrl+V">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Paste}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Paste _Into" Command="{Binding PasteIntoCommand}" InputGesture="Ctrl+Shift+V" />
+                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" InputGesture="Delete">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Du_plicate" Command="{Binding DuplicateCommand}" InputGesture="Ctrl+D">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Duplicate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Select _All" Command="{Binding SelectAllCommand}" InputGesture="Ctrl+A" />
+                <MenuItem Header="_Group" Command="{Binding GroupCommand}" InputGesture="Ctrl+G">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Group}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Ungroup" Command="{Binding UngroupCommand}" InputGesture="Ctrl+Shift+G"
+                          ToolTip.Tip="Objects without a definition release their children; objects with one become editable copies of their content" />
+                <Separator />
+                <MenuItem Header="Pr_eferences..." Command="{Binding OpenPreferencesCommand}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Cog}" /></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="E_lement">
+                <MenuItem Header="Object" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Object}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Object}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Image" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Image}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Image}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Trigger" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trigger}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Trigger}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Area" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Area}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Area}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Platform" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Platform}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Platform}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Trapezoid" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trapezoid}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Trapezoid}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Camera" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Camera}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Camera}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Spawn" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Spawn}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Spawn}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Model" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Model}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Model}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Item">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Item}" /></MenuItem.Icon>
+                    <MenuItem Header="Bonus" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Bonus}" />
+                    <MenuItem Header="Coin" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Coin}" />
+                </MenuItem>
+                <MenuItem Header="Animation" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Animation}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Animation}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Particle" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Particle}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Particle}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Comment" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Comment}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Comment}" /></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <!-- ===== Toolbar ===== -->
+        <Border DockPanel.Dock="Top" Classes="toolbar">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="1">
+                    <ToggleButton Classes="tool" ToolTip.Tip="Move (Q) · drag the arrows to move along one axis. Right mouse button pans the Scene." Name="MoveTool"
+                                  Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Move}">
+                        <PathIcon Data="{StaticResource Icon.Move}" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" ToolTip.Tip="Rotate (W) · drag the ring" Name="RotateTool"
+                                  Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Rotate}">
+                        <PathIcon Data="{StaticResource Icon.Rotate}" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" ToolTip.Tip="Scale (E) · drag an axis handle, or the center for uniform scale" Name="ScaleTool"
+                                  Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Scale}">
+                        <PathIcon Data="{StaticResource Icon.Scale}" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" ToolTip.Tip="Rect (T): drag inside to move, the corner handles or edges to resize, just outside a corner to rotate" Name="RectTool"
+                                  Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Rect}">
+                        <PathIcon Data="{StaticResource Icon.Rect}" />
+                    </ToggleButton>
+                    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
+                    <Button Classes="tool" Command="{Binding TogglePivotCommand}" MinWidth="72"
+                            ToolTip.Tip="Gizmo position: the selection's Center, or the element's Pivot (its position). Display only: the data always keeps the top-left position.">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource Icon.Crosshair}" />
+                            <Panel>
+                                <TextBlock Text="Center" IsVisible="{Binding !UsePivot}" />
+                                <TextBlock Text="Pivot" IsVisible="{Binding UsePivot}" />
+                            </Panel>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Command="{Binding ToggleLocalModeCommand}" MinWidth="72"
+                            ToolTip.Tip="Gizmo axes: Global (the Scene's axes) or Local (the element's rotation)">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource Icon.Layers}" />
+                            <Panel>
+                                <TextBlock Text="Global" IsVisible="{Binding !IsLocalMode}" />
+                                <TextBlock Text="Local" IsVisible="{Binding IsLocalMode}" />
+                            </Panel>
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
+                    <Button Classes="tool" ToolTip.Tip="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}">
+                        <PathIcon Data="{StaticResource Icon.Undo}" />
+                    </Button>
+                    <Button Classes="tool" ToolTip.Tip="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}">
+                        <PathIcon Data="{StaticResource Icon.Redo}" />
+                    </Button>
+                    <Button Classes="tool" ToolTip.Tip="Save (Ctrl+S)" Command="{Binding SaveCommand}">
+                        <PathIcon Data="{StaticResource Icon.Save}" />
+                    </Button>
+                    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
+                    <Button Classes="tool" ToolTip.Tip="Level Settings" Command="{Binding OpenLevelSettingsCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource Icon.Tune}" />
+                            <TextBlock Text="Level Settings" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                    <TextBlock Classes="dim" Text="{Binding Project.Name}" />
+                    <Button Classes="tool" ToolTip.Tip="Back to the Project Manager" Command="{Binding QuitCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource Icon.ArrowLeft}" />
+                            <TextBlock Text="Project Manager" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Status bar ===== -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppHeaderBackground}" BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,1,0,0" Padding="8,2">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusText}" FontSize="11" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+
+        <Grid ColumnDefinitions="Auto,250,4,*,4,340" Name="MainGrid">
+            <!-- ===== Element Bar ===== -->
+            <Border Grid.Column="0" Background="{DynamicResource AppHeaderBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl Name="ElementBar" ItemsSource="{Binding ElementTypes}" Margin="2,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ElementTypeInfo">
+                                <Grid ColumnDefinitions="Auto,*" Margin="0,1">
+                                    <!-- Eye: shows / hides this element type in the Scene. Drag across several eyes to set them all. -->
+                                    <Border Classes="eye" Tag="{Binding}" Width="20" Background="Transparent" VerticalAlignment="Stretch" Margin="0,0,1,0"
+                                            ToolTip.Tip="Show / hide in the Scene (drag across to change several)">
+                                        <Panel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Eye}" Width="14" Height="14" IsVisible="{Binding IsVisible}" />
+                                            <PathIcon Data="{StaticResource Icon.EyeOff}" Width="14" Height="14" IsVisible="{Binding !IsVisible}" Opacity="0.55" />
+                                        </Panel>
+                                    </Border>
+                                    <Border Grid.Column="1" Classes="element-cell" Classes.active="{Binding IsActive}" Classes.hidden="{Binding !IsVisible}"
+                                            ToolTip.Tip="{Binding ToolTip}">
+                                        <Button Classes="tool element" Width="58" Padding="2,3" Tag="{Binding}" Click="OnElementTypeClick">
+                                            <StackPanel Spacing="1">
+                                                <PathIcon Data="{Binding Icon}" Width="18" Height="18" HorizontalAlignment="Center" />
+                                                <TextBlock Text="{Binding Name}" FontSize="10" HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ===== Hierarchy ===== -->
+            <views:HierarchyView Grid.Column="1" Name="HierarchyPanel" />
+            <GridSplitter Grid.Column="2" ResizeDirection="Columns" />
+
+            <!-- ===== Center: Scene + bottom panel ===== -->
+            <Grid Grid.Column="3" RowDefinitions="*,4,260" Name="CenterGrid">
+                <Border Grid.Row="0" Classes="panel" BorderThickness="1,0,1,1">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Classes="panel-header">
+                            <Grid ColumnDefinitions="*,Auto,*">
+                                <StackPanel Orientation="Horizontal" Spacing="2" Margin="-4,-3,0,-3">
+                                    <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsSceneViewTab}" ToolTip.Tip="Edit the level">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource Icon.Layers}" />
+                                            <TextBlock Text="Scene" />
+                                        </StackPanel>
+                                    </RadioButton>
+                                    <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsGameViewTab}"
+                                                 ToolTip.Tip="What the Camera sees (read-only). Select a Camera to look through it.">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource Icon.Play}" />
+                                            <TextBlock Text="Game" />
+                                        </StackPanel>
+                                    </RadioButton>
+                                    <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsObjectTab}" IsVisible="{Binding IsEditingObject}"
+                                                 ToolTip.Tip="Editing an object definition. Switch to Scene to save it and return to the level.">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource Icon.Object}" Foreground="#E65100" />
+                                            <TextBlock Text="{Binding ObjectTabTitle}" />
+                                        </StackPanel>
+                                    </RadioButton>
+                                </StackPanel>
+                                <!-- Play buttons at the top center of the Scene -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" ToolTip.Tip="Play Level (F5)">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <PathIcon Data="{StaticResource Icon.Play}" Foreground="#2E7D32" />
+                                            <TextBlock Text="Play" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" ToolTip.Tip="Play Level in Hunter Mode (Shift+F5)">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <PathIcon Data="{StaticResource Icon.Hunter}" Foreground="#C62828" />
+                                            <TextBlock Text="Hunter Mode" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" Classes="dim" FontSize="11" Name="ZoomText" />
+                            </Grid>
+                        </Border>
+                        <Panel>
+                            <scene:SceneView Name="Scene" Editor="{Binding}" IsVisible="{Binding ShowsSceneView}" />
+                            <scene:SceneView Name="GameScene" Editor="{Binding}" IsGameView="True" IsVisible="{Binding IsGameViewTab}" />
+                            <!-- Placement hint -->
+                            <Border IsVisible="{Binding ShowPlacementHint}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
+                                    Background="#E6FFFFFF" BorderBrush="#0078D7" BorderThickness="1" CornerRadius="2" Padding="6,3" IsHitTestVisible="False">
+                                <TextBlock Text="{Binding PlacementHint}" Foreground="#0B4F8A" FontSize="11" />
+                            </Border>
+                            <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Height="3" IsVisible="{Binding IsLoading}" />
+                        </Panel>
+                    </DockPanel>
+                </Border>
+                <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+                <DockPanel Grid.Row="2">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,2,0,0">
+                        <RadioButton Classes="tab" GroupName="BottomTabs" IsChecked="{Binding IsProjectTab}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{StaticResource Icon.Folder}" Width="12" Height="12" />
+                                <TextBlock Text="Project" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Classes="tab" GroupName="BottomTabs" IsChecked="{Binding IsDynamicEditorTab}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{StaticResource Icon.Timeline}" Width="12" Height="12" />
+                                <TextBlock Text="Dynamic Editor" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                    <Border Classes="panel">
+                        <Panel>
+                            <Panel IsVisible="{Binding IsProjectTab}"><views:ProjectWindowView DataContext="{Binding ProjectWindow}" /></Panel>
+                            <Panel IsVisible="{Binding IsDynamicEditorTab}"><views:DynamicEditorView DataContext="{Binding Dynamics}" /></Panel>
+                        </Panel>
+                    </Border>
+                </DockPanel>
+                <!-- Trigger Editor: opens over the Scene and the bottom panel, and stays until closed -->
+                <ContentControl Grid.RowSpan="3" Name="TriggerEditorHost" Content="{Binding TriggerEditor}"
+                                IsVisible="{Binding TriggerEditor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Grid>
+            <GridSplitter Grid.Column="4" ResizeDirection="Columns" />
+
+            <!-- ===== Right: Inspector | Move Visualizer ===== -->
+            <DockPanel Grid.Column="5">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,2,0,0">
+                    <RadioButton Classes="tab" GroupName="RightTabs" IsChecked="{Binding IsInspectorTab}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Data="{StaticResource Icon.Info}" Width="12" Height="12" />
+                            <TextBlock Text="Inspector" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Classes="tab" GroupName="RightTabs" IsChecked="{Binding IsMoveVisualizerTab}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Data="{StaticResource Icon.RunFast}" Width="12" Height="12" />
+                            <TextBlock Text="Move Visualizer" />
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+                <Border Classes="panel">
+                    <Panel>
+                        <Panel IsVisible="{Binding IsInspectorTab}"><views:InspectorView DataContext="{Binding Inspector}" /></Panel>
+                        <Panel IsVisible="{Binding IsMoveVisualizerTab}"><views:MoveVisualizerView DataContext="{Binding MoveVisualizer}" /></Panel>
+                    </Panel>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

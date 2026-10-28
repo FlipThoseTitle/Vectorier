@@ -452,3 +452,8 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Vectorier: data folders copied into builds, and publish output
+/Data/
+/publish/
+!Vectorier-Editor-Avalonia.Desktop/Properties/PublishProfiles/*.pubxml

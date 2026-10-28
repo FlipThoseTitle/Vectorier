@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace Vectorier_Editor_Avalonia.Views;
 
-public partial class MainWindow : Window
+public partial class RootPickerView : UserControl
 {
-    public MainWindow()
+    public RootPickerView()
     {
         InitializeComponent();
     }

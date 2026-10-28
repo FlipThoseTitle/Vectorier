@@ -1,0 +1,410 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier_Editor_Avalonia.ViewModels.Editor"
+             xmlns:models="using:Vectorier_Editor_Avalonia.Models.Scene"
+             xmlns:c="using:Vectorier_Editor_Avalonia.Controls"
+             x:Class="Vectorier_Editor_Avalonia.Views.Editor.InspectorView"
+             x:DataType="vm:InspectorViewModel">
+    <UserControl.Styles>
+        <Style Selector="Grid.row">
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="Grid.row > TextBlock:nth-child(1)">
+            <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="Border.component">
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Padding" Value="0,6,0,4" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+        </Style>
+        <Style Selector="TextBlock.component-title">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
+        <TextBlock Classes="dim" Text="Select an element to see its properties." HorizontalAlignment="Center" VerticalAlignment="Top"
+                   Margin="12,24" TextWrapping="Wrap" IsVisible="{Binding !HasTarget}" />
+        <ScrollViewer IsVisible="{Binding HasTarget}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="8,6" Spacing="0">
+                <!-- Header -->
+                <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+                    <PathIcon Data="{Binding Icon}" Width="18" Height="18" Margin="0,0,8,0" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="13" />
+                        <TextBlock Classes="dim" FontSize="11" Text="{Binding SelectionNote}" TextWrapping="Wrap"
+                                   IsVisible="{Binding SelectionNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Classes="row" ColumnDefinitions="90,*">
+                    <TextBlock Text="Name" />
+                    <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding !NameEditable}"
+                             IsVisible="{Binding !IsTrickArea}"
+                             ToolTip.Tip="Image, Animation and Particle names are their texture: rename them in the Project Window." />
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" IsVisible="{Binding IsTrickArea}"
+                              ItemsSource="{Binding TrickGroupNames}" SelectedItem="{Binding TrickName}"
+                              ToolTip.Tip="A Trick Area is named after its TrickGroup entry in moves.xml" />
+                </Grid>
+
+                <TextBlock Classes="section" Text="Transform" />
+                <Grid Classes="row" ColumnDefinitions="90,*,6,*">
+                    <TextBlock Text="Position" />
+                    <NumericUpDown Grid.Column="1" Value="{Binding PosX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                   FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="X" />
+                    <NumericUpDown Grid.Column="3" Value="{Binding PosY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                   FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="Y (up is positive)" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding CanRotate}">
+                    <TextBlock Text="Rotation" />
+                    <NumericUpDown Grid.Column="1" Value="{Binding Rotation, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                   FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="Degrees, counter-clockwise" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*,6,*" IsEnabled="{Binding CanResize}">
+                    <TextBlock Text="Size" />
+                    <NumericUpDown Grid.Column="1" Value="{Binding Width, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                   FormatString="0.###" Increment="1" Minimum="0" ShowButtonSpinner="False" ToolTip.Tip="Width" />
+                    <NumericUpDown Grid.Column="3" Value="{Binding Height, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                   FormatString="0.###" Increment="1" Minimum="0" ShowButtonSpinner="False" ToolTip.Tip="Height" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding LayerEditable}">
+                    <TextBlock Text="Layer" />
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.LayerNames}"
+                              SelectedItem="{Binding Layer}" ToolTip.Tip="Parallax layer of the top-level element (children inherit it)" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding OrderEditable}">
+                    <TextBlock Text="Order in Layer" />
+                    <NumericUpDown Grid.Column="1" Value="{Binding Order, Converter={x:Static c:IntToDecimalConverter.Instance}}"
+                                   FormatString="0" Increment="1" ToolTip.Tip="Draw order among siblings" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding SupportsSelection}">
+                    <TextBlock Text="Game Mode" />
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.SelectionModes}"
+                              SelectedItem="{Binding Selection}" ToolTip.Tip="Selection: All modes, Common Mode only or Hunter Mode only" />
+                </Grid>
+
+                <!-- Components -->
+                <ContentControl Content="{Binding Target}">
+                    <ContentControl.DataTemplates>
+                        <DataTemplate DataType="models:ObjectElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Object" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Name="ObjectInfo" Text="{Binding Children.Count, StringFormat='{}{0} inline child element(s)'}" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Margin="0,2,0,0"
+                                               Text="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).ReferenceText, FallbackValue=''}" />
+                                    <WrapPanel Margin="0,6,0,0">
+                                        <Button Margin="0,0,6,4" Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).Editor.UngroupCommand, FallbackValue={x:Null}}"
+                                                ToolTip.Tip="Without a definition: its children move out of it. With one: its content becomes editable elements (Ctrl+Shift+G)">
+                                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Group}" Width="12" Height="12" /><TextBlock Text="Ungroup" /></StackPanel>
+                                        </Button>
+                                        <Button Margin="0,0,6,4" IsVisible="{Binding IsReference}"
+                                                Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).Editor.EditObjectCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding}" ToolTip.Tip="Edit this object's definition in the Object tab">
+                                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Object}" Width="12" Height="12" /><TextBlock Text="Edit Object" /></StackPanel>
+                                        </Button>
+                                    </WrapPanel>
+                                    <StackPanel IsVisible="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).HasTrickAreas, FallbackValue=False}" Margin="0,6,0,0" Spacing="2">
+                                        <TextBlock Classes="label" Text="Trick Areas" />
+                                        <ItemsControl ItemsSource="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).TrickAreas, FallbackValue={x:Null}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:TrickAreaEntry">
+                                                    <StackPanel Margin="0,2,0,4" Spacing="3">
+                                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                                        <TextBlock Classes="dim" Text="{Binding TrickText}" TextWrapping="Wrap" />
+                                                        <Button HorizontalAlignment="Left"
+                                                                Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).PreviewTrickAreaCommand, FallbackValue={x:Null}}"
+                                                                CommandParameter="{Binding}" ToolTip.Tip="Play this trick in the Move Visualizer">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" Width="12" Height="12" /><TextBlock Text="Preview Animation" /></StackPanel>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:ImageElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Image" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ImageTypes}" SelectedItem="{Binding ImageType}"
+                                                  ToolTip.Tip="None - Default&#10;Static&#10;Vanishing - disappears under a trigger with a None event&#10;Dynamic - plays the image's sprite sheet" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Depth" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ImageDepths}" SelectedItem="{Binding Depth}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Color" />
+                                        <ColorPicker Grid.Column="1" HorizontalAlignment="Left" Color="{Binding Color}" IsAlphaEnabled="True" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Skew" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Skew, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                                       FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="Degrees between the width and height axes" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*,*">
+                                        <TextBlock Text="Flip" />
+                                        <CheckBox Grid.Column="1" Content="X" IsChecked="{Binding FlipX}" />
+                                        <CheckBox Grid.Column="2" Content="Y" IsChecked="{Binding FlipY}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:TriggerElement">
+                            <Border Classes="component">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="component-title" Text="Trigger" />
+                                    <Button HorizontalAlignment="Stretch" Click="OnOpenTriggerEditor">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Code}" />
+                                            <TextBlock Text="Open Trigger Editor" />
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Classes="label" Text="Content (XML)" />
+                                    <TextBox Text="{Binding ContentXml, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="NoWrap"
+                                             FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="11" MinHeight="120" MaxHeight="320"
+                                             Padding="6,4,6,20" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:AreaElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Area" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.AreaTypes}" SelectedItem="{Binding AreaType}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Catch}">
+                                        <TextBlock Text="Distance" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Distance, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*,Auto" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Trick}">
+                                        <TextBlock Text="Trick" />
+                                        <TextBox Grid.Column="1" Text="{Binding ItemName, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Trick name (TRICK_...)" />
+                                        <Button Grid.Column="2" Margin="4,0,0,0" Content="Select…" Click="OnSelectTrick" ToolTip.Tip="Pick the trick from the project's tricks (one per Area)" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Trick}">
+                                        <TextBlock Text="Score" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Score, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" />
+                                    </Grid>
+                                    <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnPreviewMove"
+                                            IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Trick}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Play}" />
+                                            <TextBlock Text="Preview Animation" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Help}">
+                                        <TextBlock Text="Key" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.HelpKeys}" SelectedItem="{Binding Key}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Help}">
+                                        <TextBlock Text="Description" />
+                                        <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=LostFocus}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:PlatformElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Platform" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Rectangular collision. Position and size are whole numbers." />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:TrapezoidElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Trapezoid" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.TrapezoidTypes}" SelectedItem="{Binding TrapezoidType}"
+                                                  ToolTip.Tip="1 rises to the right, 2 rises to the left" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Base Height" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding BaseHeight, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Increment="1" />
+                                    </Grid>
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="The slope keeps its 26.565° angle. Hold Ctrl while resizing in the Scene to size freely." />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:CameraElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Camera" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="One Camera per game mode. With two Cameras, each must use its own mode (Common or Hunter)." />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:SpawnElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Spawn" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Animation" />
+                                        <TextBox Grid.Column="1" Text="{Binding Animation, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Move|Frame, e.g. JumpOff|18" />
+                                    </Grid>
+                                    <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnPreviewMove">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Play}" />
+                                            <TextBlock Text="Preview Animation" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:ModelElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Model" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ModelTypes}" SelectedItem="{Binding ModelType}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Life Time" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding LifeTime, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:ItemElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Item" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ItemTypes}" SelectedItem="{Binding ItemType}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Score" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Score, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Radius" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Radius, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Minimum="0" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding ItemType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Coin}">
+                                        <TextBlock Text="Group Id" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding GroupId, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:AnimationElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Animation" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.AnimationTypes}" SelectedItem="{Binding AnimationType}"
+                                                  ToolTip.Tip="0 - animated only (e.g. papers)&#10;1 - animated with direction and acceleration (e.g. birds)" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
+                                        <TextBlock Text="Direction" />
+                                        <TextBox Grid.Column="1" Text="{Binding Direction, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="e.g. 2|-3 (towards the top right)" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
+                                        <TextBlock Text="Acceleration" />
+                                        <TextBox Grid.Column="1" Text="{Binding Acceleration, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Units per frame, e.g. 0.08|-0.1" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
+                                        <TextBlock Text="Time" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Time, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Minimum="0" ToolTip.Tip="Seconds before it disappears" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*,6,*">
+                                        <TextBlock Text="Scale" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding ScaleX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Increment="0.1" ShowButtonSpinner="False" />
+                                        <NumericUpDown Grid.Column="3" Value="{Binding ScaleY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Increment="0.1" ShowButtonSpinner="False" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:ParticleElement">
+                            <Border Classes="component">
+                                <StackPanel>
+                                    <TextBlock Classes="component-title" Text="Particle" />
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Type" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ParticleTypes}" SelectedItem="{Binding ParticleType}" />
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Frame" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding Frame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:CommentElement">
+                            <Border Classes="component">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="component-title" Text="Comment" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Editor-only note; its text is its name. Saved as an XML comment the game ignores." />
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="models:UnknownElement">
+                            <Border Classes="component">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="component-title" Text="Unsupported element" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="This XML element is kept exactly as it was and written back on save." />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ContentControl.DataTemplates>
+                </ContentControl>
+
+                <!-- Dynamic transformations (hidden when the element has none) -->
+                <Border Classes="component" IsVisible="{Binding HasDynamics}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="component-title" Text="Dynamic" />
+                        <ItemsControl ItemsSource="{Binding DynamicEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DynamicEntry">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Timeline}" Width="12" Height="12" />
+                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="dim" Text="{Binding Summary}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Padding="8,2" FontSize="11" Content="Preview"
+                                                ToolTip.Tip="Open in the Dynamic Editor and play"
+                                                Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).PreviewDynamicCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding Name}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
+</UserControl>
