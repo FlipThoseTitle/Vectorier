@@ -714,6 +714,61 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         _allItems.AddRange(items);
         ApplyFilter();
         OnPropertyChanged(nameof(EmptyText));
+        ApplyPendingReveal();
+    }
+
+    // ================= REVEAL NEW ITEMS ================= //
+
+    private HashSet<string>? _pendingReveal;
+
+    /// <summary>Asks the view to scroll the tile grid to an item.</summary>
+    public event Action<PwItem>? RevealRequested;
+
+    /// <summary>
+    /// Newly added / imported items (by item key): opens the folder holding the first one, selects every new item
+    /// shown there and scrolls to the first of them.
+    /// </summary>
+    public async Task RevealNewAsync(IReadOnlyCollection<string> keys, string? objectFile = null)
+    {
+        if (keys.Count == 0)
+            return;
+        _pendingReveal = keys.ToHashSet(StringComparer.Ordinal);
+        if (SearchText.Length > 0 && !_allItems.Any(i => _pendingReveal.Contains(i.Key)))
+            SearchText = string.Empty; // a search hiding them would make the reveal pointless
+
+        // The folder they are in: the object file, or the cached folder of the first key (Unorganized when none).
+        PwFolder? target;
+        if (objectFile != null)
+        {
+            target = _allFolders.FirstOrDefault(f => string.Equals(f.FileName, objectFile, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            string? folderName = Cache.FolderOf(CacheKey, keys.First());
+            target = folderName == null ? _allFolders.FirstOrDefault(f => f.IsUnorganized) : _allFolders.FirstOrDefault(f => f.Name == folderName);
+        }
+        if (target != null && FolderSearchText.Length > 0 && !Folders.Contains(target))
+            FolderSearchText = string.Empty;
+
+        if (target != null && (!ReferenceEquals(SelectedFolder, target) || _selectedFolders.Count > 1))
+            SelectedFolder = target; // loads its items, then applies the reveal
+        else
+            await LoadItemsAsync();
+    }
+
+    private void ApplyPendingReveal()
+    {
+        if (_pendingReveal is not { } keys)
+            return;
+        var found = Items.Where(i => keys.Contains(i.Key)).ToList();
+        if (found.Count == 0)
+            return; // not loaded here yet (another folder is loading): try again after it
+        _pendingReveal = null;
+        SelectItem(found[0]);
+        if (SupportsMultipleItems)
+            foreach (var item in found.Skip(1))
+                SelectItem(item, PwSelect.Toggle);
+        RevealRequested?.Invoke(found[0]);
     }
 
     /// <summary>Items in any of the folders (several folders selected: their items together).</summary>
@@ -1253,6 +1308,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             await Cache.SaveAsync();
             _editor.StatusText = $"Imported {imported.Count} model(s) and {copiedFolders} folder(s)";
             await ReloadAsync();
+            await RevealNewAsync(imported);
         }
         catch (Exception ex)
         {
@@ -1318,6 +1374,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             await Cache.SaveAsync();
             _editor.StatusText = $"Imported {imported.Count} texture(s)";
             await ReloadAsync();
+            await RevealNewAsync(imported.Select(n => Textures.Find(n)?.FileName).OfType<string>().ToList());
         }
         catch (Exception ex)
         {
@@ -1353,7 +1410,9 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         if (element is ObjectElement { IsReference: false } obj && obj.Name != name)
                             obj.Name = name;
                     await _editor.RefreshDefinitionsAsync(new[] { file });
-                    break;
+                    await LoadItemsAsync();
+                    await RevealNewAsync(saved.Select(x => x.Name).ToList(), file);
+                    return;
                 }
                 case PwContext.Triggers when elements.Count == 1 && elements[0] is TriggerElement trigger:
                 {
@@ -1363,7 +1422,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         Cache.AssignToFolder(TriggersKey, stored.Id, folder.Name);
                     await Cache.SaveAsync();
                     _editor.StatusText = $"Stored Trigger '{trigger.Name}'";
-                    break;
+                    await RevealNewAsync(new[] { stored.Id });
+                    return;
                 }
                 case PwContext.Areas when elements.Count == 1 && elements[0] is AreaElement area:
                 {
@@ -1377,7 +1437,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         Cache.AssignToFolder(AreasKey, stored.Id, folder.Name);
                     await Cache.SaveAsync();
                     _editor.StatusText = $"Stored Area '{area.Name}'";
-                    break;
+                    await RevealNewAsync(new[] { stored.Id });
+                    return;
                 }
                 case PwContext.Triggers or PwContext.Areas:
                     await AppServices.Dialogs.ShowMessageAsync("Project Window", $"Drag exactly one {(Context == PwContext.Triggers ? "Trigger" : "Area")} here.", MessageKind.Info);

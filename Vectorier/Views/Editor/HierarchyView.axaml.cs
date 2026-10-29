@@ -23,6 +23,8 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
     public HierarchyView()
     {
         InitializeComponent();
+        // Focusable so a click on a row takes the keyboard focus (shortcuts then reach the Editor's handler).
+        RowList.Focusable = true;
         RowList.AddHandler(PointerPressedEvent, OnRowPressed, RoutingStrategies.Tunnel);
         RowList.AddHandler(PointerReleasedEvent, OnRowReleased, RoutingStrategies.Bubble, handledEventsToo: true);
         RowList.DoubleTapped += OnRowDoubleTapped;
@@ -110,6 +112,11 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
 
         var point = e.GetCurrentPoint(RowList);
         var row = RowFrom(e.Source);
+
+        // Clicking the Hierarchy takes the keyboard focus (out of the search box or an Inspector field), so
+        // Delete, Ctrl+D, Ctrl+C / V... act on the selection right away.
+        if (!RowList.IsKeyboardFocusWithin)
+            RowList.Focus();
 
         // The scrollbar keeps its own input (no rectangle selection, no context menu).
         if ((e.Source as Visual)?.FindAncestorOfType<Avalonia.Controls.Primitives.ScrollBar>(true) != null)

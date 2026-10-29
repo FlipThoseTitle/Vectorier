@@ -197,6 +197,34 @@ public sealed partial class SceneView
             return;
         }
 
+        // Space held: the left button pans (like the right button).
+        if (SpacePanHeld && point.Properties.IsLeftButtonPressed)
+        {
+            StopFrameAnimation();
+            _pressScreen = pos;
+            _startCenter = _center;
+            _startZoom = _zoom;
+            _mode = InteractionMode.Pan;
+            _rightMoved = true; // never opens the Create menu
+            Cursor = HandCursor;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
+        // Middle click: select the element's highest root Object (however deeply it is nested).
+        if (point.Properties.IsMiddleButtonPressed)
+        {
+            if (_renderer.HitTest(Viewport, pos) is { } rootHit)
+            {
+                var root = rootHit.Owner.Root;
+                _editor.Select(root);
+                _editor.RevealInHierarchy(root);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (point.Properties.IsRightButtonPressed)
         {
             StopFrameAnimation();
@@ -293,6 +321,7 @@ public sealed partial class SceneView
                 return;
             }
             _rubberAdd = ctrl || shift;
+            _clickTarget = null;
             _mode = InteractionMode.RubberBand;
             return;
         }
@@ -321,8 +350,15 @@ public sealed partial class SceneView
             return;
         }
 
+        // An element that is not selected yet is selected when the button is released: dragging from it draws a
+        // selection rectangle instead of moving it. Selected elements are dragged as usual.
         if (!target.IsSelected)
-            _editor.Select(target);
+        {
+            _clickTarget = target;
+            _rubberAdd = false;
+            _mode = InteractionMode.RubberBand;
+            return;
+        }
 
         switch (Tool)
         {
@@ -334,6 +370,25 @@ public sealed partial class SceneView
                 _targets = _editor.GetTopmostSelection();
                 _mode = InteractionMode.Move;
                 break;
+        }
+    }
+
+    /// <summary>Element pressed but not selected yet: a release without dragging selects it.</summary>
+    private SceneElement? _clickTarget;
+
+    private bool _spacePanHeld;
+
+    /// <summary>Space held over the Scene: left dragging pans the view.</summary>
+    public bool SpacePanHeld
+    {
+        get => _spacePanHeld;
+        set
+        {
+            if (_spacePanHeld == value)
+                return;
+            _spacePanHeld = value;
+            if (_mode == InteractionMode.None)
+                Cursor = value ? HandCursor : null;
         }
     }
 
@@ -543,9 +598,13 @@ public sealed partial class SceneView
                 _mode = InteractionMode.None;
                 e.Pointer.Capture(null);
                 var rect = RectEx.Box(_pressScreen, pos);
+                var clicked = _clickTarget;
+                _clickTarget = null;
                 if (rect.Width < DragThreshold && rect.Height < DragThreshold)
                 {
-                    if (!_rubberAdd)
+                    if (clicked != null)
+                        _editor.Select(clicked);
+                    else if (!_rubberAdd)
                         _editor.ClearSelection();
                 }
                 else
@@ -889,6 +948,14 @@ public sealed partial class SceneView
         var anchor = new Point(
             (_rectHandle & RectHandle.Left) != 0 ? r.Right : r.Left,
             (_rectHandle & RectHandle.Top) != 0 ? r.Bottom : r.Top);
+
+        // Shift on a side handle: uniform scale too, the other axis growing evenly around the center.
+        if (shift && horizontal != vertical)
+        {
+            double k = horizontal ? sx : sy;
+            sx = sy = k;
+            anchor = horizontal ? new Point(anchor.X, r.Center.Y) : new Point(r.Center.X, anchor.Y);
+        }
         ScaleTargets(anchor, sx, sy, ctrl);
     }
 
@@ -939,6 +1006,11 @@ public sealed partial class SceneView
     {
         if (_editor == null)
             return;
+        if (SpacePanHeld)
+        {
+            Cursor = HandCursor;
+            return;
+        }
         StandardCursorType type = StandardCursorType.Arrow;
         if (_editor.PlacementType != null || Tool == EditorTool.Brush)
             type = StandardCursorType.Cross;

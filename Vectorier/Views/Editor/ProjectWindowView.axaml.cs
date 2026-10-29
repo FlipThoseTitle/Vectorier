@@ -91,12 +91,14 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         if (_vm != null)
         {
             _vm.Items.CollectionChanged -= OnItemsChanged;
+            _vm.RevealRequested -= OnRevealRequested;
             _vm.PropertyChanged -= OnVmPropertyChanged;
         }
         _vm = DataContext as ProjectWindowViewModel;
         if (_vm != null)
         {
             _vm.Items.CollectionChanged += OnItemsChanged;
+            _vm.RevealRequested += OnRevealRequested;
             _vm.PropertyChanged += OnVmPropertyChanged;
             Library = _vm.Textures;
             UpdateTileSize();
@@ -125,6 +127,24 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
     }
 
     private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleRows();
+
+    /// <summary>Newly added items: scroll the grid to the row holding the first one (after the rows are rebuilt).</summary>
+    private void OnRevealRequested(PwItem item)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (TileRows.ItemsSource is not IReadOnlyList<TileRow> rows)
+                return;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (rows[i].Items.Contains(item))
+                {
+                    TileRows.ScrollIntoView(i);
+                    return;
+                }
+            }
+        }, DispatcherPriority.ContextIdle);
+    }
 
     private void ScheduleRows()
     {

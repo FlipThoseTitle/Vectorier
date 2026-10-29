@@ -483,7 +483,8 @@ public sealed partial class EditorViewModel
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void Delete()
     {
-        var targets = GetTopmostSelection();
+        // An auto-built platform takes its Object (or its loose textures) with it.
+        var targets = ExpandSurfaceTargets(GetTopmostSelection(), includeLooseTiles: true);
         if (targets.Count == 0)
             return;
         ClearSelectionSilently();
@@ -589,8 +590,35 @@ public sealed partial class EditorViewModel
     {
         var targets = GetTopmostSelection().Where(e => e is not BuildingMarkerElement).ToList();
         var copies = new List<SceneElement>();
-        foreach (var element in targets)
+        foreach (var selected in targets)
         {
+            var element = selected;
+            // An auto-built platform is duplicated with its Object: a new Object next to the original one.
+            if (selected is PlatformElement { Surface: not null } surfaced)
+            {
+                if (SurfaceHost(surfaced) is { } host)
+                {
+                    var hostCopy = (ObjectElement)host.Clone(keepIds: false);
+                    var hostSiblings = Document.SiblingsOf(host);
+                    Document.Insert(hostCopy, host.Parent, hostSiblings.IndexOf(host) + 1);
+                    copies.Add(hostCopy.Children.OfType<PlatformElement>().FirstOrDefault() ?? (SceneElement)hostCopy);
+                    continue;
+                }
+                // No Object of its own yet: the copy (platform + textures) gets one.
+                var wrapper = new ObjectElement { Name = string.Empty, Layer = surfaced.Layer, Order = surfaced.Order };
+                var platformCopy = (PlatformElement)surfaced.Clone(keepIds: false);
+                wrapper.AddChild(platformCopy);
+                foreach (var tile in SurfaceTiles(surfaced))
+                {
+                    var tileCopy = (ImageElement)tile.Clone(keepIds: false);
+                    tileCopy.SurfaceOwner = platformCopy.Id;
+                    wrapper.AddChild(tileCopy);
+                }
+                var platformSiblings = Document.SiblingsOf(surfaced);
+                Document.Insert(wrapper, surfaced.Parent, platformSiblings.IndexOf(surfaced) + 1);
+                copies.Add(platformCopy);
+                continue;
+            }
             var copy = element.Clone(keepIds: false);
             var siblings = Document.SiblingsOf(element);
             Document.Insert(copy, element.Parent, siblings.IndexOf(element) + 1);

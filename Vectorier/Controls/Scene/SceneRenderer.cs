@@ -718,6 +718,9 @@ public sealed class SceneRenderer
         int stamp = ++_stamp;
         foreach (var group in _groups)
         {
+            // Rectangle selection only picks elements of the Default / Gameplay layer (factor 1).
+            if (Math.Abs(group.Factor - GameplayFactor) > 1e-9)
+                continue;
             var a = viewport.ScreenToLevel(screenRect.TopLeft, group);
             var b = viewport.ScreenToLevel(screenRect.BottomRight, group);
             group.Grid.Query(RectEx.Box(a, b), stamp, candidates);

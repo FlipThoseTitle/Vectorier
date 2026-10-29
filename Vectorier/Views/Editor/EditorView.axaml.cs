@@ -20,6 +20,9 @@ public partial class EditorView : UserControl
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        // A click on an empty panel area focuses the Editor itself rather than the window root, so its
+        // shortcuts keep working (keys only reach this handler when the focus is inside the Editor).
+        Focusable = true;
         AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
         ElementBar.AddHandler(PointerPressedEvent, OnEyePressed, RoutingStrategies.Tunnel);
         ElementBar.AddHandler(PointerMovedEvent, OnEyeMoved, RoutingStrategies.Tunnel);
@@ -168,6 +171,12 @@ public partial class EditorView : UserControl
     private void OnPreviewKeyUp(object? sender, KeyEventArgs e)
     {
         _heldKeys.Remove(e.Key);
+        if (e.Key == Key.Space && Scene.SpacePanHeld)
+        {
+            Scene.SpacePanHeld = false;
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.A)
             Scene.SetSnapScaleModifier(false);
         if (e.Key is Key.V or Key.C && Scene.IsSnapping)
@@ -334,6 +343,23 @@ public partial class EditorView : UserControl
         {
             if (_heldKeys.Add(e.Key))
                 _vm.ChangeOrder(orderDelta);
+            e.Handled = true;
+            return;
+        }
+
+        // Space held over the Scene: left drag pans.
+        if (e.Key == Key.Space && mods == KeyModifiers.None && Scene.IsPointerInside)
+        {
+            Scene.SpacePanHeld = true;
+            e.Handled = true;
+            return;
+        }
+
+        // H hides / shows the selected elements in the Scene (like Unity).
+        if (e.Key == Key.H && mods == KeyModifiers.None && _vm.HasSelection)
+        {
+            if (_heldKeys.Add(e.Key))
+                _vm.ToggleSelectionHidden();
             e.Handled = true;
             return;
         }

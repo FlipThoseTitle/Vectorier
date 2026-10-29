@@ -46,6 +46,7 @@ public sealed class PaintCanvas
     private byte[] _pixels;      // current pixels (premultiplied BGRA)
     private byte[] _base;        // pixels when the stroke began
     private float[] _mask;       // stroke coverage 0..1
+    private byte[]? _clipAlpha;  // alpha of the starting image (Clip to Image follows it)
     private bool _inStroke;
     private PixelRect _strokeRect; // area touched by the stroke (canvas pixels)
     private BrushSettings _brush;
@@ -78,7 +79,10 @@ public sealed class PaintCanvas
     /// <summary>Area of the starting content (the edited image) inside the canvas; it moves when the canvas grows to the left or top.</summary>
     public PixelRect Original { get; private set; }
 
-    /// <summary>When true, paint stays inside <see cref="Original"/> (Clip to Image Bounds).</summary>
+    /// <summary>
+    /// When true, paint stays on the visible (non-transparent) pixels of the starting image: its alpha masks the
+    /// brush, so transparent surroundings are never filled (Clip to Image).
+    /// </summary>
     public bool ClipToOriginal { get; set; }
 
     public bool HasUndo => _undo.Count > 0;
@@ -95,6 +99,9 @@ public sealed class PaintCanvas
     public void Load(byte[] premultipliedBgra)
     {
         Buffer.BlockCopy(premultipliedBgra, 0, _pixels, 0, Math.Min(premultipliedBgra.Length, _pixels.Length));
+        _clipAlpha = new byte[Width * Height];
+        for (int i = 0; i < _clipAlpha.Length; i++)
+            _clipAlpha[i] = _pixels[i * 4 + 3];
         MarkBitmapDirty(new PixelRect(0, 0, Width, Height));
     }
 
@@ -258,6 +265,13 @@ public sealed class PaintCanvas
                 if (a <= 0)
                     continue;
                 int i = y * Width + x;
+                if (ClipToOriginal && _clipAlpha != null)
+                {
+                    byte clip = _clipAlpha[i];
+                    if (clip == 0)
+                        continue;
+                    a *= clip / 255f;
+                }
                 float m = _mask[i];
                 float next = _brush.Kind == BrushKind.Airbrush
                     ? m + (opacity - m) * a * flow
@@ -370,6 +384,13 @@ public sealed class PaintCanvas
         for (int y = 0; y < Height; y++)
             Array.Copy(_mask, y * Width, mask, (y + top) * w + left, Width);
         _mask = mask;
+        if (_clipAlpha != null)
+        {
+            var clip = new byte[w * h];
+            for (int y = 0; y < Height; y++)
+                Buffer.BlockCopy(_clipAlpha, y * Width, clip, (y + top) * w + left, Width);
+            _clipAlpha = clip;
+        }
         for (int i = 0; i < _undo.Count; i++)
             _undo[i] = (_undo[i].Rect.Translate(new PixelVector(left, top)), _undo[i].Pixels);
         if (_strokeRect.Width > 0)
@@ -416,7 +437,7 @@ public sealed class PaintCanvas
             for (int y = 0; y < rect.Height; y++)
                 Marshal.Copy(data, y * rect.Width * 4, fb.Address + y * fb.RowBytes, rect.Width * 4);
         using var stream = new System.IO.MemoryStream();
-        bitmap.Save(stream);
+        bitmap.Save(stream, new PngBitmapEncoderOptions());
         return stream.ToArray();
     }
 }

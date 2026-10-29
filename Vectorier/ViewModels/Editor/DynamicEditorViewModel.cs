@@ -1049,7 +1049,41 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
 
         var names = level.Select(t => t.TransformationName?.Trim() ?? string.Empty)
             .Where(n => n.Length > 0).Distinct(StringComparer.Ordinal).ToList();
-        var actions = string.Concat(names.Select(n => $"\n      <Transform Name=\"{System.Security.SecurityElement.Escape(n)}\"/>"));
+        // Several transformations: run them one after another, at the same time, or a random few.
+        string order = "Straight";
+        int randomCount = 1;
+        if (level.Count > 1 && names.Count > 1)
+        {
+            var dialog = new ViewModels.Dialogs.MessageDialogViewModel("Add Trigger",
+                $"How should the {names.Count} transformations run when the trigger fires?", MessageKind.Question);
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run After Another", "Straight", isDefault: true));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run at the Same Time", "Sync"));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run Randomly", "Random"));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Cancel", null, isCancel: true));
+            if (await AppServices.Dialogs.ShowAsync(dialog) is not string picked)
+                return;
+            order = picked;
+            if (order == "Random")
+            {
+                int available = names.Count;
+                string? text = await AppServices.Dialogs.PromptAsync("Run Randomly",
+                    $"How many of the {available} transformations should run (picked at random)?", "1",
+                    value => ValidateRandomCount(value, available), "Add Trigger");
+                if (text == null)
+                    return;
+                randomCount = int.Parse(text.Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
+        string indent = order == "Straight" ? "      " : "        ";
+        var transforms = string.Concat(names.Select(n => $"\n{indent}<Transform Name=\"{System.Security.SecurityElement.Escape(n)}\"/>"));
+        var actions = order switch
+        {
+            // Run Order Group (Choose): Sync runs them all together, Random runs Set of them.
+            "Sync" => "\n      <Choose Order=\"Sync\">" + transforms + "\n      </Choose>",
+            "Random" => $"\n      <Choose Order=\"Random\" Set=\"{randomCount}\">" + transforms + "\n      </Choose>",
+            _ => transforms,
+        };
         string content =
             "\n  <Init>" +
             "\n    <SetVariable Name=\"$Active\" Value=\"1\"/>" +
@@ -1069,10 +1103,24 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         var created = await _editor.CreateElementAsync(ElementType.Trigger, new Point(at.X, at.Y), null, null, parent, index);
         if (created is not TriggerElement trigger)
             return;
-        trigger.Name = names.Count == 1 ? names[0] + "_Trigger" : "Trigger";
+        trigger.Name = "TriggerTransform";
         trigger.ContentXml = content;
         _editor.StatusText = names.Count == 0
             ? "Added a trigger (no transformation name to play)."
             : $"Added a trigger that plays {string.Join(", ", names)}. Save the transformations so the names exist.";
+    }
+
+    /// <summary>Run Randomly: a whole number from 1 to the number of transformations.</summary>
+    private static string? ValidateRandomCount(string value, int available)
+    {
+        if (!int.TryParse(value.Trim(), System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out int count))
+            return "Enter a whole number (for example 1).";
+        if (count < 0)
+            return "Warning: the number can't be negative.";
+        if (count == 0)
+            return "Warning: at least 1 transformation has to run.";
+        if (count > available)
+            return $"Error: there are only {available} transformations.";
+        return null;
     }
 }

@@ -39,7 +39,8 @@ public sealed partial class PaintViewModel : ObservableObject
     }
 
     public static IReadOnlyList<BrushKind> BrushKinds { get; } = Enum.GetValues<BrushKind>();
-    public static IReadOnlyList<PaintBlendMode> BlendModes { get; } = Enum.GetValues<PaintBlendMode>();
+    /// <summary>Blending modes of the dropdown (erasing is the separate Erase option).</summary>
+    public static IReadOnlyList<PaintBlendMode> BlendModes { get; } = Enum.GetValues<PaintBlendMode>().Where(m => m != PaintBlendMode.Erase).ToList();
 
     // ================= SETTINGS ================= //
 
@@ -53,6 +54,9 @@ public sealed partial class PaintViewModel : ObservableObject
 
     [ObservableProperty] private Color _color = Colors.Black;
     [ObservableProperty] private PaintBlendMode _blend = PaintBlendMode.Normal;
+
+    /// <summary>The brush removes paint (with its shape, size and opacity) instead of adding color.</summary>
+    [ObservableProperty] private bool _erase;
 
     /// <summary>Keep the paint inside the edited image (off: paint freely, the image grows).</summary>
     [ObservableProperty] private bool _clipToBounds;
@@ -82,7 +86,7 @@ public sealed partial class PaintViewModel : ObservableObject
         _editor.StatusText = $"Brush size: {Size:0.#}";
     }
 
-    public BrushSettings Settings => new(Kind, Size, Opacity / 100.0, Color, Blend);
+    public BrushSettings Settings => new(Kind, Size, Opacity / 100.0, Color, Erase ? PaintBlendMode.Erase : Blend);
 
     // ================= SESSION ================= //
 
@@ -523,7 +527,15 @@ public sealed partial class PaintViewModel : ObservableObject
         }
 
         bool merged = IsMerge;
+        bool newFile = IsNew || choice == ApplyChoice.Duplicate;
         Reset();
+        // A new PNG shows up (selected) in the Project Window's textures.
+        if (newFile && _editor.ProjectWindow.Context == PwContext.Textures)
+        {
+            await _editor.ProjectWindow.ReloadAsync();
+            if (_editor.Context.Textures.Find(name) is { } added)
+                await _editor.ProjectWindow.RevealNewAsync(new[] { added.FileName });
+        }
         _editor.SelectTool(EditorTool.Move);
         _editor.StatusText = merged ? $"Merged into '{name}.png'." : $"Saved '{name}.png'.";
     }

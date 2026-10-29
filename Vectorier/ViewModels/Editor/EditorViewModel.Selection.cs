@@ -167,6 +167,19 @@ public sealed partial class EditorViewModel
     private void SelectAll() => Select(Document.Roots.Where(e => IsTypeVisible(e.Type)).ToList());
 
     /// <summary>Expands the Hierarchy down to the element so it becomes visible there.</summary>
+    /// <summary>H: hides the selected elements in the Scene, or shows them again when they are all hidden.</summary>
+    public void ToggleSelectionHidden()
+    {
+        var targets = GetTopmostSelection();
+        if (targets.Count == 0)
+            return;
+        bool hide = targets.Any(e => !e.IsHidden);
+        foreach (var e in targets)
+            e.IsHidden = hide;
+        SceneInvalidated?.Invoke();
+        StatusText = hide ? $"Hidden ({targets.Count})" : $"Shown ({targets.Count})";
+    }
+
     public void RevealInHierarchy(SceneElement element)
     {
         var p = element.Parent;

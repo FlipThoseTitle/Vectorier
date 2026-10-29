@@ -209,9 +209,11 @@
                                        FormatString="0'%'" Width="58" ShowButtonSpinner="False" />
                         <ColorPicker Color="{Binding Paint.Color}" IsAlphaEnabled="False" VerticalAlignment="Center" ToolTip.Tip="Brush color" />
                         <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BlendModes}" SelectedItem="{Binding Paint.Blend}" Width="100"
-                                  ToolTip.Tip="Blending mode (Erase removes paint)" />
+                                  ToolTip.Tip="Blending mode" IsEnabled="{Binding !Paint.Erase}" />
+                        <CheckBox Content="Erase" IsChecked="{Binding Paint.Erase}" Margin="4,0,0,0"
+                                  ToolTip.Tip="The brush removes paint instead of adding color" />
                         <CheckBox Content="Clip to Image" IsChecked="{Binding Paint.ClipToBounds}" Margin="4,0,0,0" IsEnabled="{Binding !Paint.IsNew}"
-                                  ToolTip.Tip="On: paint stays inside the edited image. Off: paint freely, the image grows (up to 4096 × 4096)." />
+                                  ToolTip.Tip="On: paint only lands on the edited image's visible pixels (its transparent areas stay empty). Off: paint freely, the image grows (up to 4096 × 4096)." />
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">

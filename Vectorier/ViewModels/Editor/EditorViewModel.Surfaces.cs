@@ -95,6 +95,52 @@ public sealed partial class EditorViewModel
     private ObservableCollection<SceneElement> SiblingsOf(SceneElement element) => element.Parent?.Children ?? Document.Roots;
 
     /// <summary>The images generated for a platform.</summary>
+    /// <summary>
+    /// The Object made for an auto-built platform: its direct parent when that Object holds only the platform and the
+    /// platform's own textures. Null when the platform shares its parent with anything else (then only the platform
+    /// and its textures belong to it).
+    /// </summary>
+    public ObjectElement? SurfaceHost(PlatformElement platform)
+    {
+        if (platform.Surface == null || platform.Parent is not { IsReference: false } parent)
+            return null;
+        foreach (var child in parent.Children)
+        {
+            if (ReferenceEquals(child, platform))
+                continue;
+            if (child is ImageElement { SurfaceOwner: var owner } && owner == platform.Id)
+                continue;
+            return null;
+        }
+        return parent;
+    }
+
+    /// <summary>
+    /// Delete / Duplicate targets: an auto-built platform stands for its whole Object (or, without one, for itself and
+    /// its textures). Nothing else is added, and nothing is listed twice.
+    /// </summary>
+    private List<SceneElement> ExpandSurfaceTargets(IReadOnlyList<SceneElement> targets, bool includeLooseTiles)
+    {
+        var result = new List<SceneElement>();
+        foreach (var element in targets)
+        {
+            if (element is PlatformElement { Surface: not null } platform)
+            {
+                if (SurfaceHost(platform) is { } host)
+                {
+                    result.Add(host);
+                    continue;
+                }
+                result.Add(platform);
+                if (includeLooseTiles)
+                    result.AddRange(SurfaceTiles(platform));
+                continue;
+            }
+            result.Add(element);
+        }
+        return result.Distinct().Where(e => !result.Any(o => !ReferenceEquals(o, e) && e.IsDescendantOf(o))).ToList();
+    }
+
     public List<ImageElement> SurfaceTiles(PlatformElement platform) =>
         SiblingsOf(platform).OfType<ImageElement>().Where(i => i.SurfaceOwner == platform.Id).ToList();
 
