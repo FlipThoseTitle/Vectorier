@@ -125,7 +125,7 @@ public sealed class DesktopPlatformServices : IPlatformServices
         if (OperatingSystem.IsWindows())
             return "win-x64";
         if (OperatingSystem.IsMacOS())
-            return "osx-arm64";
+            return RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64";
         return "linux-x64";
     }
 
@@ -134,6 +134,10 @@ public sealed class DesktopPlatformServices : IPlatformServices
     public string? LaunchGame(IFileSystem fileSystem, string projectName, string levelName, bool hunterMode)
     {
         string folder = VPath.Combine("Game", GetGameRuntimeFolder());
+        // A Mac with Apple Silicon can also run the Intel build (Rosetta), and the other way round is not possible.
+        if (OperatingSystem.IsMacOS() && fileSystem.GetNativePath(VPath.Combine(folder, GetGameExecutableName())) is { } preferred && !File.Exists(preferred)
+            && RuntimeInformation.OSArchitecture == Architecture.Arm64)
+            folder = VPath.Combine("Game", "osx-x64");
         string? nativeFolder = fileSystem.GetNativePath(folder);
         string? exe = fileSystem.GetNativePath(VPath.Combine(folder, GetGameExecutableName()));
         if (nativeFolder == null || exe == null || !File.Exists(exe))
@@ -141,6 +145,14 @@ public sealed class DesktopPlatformServices : IPlatformServices
 
         try
         {
+            // Copied from another system (zip, Windows publish), the game may have lost its "executable" permission.
+            if (!OperatingSystem.IsWindows())
+            {
+                var mode = File.GetUnixFileMode(exe);
+                const UnixFileMode exec = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+                if ((mode & UnixFileMode.UserExecute) == 0)
+                    File.SetUnixFileMode(exe, mode | exec);
+            }
             var info = new ProcessStartInfo(exe)
             {
                 WorkingDirectory = nativeFolder,

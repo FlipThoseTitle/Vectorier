@@ -21,10 +21,61 @@ public sealed class NativeFileSystem : IFileSystem
     public string RootDisplayName => _root;
     public bool SupportsNativePaths => true;
 
+    private static readonly bool CaseSensitive = !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS();
+
     private string Full(string path)
     {
         string normalized = VPath.Normalize(path);
-        return normalized.Length == 0 ? _root : Path.Combine(_root, normalized.Replace('/', Path.DirectorySeparatorChar));
+        string full = normalized.Length == 0 ? _root : Path.Combine(_root, normalized.Replace('/', Path.DirectorySeparatorChar));
+        return CaseSensitive ? ResolveCase(full) : full;
+    }
+
+    /// <summary>A move target: its folder is matched ignoring case, its own name is kept exactly (case-only renames).</summary>
+    private string FullTarget(string path)
+    {
+        string normalized = VPath.Normalize(path);
+        string dir = Full(VPath.GetDirectory(normalized));
+        return normalized.Length == 0 ? _root : Path.Combine(dir, VPath.GetFileName(normalized));
+    }
+
+    /// <summary>
+    /// Linux file systems are case-sensitive, while Vector's XML (made on Windows) may name "Buildings.xml" for
+    /// buildings.xml. A path that does not exist as written is matched segment by segment ignoring case; the parts
+    /// that do not exist yet (new files and folders) are kept as written.
+    /// </summary>
+    private string ResolveCase(string full)
+    {
+        if (File.Exists(full) || Directory.Exists(full) || !full.StartsWith(_root, StringComparison.Ordinal))
+            return full;
+        string current = _root;
+        var parts = full[_root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            string exact = Path.Combine(current, parts[i]);
+            if (File.Exists(exact) || Directory.Exists(exact) || !Directory.Exists(current))
+            {
+                current = exact;
+                continue;
+            }
+            string? match = null;
+            try
+            {
+                foreach (var entry in Directory.EnumerateFileSystemEntries(current))
+                {
+                    if (string.Equals(Path.GetFileName(entry), parts[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        match = entry;
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                // unreadable folder: keep the name as written
+            }
+            current = match ?? exact;
+        }
+        return current;
     }
 
     private string Relative(string full) => VPath.Normalize(Path.GetRelativePath(_root, full));
@@ -103,7 +154,7 @@ public sealed class NativeFileSystem : IFileSystem
 
     public Task MoveFileAsync(string from, string to, bool overwrite = false)
     {
-        string target = Full(to);
+        string target = FullTarget(to);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         File.Move(Full(from), target, overwrite);
         return Task.CompletedTask;
@@ -112,7 +163,7 @@ public sealed class NativeFileSystem : IFileSystem
     public Task MoveDirectoryAsync(string from, string to)
     {
         string source = Full(from);
-        string target = Full(to);
+        string target = FullTarget(to);
 
         // Case-only renames need an intermediate step on case-insensitive file systems.
         if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase) && !string.Equals(source, target, StringComparison.Ordinal))
