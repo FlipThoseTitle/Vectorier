@@ -21,6 +21,7 @@ public sealed partial class EditorViewModel
 {
     private readonly HashSet<PlatformElement> _surfacePending = new();
     private bool _surfaceFlushPosted;
+    private DispatcherTimer? _surfaceTimer;
     private bool _surfaceFlushing;
 
     private static readonly HashSet<string> SurfaceProperties = new(StringComparer.Ordinal)
@@ -45,7 +46,14 @@ public sealed partial class EditorViewModel
             return;
         _surfaceFlushPosted = true;
         // Not inside the change itself: a scale may still be iterating the Object's children.
-        Dispatcher.UIThread.Post(() => FlushSurfaces(), DispatcherPriority.Render);
+        // At most every 0.1 s while dragging (rebuilding every frame lags); an undo step flushes at once.
+        _surfaceTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) =>
+        {
+            _surfaceTimer!.Stop();
+            if (_surfaceFlushPosted)
+                FlushSurfaces();
+        });
+        _surfaceTimer.Start();
     }
 
     /// <summary>Rebuilds the queued surfaces that are out of date.</summary>

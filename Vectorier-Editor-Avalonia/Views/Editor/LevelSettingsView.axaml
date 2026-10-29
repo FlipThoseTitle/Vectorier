@@ -208,12 +208,6 @@
                             </Button>
                         </Grid>
                         <Grid Classes="row" ColumnDefinitions="110,*,60">
-                            <TextBlock Text="Preview Volume" />
-                            <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MusicPreviewVolume}"
-                                    ToolTip.Tip="Volume of the preview only (the level's music volume below is what the game uses)" />
-                            <TextBlock Grid.Column="2" Classes="dim" Margin="6,0,0,0" Text="{Binding MusicPreviewVolume, StringFormat='{}{0:0}%'}" />
-                        </Grid>
-                        <Grid Classes="row" ColumnDefinitions="110,*,60">
                             <TextBlock Text="Volume" />
                             <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding MusicVolume}" />
                             <NumericUpDown Grid.Column="2" Value="{Binding MusicVolume, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"

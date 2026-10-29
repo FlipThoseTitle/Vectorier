@@ -344,27 +344,12 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
 
     // ================= MUSIC PREVIEW ================= //
 
-    private const string MusicPreviewVolumeSetting = "MusicPreviewVolume";
 
     /// <summary>The music is playing in the preview.</summary>
     [ObservableProperty] private bool _isMusicPlaying;
 
-    /// <summary>
-    /// Volume of the preview, 0–100. Independent of the level's music volume (which is what the game uses), and
-    /// remembered between sessions.
-    /// </summary>
-    [ObservableProperty] private double _musicPreviewVolume = ReadPreviewVolume();
-
-    private static double ReadPreviewVolume() =>
-        double.TryParse(AppServices.Platform.Settings.Get(MusicPreviewVolumeSetting), System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture, out double v) ? Math.Clamp(v, 0, 100) : 80;
-
-    partial void OnMusicPreviewVolumeChanged(double value)
-    {
-        AppServices.Platform.Settings.Set(MusicPreviewVolumeSetting, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        if (IsMusicPlaying)
-            AppServices.Platform.SetSoundVolume(value / 100.0);
-    }
+    /// <summary>Fixed preview volume, independent of the level's music volume.</summary>
+    private const double MusicPreviewVolume = 0.8;
 
     private int _playVersion;
 
@@ -392,7 +377,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         IsMusicPlaying = true;
         try
         {
-            await AppServices.Platform.PlaySoundAsync(AppServices.FileSystem, path, MusicPreviewVolume / 100.0);
+            await AppServices.Platform.PlaySoundAsync(AppServices.FileSystem, path, MusicPreviewVolume);
         }
         finally
         {

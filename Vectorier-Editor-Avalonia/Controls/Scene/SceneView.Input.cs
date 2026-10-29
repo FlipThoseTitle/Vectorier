@@ -246,7 +246,8 @@ public sealed partial class SceneView
             return;
 
         // Gizmo handles win over whatever is below them.
-        if ((mods & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Alt)) == 0 && TryStartGizmoDrag(pos))
+        // A double click picks the next element underneath, even over the gizmo of the current one.
+        if (e.ClickCount < 2 && (mods & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Alt)) == 0 && TryStartGizmoDrag(pos))
             return;
         _gizmoHandle = GizmoHandle.None;
 
@@ -258,7 +259,7 @@ public sealed partial class SceneView
         }
 
         // Rect tool zones on the current selection.
-        if (Tool == EditorTool.Rect && _editor.HasSelection)
+        if (Tool == EditorTool.Rect && _editor.HasSelection && e.ClickCount < 2)
         {
             var zone = RectZone(pos);
             if (zone != RectHandle.None && (mods & KeyModifiers.Alt) == 0)
@@ -288,7 +289,7 @@ public sealed partial class SceneView
             return;
         }
 
-        var target = ResolveClick(hit.Owner, ctrl || shift ? 1 : e.ClickCount);
+        var target = ResolveClick(hit.Owner, ctrl || shift ? 1 : e.ClickCount, pos);
         if (ctrl || shift)
         {
             _editor.Select(target, SelectMode.Toggle);
@@ -329,18 +330,30 @@ public sealed partial class SceneView
     }
 
     /// <summary>
-    /// Picking of nested elements: a click selects the deepest element under the pointer (the element itself, or
-    /// the Object instance whose definition content was hit); a double-click selects its top-level root instead.
-    /// The root stays selectable from the Hierarchy too.
+    /// Picking: a click selects the topmost (deepest) element under the pointer. Each further double click selects
+    /// the next element underneath; when there is nothing more underneath, the root Object of the current element
+    /// is selected (an element without a parent Object stays selected).
     /// </summary>
-    private SceneElement ResolveClick(SceneElement element, int clickCount)
+    private SceneElement ResolveClick(SceneElement element, int clickCount, Point screen)
     {
-        if (clickCount < 2)
+        if (_renderer == null || _editor == null)
             return element;
-        var root = element;
-        while (root.Parent != null)
-            root = root.Parent;
-        return root;
+        var hits = _renderer.HitTestAll(Viewport, screen);
+        var current = _editor.ActiveElement;
+        if (clickCount < 2)
+        {
+            // Clicking on what is already selected keeps it (so a picked element underneath can be dragged and the
+            // next double click continues from it).
+            if (current is { IsSelected: true } && hits.Any(h => ReferenceEquals(h, current) || h.IsDescendantOf(current)))
+                return current;
+            return element;
+        }
+        int index = current == null ? -1 : hits.IndexOf(current);
+        if (index < 0)
+            return current != null && current.IsSelected && !hits.Contains(current) ? current : element;
+        if (index + 1 < hits.Count)
+            return hits[index + 1];
+        return current!.Root;
     }
 
     private void StartPivotTransform(Point pos)
@@ -605,15 +618,9 @@ public sealed partial class SceneView
             return;
         if ((e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0)
             return;
-        // A click selects the deepest element; a double click selects its top-level root.
-        var hit = _renderer.HitTest(Viewport, e.GetPosition(this));
-        if (hit != null)
-        {
-            var root = ResolveClick(hit.Owner, 2);
-            if (!root.IsSelected || _editor.Selection.Count != 1)
-                _editor.Select(root);
-            _editor.RevealInHierarchy(root);
-        }
+        // Selection itself happens on press (ResolveClick); the double click only reveals it in the Hierarchy.
+        if (_editor.ActiveElement is { } active)
+            _editor.RevealInHierarchy(active);
     }
 
     private async System.Threading.Tasks.Task PlaceAsync(ElementType type, Point screen, Rect? levelRect)

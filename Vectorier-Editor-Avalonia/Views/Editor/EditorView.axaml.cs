@@ -243,6 +243,7 @@ public partial class EditorView : UserControl
                 case Key.C: _vm.CopyCommand.Execute(null); break;
                 case Key.V when shift: _vm.PasteIntoCommand.Execute(null); break;
                 case Key.V: _vm.PasteCommand.Execute(null); break;
+                case Key.D when shift: _vm.ClearSelection(); break;
                 case Key.D: _vm.Duplicate(); break;
                 case Key.A: _vm.SelectAllCommand.Execute(null); break;
                 case Key.G when shift: _vm.Ungroup(); break;

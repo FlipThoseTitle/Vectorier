@@ -53,7 +53,7 @@ public static class PlatformSurface
     public const string BlackFill = "v_black";
 
     /// <summary>Bump when the generation changes, so existing surfaces rebuild the next time they are touched.</summary>
-    private const int BuildVersion = 1;
+    private const int BuildVersion = 2;
 
     private const double Epsilon = 0.01;
     private const int MaxTiles = 4096;
@@ -205,6 +205,8 @@ public static class PlatformSurface
         }
 
         bool smooth = settings.Type == PlatformSurfaceType.Smooth;
+        // Rough: neighbouring tiles overlap by 1 pixel (no seams), and v_black grows 1 pixel on every side.
+        int overlap = smooth ? 0 : 1;
         bool wantUpLeft = smooth || floor || leftWall;
         bool wantUpRight = smooth || floor || rightWall;
         var upLeft = wantUpLeft ? (smooth ? Load(CornerUpL) : Variants(CornerUpL) is { } ul ? Pick(ul) : null) : null;
@@ -220,7 +222,7 @@ public static class PlatformSurface
             var longs = Variants(FloorLong);
             if (shorts != null && longs != null)
             {
-                double start = L + upLeft.Width, end = R - upRight.Width, x = start;
+                double start = L + upLeft.Width - overlap, end = R - upRight.Width + overlap, x = start;
                 for (int i = 0; i < MaxTiles && end - x > Epsilon; i++)
                 {
                     double remaining = end - x;
@@ -232,7 +234,7 @@ public static class PlatformSurface
                         break;
                     }
                     Add(chosen, x, T);
-                    x += chosen.Width;
+                    x += chosen.Width - overlap;
                 }
             }
         }
@@ -249,7 +251,7 @@ public static class PlatformSurface
             var longs = Variants(right ? WallRLong : WallLLong);
             if (shorts == null || longs == null)
                 return;
-            double y = T + upCorner.Height, bottom = downTop;
+            double y = T + upCorner.Height - overlap, bottom = downTop + overlap;
             for (int i = 0; i < MaxTiles && bottom - y > Epsilon; i++)
             {
                 double remaining = bottom - y;
@@ -262,7 +264,7 @@ public static class PlatformSurface
                     break;
                 }
                 Add(chosen, x, y);
-                y += chosen.Height;
+                y += chosen.Height - overlap;
             }
         }
 
@@ -280,7 +282,7 @@ public static class PlatformSurface
             double left = leftWall && upLeft != null ? L + upLeft.Width : L;
             double right = rightWall && upRight != null ? R - upRight.Width : R;
             double top = floor && upLeft != null ? T + upLeft.Height : T;
-            Fill(left, top, right, B);
+            Fill(left - overlap, top - overlap, right + overlap, B + overlap);
         }
         if (images.Count > edges)
         {

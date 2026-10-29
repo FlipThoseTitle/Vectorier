@@ -578,6 +578,38 @@ public sealed class SceneRenderer
         return best;
     }
 
+    /// <summary>Every element under a screen point (deepest owners), topmost first, without duplicates.</summary>
+    public List<SceneElement> HitTestAll(SceneViewport viewport, Point screen)
+    {
+        if (_needsRebuild)
+            Rebuild();
+        ProcessDirty();
+        var candidates = new List<RenderItem>();
+        int stamp = ++_stamp;
+        foreach (var group in _groups)
+        {
+            var p = viewport.ScreenToLevel(screen, group);
+            double tolerance = 3 / (viewport.Zoom * group.FrameScale);
+            group.Grid.Query(new Rect(p.X - tolerance, p.Y - tolerance, tolerance * 2, tolerance * 2), stamp, candidates);
+        }
+        var hits = new List<RenderItem>();
+        foreach (var item in candidates)
+        {
+            if (IsHidden(item))
+                continue;
+            var p = viewport.ScreenToLevel(screen, item.Group);
+            double tolerance = 3 / (viewport.Zoom * item.Group.FrameScale);
+            if (Contains(item, p, tolerance))
+                hits.Add(item);
+        }
+        hits.Sort((a, b) => Above(a, b) ? -1 : Above(b, a) ? 1 : 0);
+        var result = new List<SceneElement>();
+        foreach (var item in hits)
+            if (!result.Contains(item.Owner))
+                result.Add(item.Owner);
+        return result;
+    }
+
     private static bool Above(RenderItem a, RenderItem b)
     {
         if (a.IsOverlay != b.IsOverlay)
