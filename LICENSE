@@ -40,8 +40,12 @@ It does not include, and this license grants no rights in:
        and trademarks, and anything extracted, converted, or derived from them.
        Such content remains the property of Nekki, and its use is governed by
        Nekki's terms and applicable law; or
-   (b) Any third-party software or assets, including the Unity engine and any
-       Unity packages, which remain subject to their own terms.
+   (b) Any third-party software or assets, including Avalonia, .NET,
+       SkiaSharp, HarfBuzzSharp, CommunityToolkit.Mvvm, raylib, Raylib-cs, and
+       any fonts or libraries provided by the operating system, which remain
+       subject to their own terms. Their licenses and notices are listed in the
+       THIRD-PARTY-NOTICES file, and copies of the Software that include them
+       must keep those notices.
 
 5. Anything outside the scope of these conditions, including how the Software and
 anything made with it is used, modified, shared, or monetized, is the sole
