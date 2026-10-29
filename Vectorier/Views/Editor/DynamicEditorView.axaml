@@ -27,6 +27,9 @@
                 <StackPanel Orientation="Horizontal" Spacing="2" DockPanel.Dock="Right">
                     <TextBlock Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0" IsVisible="{Binding IsBound}"
                                Text="{Binding Tracks.Count, StringFormat='{}{0} element(s)'}" />
+                    <Button Classes="tool" Command="{Binding AddTriggerCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="Add a trigger next to the edited elements that plays their transformations when the player enters it">
+                        <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="Add Trigger" /></StackPanel>
+                    </Button>
                     <Button Classes="tool" Command="{Binding UnbindCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="Stop editing (restores the elements)">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Exit" /></StackPanel>
                     </Button>
@@ -56,6 +59,16 @@
                     </ToggleButton>
                     <TextBlock Text="Zoom" Classes="dim" Margin="8,0,4,0" />
                     <Slider Minimum="0.2" Maximum="8" Value="{Binding Zoom}" Width="100" VerticalAlignment="Center" Margin="0,-8" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0,0,0" IsVisible="{Binding HasActiveKey}">
+                        <Rectangle Width="1" Margin="0,3" Fill="{DynamicResource AppBorder}" />
+                        <TextBlock Text="Key ease" Classes="dim" VerticalAlignment="Center" />
+                        <ComboBox ItemsSource="{x:Static vm:DynamicEditorViewModel.EasePresets}" SelectedItem="{Binding ActiveEase}" Width="110" IsVisible="{Binding ShowEaseCombo}" />
+                        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowSupport}">
+                            <TextBlock Text="Support" Classes="dim" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding SupportX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="X, relative to the previous key" />
+                            <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="Y (up is positive), relative to the previous key" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -83,17 +96,6 @@
                 <TextBlock Classes="dim" Text="The selection does not match the elements being edited." />
             </DockPanel>
         </Border>
-
-        <!-- Active key -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="8,4,8,0" IsVisible="{Binding HasActiveKey}">
-            <TextBlock Text="Key ease" Classes="dim" />
-            <ComboBox ItemsSource="{x:Static vm:DynamicEditorViewModel.EasePresets}" SelectedItem="{Binding ActiveEase}" Width="110" IsVisible="{Binding ShowEaseCombo}" />
-            <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowSupport}">
-                <TextBlock Text="Support" Classes="dim" />
-                <NumericUpDown Value="{Binding SupportX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="X, relative to the previous key" />
-                <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="Y (up is positive), relative to the previous key" />
-            </StackPanel>
-        </StackPanel>
 
         <!-- Tracks -->
         <ScrollViewer IsVisible="{Binding IsBound}">

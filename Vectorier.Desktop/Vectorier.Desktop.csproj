@@ -68,4 +68,6 @@
     <Copy SourceFiles="@(VectorierData)" DestinationFiles="@(VectorierData->'$(PublishDir)%(DataFolder)%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
+
+  <Import Project="Packaging.targets" />
 </Project>

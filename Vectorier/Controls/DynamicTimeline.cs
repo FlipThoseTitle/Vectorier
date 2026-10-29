@@ -255,8 +255,12 @@ public sealed class DynamicTimeline : Control
             return;
         if ((e.KeyModifiers & KeyModifiers.Control) != 0)
             editor.Zoom = Math.Clamp(editor.Zoom * Math.Pow(1.2, e.Delta.Y), 0.2, 8);
-        else
+        else if ((e.KeyModifiers & KeyModifiers.Shift) != 0 || e.Delta.X != 0)
+            // Only Shift + wheel (or a horizontal wheel / trackpad swipe) scrolls the timeline; a plain wheel is left
+            // to the list so many animated elements can be scrolled through.
             editor.ScrollFrame = Math.Clamp(Scroll - (e.Delta.Y + e.Delta.X) * VisibleFrames * 0.1, 0, Math.Max(0, editor.MaxEnd - VisibleFrames));
+        else
+            return;
         e.Handled = true;
     }
 }

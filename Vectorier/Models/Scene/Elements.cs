@@ -492,6 +492,44 @@ public sealed partial class SpawnElement : PointElement
 
     [ObservableProperty] private string _animation = DefaultAnimation;
 
+    /// <summary>The move part of <see cref="Animation"/> ("JumpOff" in "JumpOff|18").</summary>
+    public string MoveName
+    {
+        get => Split().Move;
+        set
+        {
+            // A dropdown losing its item (moves not loaded yet) pushes null: keep the move.
+            if (!string.IsNullOrWhiteSpace(value))
+                Animation = Compose(value, StartFrame);
+        }
+    }
+
+    /// <summary>The start-frame part of <see cref="Animation"/> (18 in "JumpOff|18").</summary>
+    public int StartFrame
+    {
+        get => Split().Frame;
+        set => Animation = Compose(MoveName, Math.Max(0, value));
+    }
+
+    private (string Move, int Frame) Split()
+    {
+        var text = Animation ?? string.Empty;
+        int bar = text.IndexOf('|');
+        if (bar < 0)
+            return (text.Trim(), 0);
+        int.TryParse(text[(bar + 1)..].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int f);
+        return (text[..bar].Trim(), Math.Max(0, f));
+    }
+
+    private static string Compose(string? move, int frame)
+        => (move ?? string.Empty).Trim() + "|" + frame.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    partial void OnAnimationChanged(string value)
+    {
+        OnPropertyChanged(nameof(MoveName));
+        OnPropertyChanged(nameof(StartFrame));
+    }
+
     protected override SceneElement CreateEmpty() => new SpawnElement();
 
     protected override void CopyTo(SceneElement target)

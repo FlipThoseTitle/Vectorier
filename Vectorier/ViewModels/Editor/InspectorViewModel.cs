@@ -74,6 +74,73 @@ public sealed partial class InspectorViewModel : ObservableObject
         if (_target != null)
             _target.PropertyChanged += OnTargetChanged;
         OnPropertyChanged(string.Empty);
+        if (element is SpawnElement)
+            _ = EnsureMovesAsync();
+    }
+
+    // ================= SPAWN ================= //
+
+    private readonly Dictionary<string, string> _moveFiles = new(StringComparer.OrdinalIgnoreCase);
+    private string? _movesProject;
+
+    /// <summary>Moves of the project's moves.xml, for the Spawn animation dropdown.</summary>
+    public IReadOnlyList<string> MoveNames { get; private set; } = Array.Empty<string>();
+
+    private async System.Threading.Tasks.Task EnsureMovesAsync()
+    {
+        var project = _editor.Project;
+        if (_movesProject == project.Path)
+            return;
+        _movesProject = project.Path;
+        var names = new List<string>();
+        _moveFiles.Clear();
+        try
+        {
+            var fs = AppServices.FileSystem;
+            string path = Services.IO.VPath.Combine(project.AnimationsFolder, "moves.xml");
+            if (await fs.FileExistsAsync(path))
+            {
+                var doc = Services.Xml.XmlHelpers.ParseDocument(await fs.ReadAllBytesAsync(path));
+                if (doc.Root?.Element("Moves") is { } moves)
+                    foreach (var move in moves.Elements())
+                    {
+                        string name = move.Name.LocalName;
+                        if (!names.Contains(name))
+                            names.Add(name);
+                        if ((string?)move.Attribute("FileName") is { Length: > 0 } file)
+                            _moveFiles.TryAdd(name, file);
+                    }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine("[Inspector] moves.xml: " + ex.Message);
+        }
+        names.Sort(StringComparer.OrdinalIgnoreCase);
+        MoveNames = names;
+        OnPropertyChanged(nameof(MoveNames));
+    }
+
+    /// <summary>
+    /// Opens the character preview window on the spawn's move; its timeline sets the start frame (Apply).
+    /// </summary>
+    public async System.Threading.Tasks.Task PickSpawnFrameAsync(SpawnElement spawn)
+    {
+        await EnsureMovesAsync();
+        string move = spawn.MoveName;
+        if (string.IsNullOrWhiteSpace(move))
+            return;
+        if (!_moveFiles.TryGetValue(move, out var file))
+        {
+            await AppServices.Dialogs.ShowMessageAsync("Spawn Animation", $"'{move}' has no FileName in moves.xml.", MessageKind.Warning);
+            return;
+        }
+        var project = _editor.Project;
+        var result = await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(project, $"Preview - {move} ({file})",
+            new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(project, file),
+            ViewModels.Preview.PreviewCamera.FollowCameraNode, spawn.StartFrame, showApply: true, applyText: "Set Start Frame");
+        if (result != null && ReferenceEquals(_target, spawn))
+            spawn.StartFrame = result.StartFrame;
     }
 
     private void OnTargetChanged(object? sender, PropertyChangedEventArgs e)

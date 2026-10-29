@@ -1030,4 +1030,49 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         ApplyFrameToAll();
         RaiseTimeline();
     }
+
+    /// <summary>
+    /// Adds a trigger at the hierarchy level of the edited elements: when a model enters it, it plays the
+    /// transformation of each edited element (one Play Transformation per distinct name).
+    /// </summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task AddTriggerAsync()
+    {
+        if (Tracks.Count == 0)
+            return;
+        var first = Tracks[0].Element;
+        var parent = first.Parent;
+        // Elements at the same level as the first one decide the content; the trigger goes right above them.
+        var level = Tracks.Where(t => ReferenceEquals(t.Element.Parent, parent)).ToList();
+        var siblings = _editor.Document.SiblingsOf(first);
+        int index = level.Select(t => siblings.IndexOf(t.Element)).Where(i => i >= 0).DefaultIfEmpty(-1).Min();
+
+        var names = level.Select(t => t.TransformationName?.Trim() ?? string.Empty)
+            .Where(n => n.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+        var actions = string.Concat(names.Select(n => $"\n      <Transform Name=\"{System.Security.SecurityElement.Escape(n)}\"/>"));
+        string content =
+            "\n  <Init>" +
+            "\n    <SetVariable Name=\"$Active\" Value=\"1\"/>" +
+            "\n    <SetVariable Name=\"$AI\" Value=\"0\"/>" +
+            "\n    <SetVariable Name=\"$Node\" Value=\"COM\"/>" +
+            "\n  </Init>" +
+            "\n  <Loop>" +
+            "\n    <Events>" +
+            "\n      <EventBlock Template=\"FreqUsed.Enter\"/>" +
+            "\n    </Events>" +
+            "\n    <Actions>" +
+            "\n      <ActionBlock Template=\"FreqUsed.SwitchOff\"/>" + actions +
+            "\n    </Actions>" +
+            "\n  </Loop>\n";
+
+        var at = first.WorldPosition;
+        var created = await _editor.CreateElementAsync(ElementType.Trigger, new Point(at.X, at.Y), null, null, parent, index);
+        if (created is not TriggerElement trigger)
+            return;
+        trigger.Name = names.Count == 1 ? names[0] + "_Trigger" : "Trigger";
+        trigger.ContentXml = content;
+        _editor.StatusText = names.Count == 0
+            ? "Added a trigger (no transformation name to play)."
+            : $"Added a trigger that plays {string.Join(", ", names)}. Save the transformations so the names exist.";
+    }
 }

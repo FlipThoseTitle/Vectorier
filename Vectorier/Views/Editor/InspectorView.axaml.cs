@@ -46,4 +46,22 @@ public partial class InspectorView : UserControl
         if (DataContext is InspectorViewModel vm)
             vm.PreviewMoveCommand.Execute(null);
     }
+
+    private string? _moveBeforeDrop;
+
+    private void OnSpawnMoveOpened(object? sender, System.EventArgs e)
+        => _moveBeforeDrop = (sender as ComboBox)?.DataContext is Vectorier.Models.Scene.SpawnElement spawn ? spawn.MoveName : null;
+
+    private void OnSpawnMoveClosed(object? sender, System.EventArgs e)
+    {
+        if (sender is ComboBox { DataContext: Vectorier.Models.Scene.SpawnElement spawn } && DataContext is InspectorViewModel vm
+            && spawn.MoveName != _moveBeforeDrop)
+            _ = vm.PickSpawnFrameAsync(spawn);
+    }
+
+    private void OnPickSpawnFrame(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: Vectorier.Models.Scene.SpawnElement spawn } && DataContext is InspectorViewModel vm)
+            _ = vm.PickSpawnFrameAsync(spawn);
+    }
 }

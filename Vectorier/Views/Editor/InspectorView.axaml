@@ -257,9 +257,19 @@
                             <Border Classes="component">
                                 <StackPanel>
                                     <TextBlock Classes="component-title" Text="Spawn" />
-                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                    <Grid Classes="row" ColumnDefinitions="90,*,Auto">
                                         <TextBlock Text="Animation" />
-                                        <TextBox Grid.Column="1" Text="{Binding Animation, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Move|Frame, e.g. JumpOff|18" />
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" MaxDropDownHeight="360"
+                                                  ItemsSource="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).MoveNames}"
+                                                  SelectedItem="{Binding MoveName}" DropDownOpened="OnSpawnMoveOpened" DropDownClosed="OnSpawnMoveClosed"
+                                                  ToolTip.Tip="The move the player starts with (moves.xml). Picking one opens the preview to set the start frame." />
+                                        <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" Click="OnPickSpawnFrame" ToolTip.Tip="Open the preview window to pick the start frame">
+                                            <PathIcon Data="{StaticResource Icon.Timeline}" />
+                                        </Button>
+                                    </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="Start Frame" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding StartFrame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0" />
                                     </Grid>
                                     <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnPreviewMove">
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">

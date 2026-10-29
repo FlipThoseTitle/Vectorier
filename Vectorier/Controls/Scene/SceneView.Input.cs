@@ -332,7 +332,7 @@ public sealed partial class SceneView
     /// <summary>
     /// Picking: a click selects the topmost (deepest) element under the pointer. Each further double click selects
     /// the next element underneath; when there is nothing more underneath, the root Object of the current element
-    /// is selected (an element without a parent Object stays selected).
+    /// is selected, then it loops back to the topmost element. Only elements of the same root Object are cycled.
     /// </summary>
     private SceneElement ResolveClick(SceneElement element, int clickCount, Point screen)
     {
@@ -348,12 +348,31 @@ public sealed partial class SceneView
                 return current;
             return element;
         }
-        int index = current == null ? -1 : hits.IndexOf(current);
+        // Cycle from the top: loose elements in front, then the first Object reached (its elements, then the Object
+        // itself). An Object hides whatever is behind it, so elements outside it further down are never reached.
+        var anchor = current is { IsSelected: true } && (hits.Contains(current) || hits.Any(h => h.IsDescendantOf(current)))
+            ? current : element;
+        var cycle = new List<SceneElement>();
+        foreach (var h in hits)
+        {
+            var root = h.Root;
+            if (ReferenceEquals(root, h) && h is not ObjectElement)
+            {
+                cycle.Add(h);
+                continue;
+            }
+            cycle.AddRange(hits.Where(x => ReferenceEquals(x.Root, root)));
+            cycle.Add(root);
+            break;
+        }
+        cycle = cycle.Distinct().ToList();
+        if (cycle.Count == 0)
+            return element;
+        int index = cycle.IndexOf(anchor);
         if (index < 0)
-            return current != null && current.IsSelected && !hits.Contains(current) ? current : element;
-        if (index + 1 < hits.Count)
-            return hits[index + 1];
-        return current!.Root;
+            return cycle[0];
+        // Past the last element underneath, loop back to the topmost one (like Unity).
+        return cycle[(index + 1) % cycle.Count];
     }
 
     private void StartPivotTransform(Point pos)

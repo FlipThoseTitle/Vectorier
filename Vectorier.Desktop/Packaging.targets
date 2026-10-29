@@ -1,0 +1,120 @@
+<Project>
+  <!--
+    Release packaging, run after "dotnet publish" (the publish profiles).
+
+    macOS: the executable is wrapped in Vectorier.app (Info.plist + icon), so it opens with a double click and shows
+    the Vectorier icon. Editor, Game and Projects stay next to the .app.
+
+    Every platform: a ready-to-upload zip is written next to the publish folder (publish/Vectorier-<version>-<OS>.zip).
+    The zip is written with Unix permissions, so the macOS / Linux executables (the editor and the game) keep their
+    execute bit even when the zip is made on Windows: no chmod needed after extracting.
+    Turn it off with -p:VectorierZip=false.
+  -->
+  <PropertyGroup>
+    <VectorierVersion Condition="'$(VectorierVersion)' == ''">$(Version)</VectorierVersion>
+    <VectorierVersion Condition="'$(VectorierVersion)' == ''">1.0.0</VectorierVersion>
+    <VectorierZip Condition="'$(VectorierZip)' == ''">true</VectorierZip>
+    <VectorierBundleId Condition="'$(VectorierBundleId)' == ''">com.vectorier.editor</VectorierBundleId>
+  </PropertyGroup>
+
+  <!-- The publish profile (RuntimeIdentifier) is imported after this file, so these are worked out in a target. -->
+  <Target Name="VectorierPackagingProps">
+    <PropertyGroup>
+      <_VectorierIsMac>false</_VectorierIsMac>
+      <_VectorierIsMac Condition="$(RuntimeIdentifier.StartsWith('osx'))">true</_VectorierIsMac>
+      <_VectorierOs Condition="'$(RuntimeIdentifier)' == 'win-x64'">Windows-x64</_VectorierOs>
+      <_VectorierOs Condition="'$(RuntimeIdentifier)' == 'linux-x64'">Linux-x64</_VectorierOs>
+      <_VectorierOs Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">macOS-AppleSilicon</_VectorierOs>
+      <_VectorierOs Condition="'$(RuntimeIdentifier)' == 'osx-x64'">macOS-Intel</_VectorierOs>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Runs after the data folders are copied (CopyVectorierDataOnPublish). -->
+  <Target Name="VectorierPackage" AfterTargets="Publish" DependsOnTargets="VectorierPackagingProps;VectorierMacBundle;VectorierZip" />
+
+  <Target Name="VectorierMacBundle" Condition="'$(_VectorierIsMac)' == 'true' And '$(PublishDir)' != ''">
+    <PropertyGroup>
+      <_App>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))$(AssemblyName).app/</_App>
+      <_Exe>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))$(AssemblyName)</_Exe>
+      <_Plist><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Vectorier</string>
+  <key>CFBundleDisplayName</key><string>Vectorier</string>
+  <key>CFBundleIdentifier</key><string>$(VectorierBundleId)</string>
+  <key>CFBundleVersion</key><string>$(VectorierVersion)</string>
+  <key>CFBundleShortVersionString</key><string>$(VectorierVersion)</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleExecutable</key><string>$(AssemblyName)</string>
+  <key>CFBundleIconFile</key><string>vectorier.icns</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSPrincipalClass</key><string>NSApplication</string>
+</dict>
+</plist>
+]]></_Plist>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- Everything the publish produced except the data folders and an earlier bundle goes into Contents/MacOS. -->
+      <_MacPayload Include="$(PublishDir)*" Exclude="$(PublishDir)*.zip" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_MacPayload)" DestinationFolder="$(_App)Contents/MacOS/" />
+    <Delete Files="@(_MacPayload)" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)vectorier.icns" DestinationFolder="$(_App)Contents/Resources/" />
+    <WriteLinesToFile File="$(_App)Contents/Info.plist" Lines="$(_Plist)" Overwrite="true" />
+    <Exec Condition="'$(OS)' != 'Windows_NT'" Command="chmod +x &quot;$(_App)Contents/MacOS/$(AssemblyName)&quot;" />
+    <Message Importance="high" Text="Vectorier -> $(_App)" />
+  </Target>
+
+  <Target Name="VectorierZip"
+          Condition="'$(VectorierZip)' == 'true' And '$(_VectorierOs)' != '' And '$(PublishDir)' != ''">
+    <PropertyGroup>
+      <_ZipFolder>$([System.IO.Path]::GetFullPath('$(PublishDir)'))</_ZipFolder>
+      <_ZipFile>$([System.IO.Path]::GetFullPath('$(PublishDir)..'))/Vectorier-$(VectorierVersion)-$(_VectorierOs).zip</_ZipFile>
+    </PropertyGroup>
+    <VectorierZipTask Folder="$(_ZipFolder)" ZipFile="$(_ZipFile)" ExecutableName="$(AssemblyName)" />
+    <Message Importance="high" Text="Vectorier -> $(_ZipFile)" />
+  </Target>
+
+  <UsingTask TaskName="VectorierZipTask" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Folder ParameterType="System.String" Required="true" />
+      <ZipFile ParameterType="System.String" Required="true" />
+      <ExecutableName ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.IO.Compression" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        string root = Path.GetFullPath(Folder).TrimEnd('/', '\\');
+        if (File.Exists(ZipFile)) File.Delete(ZipFile);
+        using (var zip = System.IO.Compression.ZipFile.Open(ZipFile, ZipArchiveMode.Create))
+        {
+            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                string rel = file.Substring(root.Length + 1).Replace('\\', '/');
+                string name = Path.GetFileName(file);
+                // Executables: the editor (also inside Vectorier.app/Contents/MacOS), and the game builds for
+                // Linux / macOS (Game/<rid>/ files without an extension, or .sh / .command scripts).
+                bool exec = name == ExecutableName
+                    || rel.Contains(".app/Contents/MacOS/") && Path.GetExtension(name) == ""
+                    || (rel.StartsWith("Game/linux") || rel.StartsWith("Game/osx")) && (Path.GetExtension(name) == "" || name.EndsWith(".sh") || name.EndsWith(".command"));
+                var entry = zip.CreateEntryFromFile(file, rel, CompressionLevel.Optimal);
+                // Unix mode in the high 16 bits (regular file + permissions); Windows tools ignore it.
+                int mode = exec ? Convert.ToInt32("100755", 8) : Convert.ToInt32("100644", 8);
+                // (set by reflection: the task compiles against netstandard, which lacks the property)
+                var attributes = entry.GetType().GetProperty("ExternalAttributes");
+                if (attributes != null) attributes.SetValue(entry, mode << 16);
+                // Unzip tools only read those bits when the entry says it was made on Unix (host 3); on Windows
+                // .NET writes host 0, so mark it as Unix.
+                var madeBy = entry.GetType().GetField("_versionMadeByPlatform",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (madeBy != null) madeBy.SetValue(entry, Enum.ToObject(madeBy.FieldType, 3));
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+</Project>
