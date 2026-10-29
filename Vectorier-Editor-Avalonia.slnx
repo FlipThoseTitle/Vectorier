@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="Vectorier-Editor-Avalonia.Browser/Vectorier-Editor-Avalonia.Browser.csproj" />
-  <Project Path="Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj" />
-  <Project Path="Vectorier-Editor-Avalonia/Vectorier-Editor-Avalonia.csproj" />
-</Solution>
