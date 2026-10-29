@@ -457,3 +457,6 @@ $RECYCLE.BIN/
 /Data/
 /publish/
 !Vectorier-Editor-Avalonia.Desktop/Properties/PublishProfiles/*.pubxml
+
+# Vectorier data (Editor, Game, Projects): copied next to the executable on build, not part of the repo
+/Data/
