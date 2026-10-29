@@ -288,7 +288,7 @@ public sealed partial class SceneView
             return;
         }
 
-        var target = ResolveClick(hit.Owner, ctrl || shift);
+        var target = ResolveClick(hit.Owner, ctrl || shift ? 1 : e.ClickCount);
         if (ctrl || shift)
         {
             _editor.Select(target, SelectMode.Toggle);
@@ -329,25 +329,18 @@ public sealed partial class SceneView
     }
 
     /// <summary>
-    /// Unity-like picking of nested elements: the first click selects the top-level element, clicking again
-    /// inside a selected element goes one level deeper (on release, so the selection can still be dragged).
+    /// Picking of nested elements: a click selects the deepest element under the pointer (the element itself, or
+    /// the Object instance whose definition content was hit); a double-click selects its top-level root instead.
+    /// The root stays selectable from the Hierarchy too.
     /// </summary>
-    private SceneElement ResolveClick(SceneElement element, bool modifier)
+    private SceneElement ResolveClick(SceneElement element, int clickCount)
     {
-        var chain = new List<SceneElement>();
-        for (var e = element; e != null; e = e.Parent)
-            chain.Insert(0, e);
-        int deepestSelected = -1;
-        for (int i = 0; i < chain.Count; i++)
-        {
-            if (chain[i].IsSelected)
-                deepestSelected = i;
-        }
-        if (deepestSelected < 0)
-            return chain[0];
-        if (deepestSelected < chain.Count - 1 && !modifier)
-            _pendingDrill = chain[deepestSelected + 1];
-        return chain[deepestSelected];
+        if (clickCount < 2)
+            return element;
+        var root = element;
+        while (root.Parent != null)
+            root = root.Parent;
+        return root;
     }
 
     private void StartPivotTransform(Point pos)
@@ -610,12 +603,16 @@ public sealed partial class SceneView
     {
         if (IsGameView || _editor == null || _renderer == null || _editor.PlacementType != null)
             return;
-        // Double click selects exactly the element under the pointer (deepest level).
+        if ((e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0)
+            return;
+        // A click selects the deepest element; a double click selects its top-level root.
         var hit = _renderer.HitTest(Viewport, e.GetPosition(this));
         if (hit != null)
         {
-            _editor.Select(hit.Owner);
-            _editor.RevealInHierarchy(hit.Owner);
+            var root = ResolveClick(hit.Owner, 2);
+            if (!root.IsSelected || _editor.Selection.Count != 1)
+                _editor.Select(root);
+            _editor.RevealInHierarchy(root);
         }
     }
 

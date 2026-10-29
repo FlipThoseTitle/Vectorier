@@ -38,6 +38,17 @@ public enum PwContext
     None
 }
 
+/// <summary>How a click changes the Project Window selection (Ctrl toggles, Shift selects a range).</summary>
+public enum PwSelect
+{
+    Replace,
+    Toggle,
+    Range,
+}
+
+/// <summary>Several selected tiles dragged together (to a folder; never placed in the Scene).</summary>
+public sealed record PwItemGroup(IReadOnlyList<PwItem> Items);
+
 /// <summary>Left panel entry: an objects XML file, a cached folder, or the Unorganized bucket.</summary>
 public sealed partial class PwFolder : ObservableObject
 {
@@ -145,12 +156,58 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     public TextureLibrary Textures => Assets.Textures;
 
+    /// <summary>Folders shown on the left (filtered by <see cref="FolderSearchText"/>).</summary>
     public ObservableCollection<PwFolder> Folders { get; } = new();
     public ObservableCollection<PwItem> Items { get; } = new();
 
+    /// <summary>Every folder of the context, also the ones hidden by the left search.</summary>
+    private readonly List<PwFolder> _allFolders = new();
+    public IReadOnlyList<PwFolder> AllFolders => _allFolders;
+
+    private readonly List<PwItem> _selectedItems = new();
+    private readonly List<PwFolder> _selectedFolders = new();
+    private PwItem? _itemAnchor;
+    private PwFolder? _folderAnchor;
+    private bool _selectingItems;
+    private bool _selectingFolders;
+
+    /// <summary>Selected tiles (several with Ctrl / Shift: for organizing only, never placed).</summary>
+    public IReadOnlyList<PwItem> SelectedItems => _selectedItems;
+
+    /// <summary>Selected folders / Object XML files (several with Ctrl / Shift).</summary>
+    public IReadOnlyList<PwFolder> SelectedFolders => _selectedFolders;
+
+    public bool HasMultipleItems => _selectedItems.Count > 1;
+    public bool HasMultipleFolders => _selectedFolders.Count > 1;
+
+    /// <summary>Where the last click in the Project Window was (Delete acts there).</summary>
+    public bool LastClickInFolders { get; set; }
+
+    [ObservableProperty] private string _folderSearchText = string.Empty;
+
+    partial void OnFolderSearchTextChanged(string value) => ApplyFolderFilter();
+
+    private void ApplyFolderFilter()
+    {
+        string search = FolderSearchText.Trim();
+        var shown = search.Length == 0 ? _allFolders : _allFolders.Where(f => f.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || (f.FileName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+        if (shown.Count == Folders.Count && shown.SequenceEqual(Folders))
+            return;
+        Folders.Clear();
+        foreach (var folder in shown)
+            Folders.Add(folder);
+    }
+
+    /// <summary>Title of the right panel: the folder, or how many are selected.</summary>
+    public string ContentTitle => _selectedFolders.Count > 1
+        ? $"{_selectedFolders.Count} {(Context == PwContext.Objects ? "files" : "folders")} selected"
+        : SelectedFolder?.Name ?? string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsFolders), nameof(ShowsItems), nameof(CanCreateFolder), nameof(IsTextureContext),
-        nameof(IsObjectContext), nameof(IsModelContext), nameof(IsItemContext), nameof(IsStoredContext), nameof(EmptyText), nameof(AcceptsFileDrop))]
+        nameof(IsObjectContext), nameof(IsModelContext), nameof(IsItemContext), nameof(IsStoredContext), nameof(EmptyText), nameof(AcceptsFileDrop),
+        nameof(CanImport), nameof(ImportLabel), nameof(SupportsMultipleItems))]
     private PwContext _context = PwContext.Objects;
 
     [ObservableProperty] private PwFolder? _selectedFolder;
@@ -168,7 +225,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     public bool IsModelContext => Context == PwContext.Models;
     public bool IsItemContext => Context == PwContext.Items;
     public bool IsStoredContext => Context is PwContext.Triggers or PwContext.Areas;
-    public bool AcceptsFileDrop => Context == PwContext.Textures;
+    public bool AcceptsFileDrop => Context is PwContext.Textures or PwContext.Models;
+
+    /// <summary>Image / Animation / Particle and Model assets can be imported into the project (not Objects).</summary>
+    public bool CanImport => Context is PwContext.Textures or PwContext.Models;
+
+    public string ImportLabel => Context == PwContext.Models ? "Import Models..." : "Import Textures...";
 
     public string EmptyText => Context switch
     {
@@ -181,7 +243,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             ElementType.Comment => "Click in the Scene to add a Comment, or drag to size it. Its text is its name.",
             _ => string.Empty,
         },
-        PwContext.Objects => SelectedFolder == null ? "Select an XML file on the left." : "This file has no objects. Drag elements from the Hierarchy here to save them.",
+        PwContext.Objects => HasMultipleFolders ? "Several files are selected: drag them to reorder, or press Delete to remove them."
+            : SelectedFolder == null ? "Select an XML file on the left." : "This file has no objects. Drag elements from the Hierarchy here to save them.",
         PwContext.Textures => "No textures here. Drag images or folders from your file explorer to import them.",
         PwContext.Triggers => "Drag a Trigger from the Hierarchy here to keep it for later. Click in the Scene to add a generic Trigger.",
         PwContext.Areas => "Drag an Area from the Hierarchy here to keep it for later. Click in the Scene to add a generic Area.",
@@ -192,14 +255,14 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     /// <summary>Element type the Project Window currently lists assets for.</summary>
     public ElementType ElementType => _elementType;
 
-    public bool HasPlaceableSelection => SelectedItem is { CanPlace: true };
+    public bool HasPlaceableSelection => !HasMultipleItems && SelectedItem is { CanPlace: true };
 
     public string? SelectedTextureName => Context == PwContext.Textures ? SelectedItem?.Texture?.Name : null;
 
     public string? SelectedModelName => Context == PwContext.Models && SelectedItem is { CanPlace: true } item ? item.ModelName : null;
 
     /// <summary>What a click in the Scene creates from the Project Window selection.</summary>
-    public ElementSource? CurrentSource => SourceFor(SelectedItem);
+    public ElementSource? CurrentSource => HasMultipleItems ? null : SourceFor(SelectedItem);
 
     /// <summary>What an item creates (used for the drag preview too).</summary>
     public static ElementSource? SourceFor(PwItem? item) => item switch
@@ -215,20 +278,178 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         _ => null,
     };
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    private Avalonia.Threading.DispatcherTimer? _searchTimer;
+
+    /// <summary>Typing filters after a short pause (every keystroke would rebuild the grid).</summary>
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchTimer?.Stop();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            ApplyFilter();
+            return;
+        }
+        _searchTimer ??= new Avalonia.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(150), Avalonia.Threading.DispatcherPriority.Background,
+            (_, _) => { _searchTimer!.Stop(); ApplyFilter(); });
+        _searchTimer.Start();
+    }
 
     partial void OnSelectedFolderChanged(PwFolder? oldValue, PwFolder? newValue)
     {
-        if (oldValue != null) oldValue.IsSelected = false;
-        if (newValue != null) newValue.IsSelected = true;
+        if (_selectingFolders)
+            return;
+        SetFolderSelection(newValue == null ? Array.Empty<PwFolder>() : new[] { newValue });
+        _folderAnchor = newValue;
         _ = LoadItemsAsync();
     }
 
     partial void OnSelectedItemChanged(PwItem? oldValue, PwItem? newValue)
     {
-        if (oldValue != null) oldValue.IsSelected = false;
-        if (newValue != null) newValue.IsSelected = true;
+        if (_selectingItems)
+            return;
+        SetItemSelection(newValue == null ? Array.Empty<PwItem>() : new[] { newValue });
+        _itemAnchor = newValue;
+        AfterItemSelection();
+    }
+
+    private void SetItemSelection(IEnumerable<PwItem> items)
+    {
+        foreach (var old in _selectedItems)
+            old.IsSelected = false;
+        _selectedItems.Clear();
+        foreach (var item in items)
+        {
+            if (_selectedItems.Contains(item))
+                continue;
+            _selectedItems.Add(item);
+            item.IsSelected = true;
+        }
+    }
+
+    private void SetFolderSelection(IEnumerable<PwFolder> folders)
+    {
+        foreach (var old in _selectedFolders)
+            old.IsSelected = false;
+        _selectedFolders.Clear();
+        foreach (var folder in folders)
+        {
+            if (_selectedFolders.Contains(folder))
+                continue;
+            _selectedFolders.Add(folder);
+            folder.IsSelected = true;
+        }
+        OnPropertyChanged(nameof(HasMultipleFolders));
+        OnPropertyChanged(nameof(ContentTitle));
+        OnPropertyChanged(nameof(EmptyText));
+    }
+
+    /// <summary>Several tiles can be selected everywhere assets are listed except Platforms (nothing to organize).</summary>
+    public bool SupportsMultipleItems => Context is not (PwContext.Platforms or PwContext.None);
+
+    /// <summary>Click on a tile: Replace, Ctrl = Toggle, Shift = Range (from the last clicked tile).</summary>
+    public void SelectItem(PwItem? item, PwSelect mode = PwSelect.Replace)
+    {
+        if (item == null)
+        {
+            SelectedItem = null;
+            return;
+        }
+        if (!SupportsMultipleItems)
+            mode = PwSelect.Replace;
+        _selectingItems = true;
+        try
+        {
+            switch (mode)
+            {
+                case PwSelect.Toggle:
+                {
+                    var list = _selectedItems.ToList();
+                    if (!list.Remove(item))
+                        list.Add(item);
+                    SetItemSelection(list);
+                    _itemAnchor = item;
+                    break;
+                }
+                case PwSelect.Range:
+                {
+                    var anchor = _itemAnchor != null && Items.Contains(_itemAnchor) ? _itemAnchor : item;
+                    int a = Items.IndexOf(anchor), b = Items.IndexOf(item);
+                    if (a < 0 || b < 0)
+                        goto default;
+                    SetItemSelection(Items.Skip(Math.Min(a, b)).Take(Math.Abs(a - b) + 1));
+                    break;
+                }
+                default:
+                    SetItemSelection(new[] { item });
+                    _itemAnchor = item;
+                    break;
+            }
+            SelectedItem = _selectedItems.Contains(item) ? item : _selectedItems.LastOrDefault();
+        }
+        finally
+        {
+            _selectingItems = false;
+        }
+        AfterItemSelection();
+    }
+
+    /// <summary>Click on a folder: Replace, Ctrl = Toggle, Shift = Range.</summary>
+    public void SelectFolder(PwFolder? folder, PwSelect mode = PwSelect.Replace)
+    {
+        if (folder == null)
+            return;
+        _selectingFolders = true;
+        try
+        {
+            switch (mode)
+            {
+                case PwSelect.Toggle:
+                {
+                    var list = _selectedFolders.ToList();
+                    if (!list.Remove(folder) || list.Count == 0)
+                        list.Add(folder);
+                    SetFolderSelection(list);
+                    _folderAnchor = folder;
+                    break;
+                }
+                case PwSelect.Range:
+                {
+                    var anchor = _folderAnchor != null && Folders.Contains(_folderAnchor) ? _folderAnchor : folder;
+                    int a = Folders.IndexOf(anchor), b = Folders.IndexOf(folder);
+                    if (a < 0 || b < 0)
+                        goto default;
+                    SetFolderSelection(Folders.Skip(Math.Min(a, b)).Take(Math.Abs(a - b) + 1));
+                    break;
+                }
+                default:
+                    SetFolderSelection(new[] { folder });
+                    _folderAnchor = folder;
+                    break;
+            }
+            SelectedFolder = _selectedFolders.Contains(folder) ? folder : _selectedFolders.LastOrDefault();
+        }
+        finally
+        {
+            _selectingFolders = false;
+        }
+        OnPropertyChanged(nameof(ContentTitle));
+        _ = LoadItemsAsync();
+    }
+
+    private void AfterItemSelection()
+    {
         OnPropertyChanged(nameof(HasPlaceableSelection));
+        OnPropertyChanged(nameof(HasMultipleItems));
+        OnPropertyChanged(nameof(CurrentSource));
+        var newValue = SelectedItem;
+        if (HasMultipleItems)
+        {
+            // Several assets are for organizing (folders, delete): nothing is placed, no preview follows the cursor.
+            if (_editor.PlacementType == _elementType)
+                _editor.PlacementType = null;
+            _editor.StatusText = $"{_selectedItems.Count} items selected";
+            return;
+        }
 
         if (newValue == null)
             return;
@@ -287,10 +508,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         int version = ++_reloadVersion;
         ++_loadVersion;
         string? previousFolder = SelectedFolder?.Name;
+        var previousFiles = _selectedFolders.Select(f => f.Name).ToList();
         SelectedItem = null;
         Items.Clear();
         _allItems.Clear();
         Folders.Clear();
+        _allFolders.Clear();
         SelectedFolder = null;
 
         try
@@ -300,11 +523,23 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             var folders = await BuildFoldersAsync();
             if (version != _reloadVersion)
                 return;
-            foreach (var folder in folders)
-                Folders.Add(folder);
-            SelectedFolder = Folders.FirstOrDefault(f => f.Name == previousFolder) ?? Folders.FirstOrDefault();
-            if (SelectedFolder == null)
+            _allFolders.AddRange(folders);
+            ApplyFolderFilter();
+            var restored = _allFolders.Where(f => previousFiles.Contains(f.Name)).ToList();
+            if (restored.Count > 1)
+            {
+                _selectingFolders = true;
+                SetFolderSelection(restored);
+                SelectedFolder = restored.FirstOrDefault(f => f.Name == previousFolder) ?? restored[0];
+                _selectingFolders = false;
                 await LoadItemsAsync();
+            }
+            else
+            {
+                SelectedFolder = _allFolders.FirstOrDefault(f => f.Name == previousFolder) ?? Folders.FirstOrDefault() ?? _allFolders.FirstOrDefault();
+                if (SelectedFolder == null)
+                    await LoadItemsAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -407,12 +642,16 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         SelectedItem = null;
         _allItems.Clear();
         var folder = SelectedFolder;
+        var folders = _selectedFolders.Count > 0 ? _selectedFolders.ToList() : folder != null ? new List<PwFolder> { folder } : new List<PwFolder>();
         var items = new List<PwItem>();
 
         try
         {
             switch (Context)
             {
+                case PwContext.Objects when folders.Count > 1:
+                    // Several files: organizing only, nothing listed.
+                    break;
                 case PwContext.Objects when folder?.FileName != null:
                 {
                     var table = await Assets.Objects.ResolveForFileAsync(folder.FileName);
@@ -427,13 +666,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 case PwContext.Textures:
                     if (!Textures.IsIndexed)
                         await Textures.RefreshIndexAsync();
-                    items.AddRange(InFolder(TextureItems(), folder));
+                    items.AddRange(InFolders(TextureItems(), folders));
                     break;
                 case PwContext.Triggers:
-                    items.AddRange(InFolder(Cache.Data.Triggers.Select(t => new PwItem(t.Id, t.Name) { Trigger = t }), folder));
+                    items.AddRange(InFolders(Cache.Data.Triggers.Select(t => new PwItem(t.Id, t.Name) { Trigger = t }), folders));
                     break;
                 case PwContext.Areas:
-                    items.AddRange(InFolder(Cache.Data.Areas.Select(a => new PwItem(a.Id, a.Name) { Area = a }), folder));
+                    items.AddRange(InFolders(Cache.Data.Areas.Select(a => new PwItem(a.Id, a.Name) { Area = a }), folders));
                     break;
                 case PwContext.Models:
                 {
@@ -449,7 +688,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         catch { return null; }
                     }));
                     var all = checks.Where(n => n != null).Select(n => new PwItem(n!, n!) { ModelName = n, CanPlace = false, Status = "Loading..." });
-                    items.AddRange(InFolder(all, folder));
+                    items.AddRange(InFolders(all, folders));
                     break;
                 }
                 case PwContext.Platforms:
@@ -477,6 +716,16 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyText));
     }
 
+    /// <summary>Items in any of the folders (several folders selected: their items together).</summary>
+    private IEnumerable<PwItem> InFolders(IEnumerable<PwItem> items, IReadOnlyList<PwFolder> folders)
+    {
+        if (folders.Count <= 1)
+            return InFolder(items, folders.FirstOrDefault());
+        var list = items.ToList();
+        var keep = new HashSet<PwItem>(folders.SelectMany(f => InFolder(list, f)));
+        return list.Where(keep.Contains);
+    }
+
     private IEnumerable<PwItem> InFolder(IEnumerable<PwItem> items, PwFolder? folder)
     {
         string key = CacheKey;
@@ -491,13 +740,15 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        Items.Clear();
+        _searchTimer?.Stop();
         string search = SearchText.Trim();
-        foreach (var item in _allItems)
-        {
-            if (search.Length == 0 || item.Label.Contains(search, StringComparison.OrdinalIgnoreCase))
-                Items.Add(item);
-        }
+        var filtered = search.Length == 0 ? _allItems.ToList() : _allItems.Where(i => i.Label.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+        // Unchanged result (e.g. a reload with the same items): keep the grid as it is.
+        if (filtered.Count == Items.Count && filtered.SequenceEqual(Items))
+            return;
+        Items.Clear();
+        foreach (var item in filtered)
+            Items.Add(item);
     }
 
     // ================= MODELS ================= //
@@ -561,12 +812,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         Cache.GetFolders(key).Add(new CacheFolder { Name = name });
         await Cache.SaveAsync();
         await ReloadAsync();
-        SelectedFolder = Folders.FirstOrDefault(f => f.Name == name);
+        SelectedFolder = _allFolders.FirstOrDefault(f => f.Name == name);
     }
 
     private static readonly Regex FileNameChars = new("[^a-z0-9_]", RegexOptions.Compiled);
 
-    /// <summary>"Meow" → "objects_meow.xml"; names that already start with objects/buildings keep their prefix.</summary>
+    /// <summary>"my cool object" → "my_cool_object.xml" (any name; shown as "My Cool Object").</summary>
     public static string MakeObjectFileName(string input)
     {
         string name = FileNameChars.Replace(input.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_'), string.Empty);
@@ -575,20 +826,19 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         while (name.Contains("__", StringComparison.Ordinal))
             name = name.Replace("__", "_");
         name = name.Trim('_');
-        if (!name.StartsWith("objects", StringComparison.Ordinal) && !name.StartsWith("buildings", StringComparison.Ordinal))
-            name = "objects_" + name;
-        return name.TrimEnd('_') + ".xml";
+        return name + ".xml";
     }
 
     private async Task CreateObjectFileAsync()
     {
         var existing = (await ObjectFilesAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        string? input = await AppServices.Dialogs.PromptAsync("New Objects File", "Name (saved as objects_name.xml in xmlroot):", "new",
+        string? input = await AppServices.Dialogs.PromptAsync("New Object XML File", "Name (e.g. \"my cool object\" is saved as my_cool_object.xml in xmlroot):", "new objects",
             text =>
             {
                 if (string.IsNullOrWhiteSpace(text)) return "Enter a name.";
                 string file = MakeObjectFileName(text);
-                if (file is "objects_.xml" or ".xml") return "Enter a name.";
+                if (file == ".xml") return "Use letters or numbers.";
+                if (string.Equals(file, "TriggerTemplates.xml", StringComparison.OrdinalIgnoreCase)) return "This name is reserved.";
                 return existing.Contains(file) ? $"{file} already exists." : null;
             });
         if (input == null)
@@ -598,7 +848,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         await AppServices.FileSystem.WriteAllBytesAsync(VPath.Combine(_editor.Project.XmlRoot, fileName), XmlHelpers.ToBytes(doc));
         Assets.Objects.Invalidate(fileName);
         await ReloadAsync();
-        SelectedFolder = Folders.FirstOrDefault(f => f.FileName == fileName);
+        SelectedFolder = _allFolders.FirstOrDefault(f => f.FileName == fileName);
     }
 
     [RelayCommand]
@@ -625,50 +875,109 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     {
         if (folder == null)
             return;
-        if (folder.IsFile)
+        await DeleteFoldersAsync(_selectedFolders.Contains(folder) ? _selectedFolders.ToList() : new List<PwFolder> { folder });
+    }
+
+    /// <summary>Delete key / menu on the left panel: Object XML files are deleted (after asking); cached folders are removed.</summary>
+    public async Task DeleteFoldersAsync(IReadOnlyList<PwFolder> folders)
+    {
+        var files = folders.Where(f => f.FileName != null).Select(f => f.FileName!).ToList();
+        var userFolders = folders.Where(f => f.IsUserFolder).ToList();
+        try
         {
-            await AppServices.Dialogs.ShowMessageAsync("Delete", "Object files are deleted from the Project Manager (XML Files page).", MessageKind.Info);
-            return;
+            if (files.Count > 0)
+            {
+                if (_editor.ObjectEdit is { } edit && files.Contains(edit.File, StringComparer.OrdinalIgnoreCase))
+                {
+                    await AppServices.Dialogs.ShowMessageAsync("Delete Object XML", $"{edit.File} is open in the Object tab. Return to the Scene tab first.", MessageKind.Info);
+                    return;
+                }
+                string list = files.Count == 1 ? files[0] : $"{files.Count} files ({string.Join(", ", files.Take(4))}{(files.Count > 4 ? ", ..." : "")})";
+                if (!await AppServices.Dialogs.ConfirmAsync("Delete Object XML",
+                        $"Delete {list} from xmlroot?\n\nThis cannot be undone. Objects of {(files.Count == 1 ? "this file" : "these files")} used in levels will show as MISSING.",
+                        "Delete", "Cancel", MessageKind.Warning))
+                    return;
+                foreach (var file in files)
+                {
+                    await AppServices.FileSystem.DeleteFileAsync(VPath.Combine(_editor.Project.XmlRoot, file));
+                    Cache.Data.ObjectFileOrder.Remove(file);
+                }
+                await Cache.SaveAsync();
+                await _editor.RefreshDefinitionsAsync(files);
+                _editor.StatusText = $"Deleted {string.Join(", ", files)}";
+                await ReloadAsync();
+                return;
+            }
+            if (userFolders.Count == 0)
+                return;
+            string names = userFolders.Count == 1 ? $"the folder '{userFolders[0].Name}'" : $"{userFolders.Count} folders";
+            if (!await AppServices.Dialogs.ConfirmAsync("Delete Folder", $"Delete {names}? Their items move to Unorganized; no files are deleted.", "Delete"))
+                return;
+            var removed = userFolders.Select(f => f.Name).ToHashSet();
+            Cache.GetFolders(CacheKey).RemoveAll(f => removed.Contains(f.Name));
+            await Cache.SaveAsync();
+            await ReloadAsync();
         }
-        if (!folder.IsUserFolder)
+        catch (Exception ex)
+        {
+            await AppServices.Dialogs.ShowMessageAsync("Delete", ex.Message, MessageKind.Error);
+        }
+    }
+
+    /// <summary>Folders that can be dragged to a new place: Object XML files, or user folders (Unorganized stays first).</summary>
+    public bool CanReorder(PwFolder folder) => folder.FileName != null || folder.IsUserFolder;
+
+    /// <summary>
+    /// Drag-reordering of the left panel: <paramref name="moving"/> (in their current order) go before the folder at
+    /// <paramref name="insertIndex"/> of <see cref="AllFolders"/> (Count = at the end).
+    /// </summary>
+    public async Task MoveFoldersAsync(IReadOnlyList<PwFolder> moving, int insertIndex)
+    {
+        var list = moving.Where(CanReorder).OrderBy(f => _allFolders.IndexOf(f)).ToList();
+        if (list.Count == 0)
             return;
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Folder", $"Delete the folder '{folder.Name}'? Its items move to Unorganized; no files are deleted.", "Delete"))
+        insertIndex = Math.Clamp(insertIndex, 0, _allFolders.Count);
+        var before = insertIndex < _allFolders.Count ? _allFolders[insertIndex] : null;
+        var remaining = _allFolders.Where(f => !list.Contains(f)).ToList();
+        // The folder the drop line is above, skipping the moved ones.
+        while (before != null && list.Contains(before))
+        {
+            int i = _allFolders.IndexOf(before) + 1;
+            before = i < _allFolders.Count ? _allFolders[i] : null;
+        }
+        int at = before == null ? remaining.Count : remaining.IndexOf(before);
+        if (Context != PwContext.Objects)
+        {
+            // Unorganized / All always stays first.
+            int firstUser = remaining.FindIndex(f => !f.IsUnorganized);
+            at = Math.Max(at, firstUser < 0 ? remaining.Count : firstUser);
+        }
+        remaining.InsertRange(at, list);
+        if (remaining.SequenceEqual(_allFolders))
             return;
-        Cache.GetFolders(CacheKey).RemoveAll(f => f.Name == folder.Name);
+
+        if (Context == PwContext.Objects)
+        {
+            Cache.Data.ObjectFileOrder = remaining.Where(f => f.FileName != null).Select(f => f.FileName!).ToList();
+        }
+        else
+        {
+            var cached = Cache.GetFolders(CacheKey);
+            var byName = cached.ToDictionary(f => f.Name);
+            var ordered = remaining.Where(f => f.IsUserFolder && byName.ContainsKey(f.Name)).Select(f => byName[f.Name]).ToList();
+            ordered.AddRange(cached.Where(c => !ordered.Contains(c)));
+            cached.Clear();
+            cached.AddRange(ordered);
+        }
         await Cache.SaveAsync();
         await ReloadAsync();
     }
 
-    /// <summary>Drag-reordering of the left panel.</summary>
-    public async Task MoveFolderAsync(PwFolder folder, PwFolder target)
+    /// <summary>Single-folder reorder (kept for callers): <paramref name="folder"/> takes the place of <paramref name="target"/>.</summary>
+    public Task MoveFolderAsync(PwFolder folder, PwFolder target)
     {
-        if (ReferenceEquals(folder, target))
-            return;
-        if (Context == PwContext.Objects && folder.FileName != null && target.FileName != null)
-        {
-            var order = Folders.Where(f => f.FileName != null).Select(f => f.FileName!).ToList();
-            order.Remove(folder.FileName);
-            order.Insert(Math.Max(0, order.IndexOf(target.FileName) + (Folders.IndexOf(folder) < Folders.IndexOf(target) ? 1 : 0)), folder.FileName);
-            Cache.Data.ObjectFileOrder = order;
-        }
-        else if (folder.IsUserFolder && target.IsUserFolder)
-        {
-            var list = Cache.GetFolders(CacheKey);
-            var item = list.FirstOrDefault(f => f.Name == folder.Name);
-            var targetItem = list.FirstOrDefault(f => f.Name == target.Name);
-            if (item == null || targetItem == null)
-                return;
-            int from = list.IndexOf(item);
-            int to = list.IndexOf(targetItem);
-            list.RemoveAt(from);
-            list.Insert(to, item);
-        }
-        else
-        {
-            return;
-        }
-        await Cache.SaveAsync();
-        await ReloadAsync();
+        int from = _allFolders.IndexOf(folder), to = _allFolders.IndexOf(target);
+        return MoveFoldersAsync(new[] { folder }, from < to ? to + 1 : to);
     }
 
     /// <summary>Moves right-panel items into a cached folder (or back to Unorganized).</summary>
@@ -745,34 +1054,100 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     {
         if (item == null)
             return;
+        await DeleteItemsAsync(_selectedItems.Contains(item) ? _selectedItems.ToList() : new List<PwItem> { item });
+    }
+
+    private static string ListNames(IReadOnlyList<string> names) =>
+        string.Join(", ", names.Take(5)) + (names.Count > 5 ? $" and {names.Count - 5} more" : "");
+
+    /// <summary>Deletes items of the current context (asks first).</summary>
+    public async Task DeleteItemsAsync(IReadOnlyList<PwItem> items)
+    {
+        items = items.Where(CanDelete).ToList();
+        if (items.Count == 0)
+            return;
         try
         {
             switch (Context)
             {
-                case PwContext.Textures when item.Texture != null:
-                    if (TextureLibrary.IsProtected(item.Texture))
+                case PwContext.Textures:
+                {
+                    var deletable = items.Where(i => i.Texture != null && !TextureLibrary.IsProtected(i.Texture)).ToList();
+                    if (deletable.Count == 0)
                     {
-                        await AppServices.Dialogs.ShowMessageAsync("Delete Texture", $"{item.Label} is required by the game and cannot be deleted.", MessageKind.Warning);
+                        await AppServices.Dialogs.ShowMessageAsync("Delete Texture", "The selected textures are required by the game and cannot be deleted.", MessageKind.Warning);
                         return;
                     }
-                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Texture", $"Delete {item.Texture.FileName} from the project? Levels using it will show it as missing.", "Delete", kind: MessageKind.Warning))
+                    string kept = deletable.Count < items.Count ? $"\n({items.Count - deletable.Count} texture(s) required by the game are kept.)" : "";
+                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Texture",
+                            $"Delete {ListNames(deletable.Select(d => d.Texture!.FileName).ToList())} from the project? Levels using them will show them as missing.{kept}",
+                            "Delete", kind: MessageKind.Warning))
                         return;
-                    await Textures.DeleteAsync(item.Texture);
-                    Cache.AssignToFolder(TexturesKey, item.Key, null);
+                    foreach (var item in deletable)
+                    {
+                        await Textures.DeleteAsync(item.Texture!);
+                        Cache.AssignToFolder(TexturesKey, item.Key, null);
+                    }
                     break;
-                case PwContext.Triggers when item.Trigger != null:
-                    Cache.Data.Triggers.Remove(item.Trigger);
-                    Cache.AssignToFolder(TriggersKey, item.Key, null);
-                    break;
-                case PwContext.Areas when item.Area != null:
-                    Cache.Data.Areas.Remove(item.Area);
-                    Cache.AssignToFolder(AreasKey, item.Key, null);
-                    break;
-                case PwContext.Objects when item.Definition != null && SelectedFolder?.FileName is { } file:
-                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Object", $"Remove '{item.Definition.Name}' from {file}?", "Delete", kind: MessageKind.Warning))
+                }
+                case PwContext.Triggers or PwContext.Areas:
+                {
+                    if (!await AppServices.Dialogs.ConfirmAsync(Context == PwContext.Triggers ? "Delete Trigger" : "Delete Area",
+                            $"Remove {ListNames(items.Select(i => i.Label).ToList())} from the Project Window?", "Delete", kind: MessageKind.Warning))
                         return;
-                    await RemoveDefinitionAsync(file, item.Definition.Name);
+                    foreach (var item in items)
+                    {
+                        if (item.Trigger != null)
+                        {
+                            Cache.Data.Triggers.Remove(item.Trigger);
+                            Cache.AssignToFolder(TriggersKey, item.Key, null);
+                        }
+                        if (item.Area != null)
+                        {
+                            Cache.Data.Areas.Remove(item.Area);
+                            Cache.AssignToFolder(AreasKey, item.Key, null);
+                        }
+                    }
                     break;
+                }
+                case PwContext.Objects when SelectedFolder?.FileName is { } file:
+                {
+                    var names = items.Where(i => i.Definition != null).Select(i => i.Definition!.Name).ToList();
+                    if (_editor.ObjectEdit is { } edit && string.Equals(edit.File, file, StringComparison.OrdinalIgnoreCase) && names.Contains(edit.Name))
+                    {
+                        await AppServices.Dialogs.ShowMessageAsync("Delete Object", $"'{edit.Name}' is open in the Object tab. Return to the Scene tab first.", MessageKind.Info);
+                        return;
+                    }
+                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Object",
+                            $"Remove {ListNames(names)} from {file}?\n\nLevels that use {(names.Count == 1 ? "it" : "them")} will show {(names.Count == 1 ? "it" : "them")} as MISSING.",
+                            "Delete", kind: MessageKind.Warning))
+                        return;
+                    await RemoveDefinitionsAsync(file, names);
+                    await _editor.RefreshDefinitionsAsync(new[] { file });
+                    _editor.StatusText = $"Removed {ListNames(names)} from {file}";
+                    break;
+                }
+                case PwContext.Models:
+                {
+                    var names = items.Where(i => i.ModelName != null).Select(i => i.ModelName!).ToList();
+                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Model",
+                            $"Delete {ListNames(names.Select(n => n + ".xml").ToList())} (and the model folder of the same name, if any) from the project? Levels using them will show them as missing.",
+                            "Delete", kind: MessageKind.Warning))
+                        return;
+                    foreach (var name in names)
+                    {
+                        string xml = VPath.Combine(_editor.Project.ModelsFolder, name + ".xml");
+                        if (await AppServices.FileSystem.FileExistsAsync(xml))
+                            await AppServices.FileSystem.DeleteFileAsync(xml);
+                        string folder = VPath.Combine(_editor.Project.ModelsFolder, name);
+                        if (await AppServices.FileSystem.DirectoryExistsAsync(folder))
+                            await AppServices.FileSystem.DeleteDirectoryAsync(folder);
+                        Assets.Models.Invalidate(name);
+                        Cache.AssignToFolder(ModelsKey, name, null);
+                    }
+                    _editor.StatusText = $"Deleted {ListNames(names)}";
+                    break;
+                }
                 default:
                     return;
             }
@@ -787,8 +1162,115 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     // ================= IMPORT (files from the OS) ================= //
 
+    /// <summary>"Import Textures..." / "Import Models...": picks files and folders together, then imports them.</summary>
+    [RelayCommand]
+    public async Task Import()
+    {
+        if (!CanImport)
+            return;
+        bool models = Context == PwContext.Models;
+        var dialog = models
+            ? new ViewModels.Dialogs.ImportDialogViewModel("Import Models",
+                "Model XML files, with their folder (a folder of the same name). Folders holding model XML files import everything in them.",
+                "Model XML", new[] { "*.xml" })
+            : new ViewModels.Dialogs.ImportDialogViewModel("Import Textures",
+                "Images (with their .plist / .json for animated textures). Folders are imported recursively and become folders here.",
+                "Textures", new[] { "*.png", "*.jpg", "*.jpeg", "*.plist", "*.json" });
+        if (await AppServices.Dialogs.ShowAsync(dialog) is not IReadOnlyList<IStorageItem> picked || picked.Count == 0)
+            return;
+        if (models)
+            await ImportModelsAsync(picked);
+        else
+            await ImportFilesAsync(picked);
+    }
+
+    /// <summary>
+    /// Imports model XML files into models/. A picked folder holding model XML files is imported with everything in
+    /// it (its XML files and their folders); any other picked folder is a model's folder and is copied as is.
+    /// </summary>
+    public async Task ImportModelsAsync(IReadOnlyList<IStorageItem> picked)
+    {
+        var xmls = new List<IStorageFile>();
+        var folders = new List<IStorageFolder>();
+        foreach (var item in picked)
+        {
+            if (item is IStorageFile file && VPath.HasExtension(file.Name, ".xml"))
+                xmls.Add(file);
+            else if (item is IStorageFolder folder)
+            {
+                var content = new List<IStorageItem>();
+                await foreach (var child in folder.GetItemsAsync())
+                    content.Add(child);
+                var inner = content.OfType<IStorageFile>().Where(f => VPath.HasExtension(f.Name, ".xml")).ToList();
+                if (inner.Count > 0)
+                {
+                    xmls.AddRange(inner);
+                    folders.AddRange(content.OfType<IStorageFolder>());
+                }
+                else
+                {
+                    folders.Add(folder);
+                }
+            }
+        }
+        if (xmls.Count == 0 && folders.Count == 0)
+        {
+            await AppServices.Dialogs.ShowMessageAsync("Import Models", "No model XML file or folder was selected.", MessageKind.Info);
+            return;
+        }
+        try
+        {
+            IsBusy = true;
+            string root = _editor.Project.ModelsFolder;
+            await AppServices.FileSystem.CreateDirectoryAsync(root);
+            var imported = new List<string>();
+            foreach (var file in xmls)
+            {
+                string target = VPath.Combine(root, file.Name);
+                if (await AppServices.FileSystem.FileExistsAsync(target) &&
+                    !await AppServices.Dialogs.ConfirmAsync("Import Models", $"{file.Name} already exists. Replace it?", "Replace", "Skip", MessageKind.Warning))
+                    continue;
+                await StorageImport.CopyFileAsync(AppServices.FileSystem, file, target);
+                imported.Add(VPath.GetFileNameWithoutExtension(file.Name));
+            }
+            int copiedFolders = 0;
+            foreach (var folder in folders)
+            {
+                string target = VPath.Combine(root, folder.Name);
+                if (await AppServices.FileSystem.DirectoryExistsAsync(target))
+                {
+                    if (!await AppServices.Dialogs.ConfirmAsync("Import Models", $"The folder {folder.Name} already exists in models. Replace it?", "Replace", "Skip", MessageKind.Warning))
+                        continue;
+                    await AppServices.FileSystem.DeleteDirectoryAsync(target);
+                }
+                await StorageImport.CopyFolderAsync(AppServices.FileSystem, folder, target);
+                copiedFolders++;
+            }
+            Assets.Models.Invalidate();
+            if (SelectedFolder is { IsUserFolder: true } selected)
+                foreach (var name in imported)
+                    Cache.AssignToFolder(ModelsKey, name, selected.Name);
+            await Cache.SaveAsync();
+            _editor.StatusText = $"Imported {imported.Count} model(s) and {copiedFolders} folder(s)";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await AppServices.Dialogs.ShowMessageAsync("Import Models", ex.Message, MessageKind.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task ImportFilesAsync(IReadOnlyList<IStorageItem> dropped)
     {
+        if (Context == PwContext.Models)
+        {
+            await ImportModelsAsync(dropped);
+            return;
+        }
         if (Context != PwContext.Textures)
             return;
         try
@@ -864,8 +1346,15 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             switch (Context)
             {
                 case PwContext.Objects when SelectedFolder?.FileName is { } file:
-                    await SaveDefinitionsAsync(file, elements);
+                {
+                    var saved = await SaveDefinitionsAsync(file, elements);
+                    // A saved Object without definition becomes an instance of its new definition (as do others of that name).
+                    foreach (var (element, name) in saved)
+                        if (element is ObjectElement { IsReference: false } obj && obj.Name != name)
+                            obj.Name = name;
+                    await _editor.RefreshDefinitionsAsync(new[] { file });
                     break;
+                }
                 case PwContext.Triggers when elements.Count == 1 && elements[0] is TriggerElement trigger:
                 {
                     var stored = new StoredTrigger { Name = trigger.Name, Width = trigger.Width, Height = trigger.Height, Content = trigger.ContentXml };
@@ -915,7 +1404,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     /// Saves elements as object definitions. Objects are saved as they are; other elements get an Object
     /// parent. Names already used in the file get a "_1" suffix.
     /// </summary>
-    private async Task SaveDefinitionsAsync(string file, IReadOnlyList<SceneElement> elements)
+    private async Task<List<(SceneElement Element, string Name)>> SaveDefinitionsAsync(string file, IReadOnlyList<SceneElement> elements)
     {
         string path = VPath.Combine(_editor.Project.XmlRoot, file);
         var doc = await ReadXmlRootFileAsync(path);
@@ -934,6 +1423,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         };
 
         var saved = new List<string>();
+        var result = new List<(SceneElement, string)>();
         foreach (var element in elements)
         {
             string baseName = string.IsNullOrEmpty(element.Name) ? element.Type.ToString() : element.Name;
@@ -970,6 +1460,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             }
             objects.Add(definition);
             saved.Add(name);
+            result.Add((element, name));
         }
 
         await AppServices.FileSystem.WriteAllBytesAsync(path, XmlHelpers.ToBytes(doc));
@@ -977,13 +1468,16 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         _editor.StatusText = $"Saved {string.Join(", ", saved)} to {file}";
         if (writer.Errors.Count > 0)
             await AppServices.Dialogs.ShowMessageAsync("Save to Project", string.Join("\n", writer.Errors), MessageKind.Warning);
+        return result;
     }
 
-    private async Task RemoveDefinitionAsync(string file, string name)
+    private async Task RemoveDefinitionsAsync(string file, IReadOnlyCollection<string> names)
     {
         string path = VPath.Combine(_editor.Project.XmlRoot, file);
         var doc = await ReadXmlRootFileAsync(path);
-        doc.Root?.Element("Objects")?.Elements("Object").FirstOrDefault(o => (string?)o.Attribute("Name") == name)?.Remove();
+        foreach (var xml in doc.Root?.Element("Objects")?.Elements("Object").Where(o => names.Contains((string?)o.Attribute("Name") ?? string.Empty)).ToList()
+                     ?? new List<XElement>())
+            xml.Remove();
         await AppServices.FileSystem.WriteAllBytesAsync(path, XmlHelpers.ToBytes(doc));
         Assets.Objects.Invalidate(file);
     }
@@ -1114,6 +1608,21 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     public void Select(PwItem? item) => SelectedItem = item;
 
-    /// <summary>Textures, stored Triggers and Areas can be deleted; objects are renamed instead.</summary>
-    public bool CanDelete(PwItem item) => item.Texture != null || item.Trigger != null || item.Area != null;
+    /// <summary>Textures, stored Triggers and Areas, object definitions and model XML files can be deleted.</summary>
+    public bool CanDelete(PwItem item) =>
+        item.Texture != null || item.Trigger != null || item.Area != null || item.ModelName != null || (item.Definition != null && item.PlatformSurface == null);
+
+    /// <summary>Delete key in the Project Window: the selected files (left panel) or the selected items (right panel).</summary>
+    public async Task DeleteSelectionAsync()
+    {
+        if (LastClickInFolders)
+        {
+            if (_selectedFolders.Count > 0)
+                await DeleteFoldersAsync(_selectedFolders.ToList());
+            return;
+        }
+        var items = _selectedItems.Where(CanDelete).ToList();
+        if (items.Count > 0)
+            await DeleteItemsAsync(items);
+    }
 }

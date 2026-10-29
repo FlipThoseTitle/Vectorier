@@ -86,6 +86,9 @@ public sealed partial class ImageElement : SceneElement
     /// <summary>The XML used a &lt;Matrix&gt;; it keeps being written even when the image is axis aligned.</summary>
     public bool HasMatrix { get; set; }
 
+    /// <summary>Id of the Platform whose surface generated this image (0 = an ordinary image). Editor only.</summary>
+    public int SurfaceOwner { get; set; }
+
     /// <summary>The ClassName is the texture name, shown as the element name.</summary>
     public string ClassName
     {
@@ -192,6 +195,7 @@ public sealed partial class ImageElement : SceneElement
         t.NativeHeight = NativeHeight;
         t.AutoSize = AutoSize;
         t.HasMatrix = HasMatrix;
+        t.SurfaceOwner = SurfaceOwner;
     }
 }
 
@@ -315,7 +319,30 @@ public sealed class PlatformElement : SceneElement
     public override bool IntegerTransform => true;
     public override bool LayerEditable => false;
 
+    private Services.Assets.PlatformSurfaceSettings? _surface;
+
+    /// <summary>
+    /// Rough / Smooth / Block dressing (Unity's PlatformComponent). Editor only: the textures it generates are
+    /// ordinary Images next to the Platform and are rebuilt whenever the Platform or these settings change.
+    /// </summary>
+    public Services.Assets.PlatformSurfaceSettings? Surface
+    {
+        get => _surface;
+        set => SetProperty(ref _surface, value);
+    }
+
+    /// <summary>What the current tiles were built from (<see cref="Services.Assets.PlatformSurface.BuildKey"/>).</summary>
+    public string? SurfaceBuiltKey { get; set; }
+
     protected override SceneElement CreateEmpty() => new PlatformElement();
+
+    protected override void CopyTo(SceneElement target)
+    {
+        base.CopyTo(target);
+        var t = (PlatformElement)target;
+        t.Surface = Surface;
+        t.SurfaceBuiltKey = SurfaceBuiltKey;
+    }
 }
 
 /// <summary>

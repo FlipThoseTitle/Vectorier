@@ -88,7 +88,8 @@ public sealed class ObjectPreview : Control
 
     private void OnTextureLoaded(string name)
     {
-        if (_cacheComplete && !_names.Contains(name))
+        // Only textures this preview draws matter (a project load fires this for every texture).
+        if (!_names.Contains(name))
             return;
         _version++;
         InvalidateVisual();

@@ -21,6 +21,7 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         Current = this;
+        Controls.FocusOut.Attach(this);
     }
 
     public static MainView? Current { get; private set; }

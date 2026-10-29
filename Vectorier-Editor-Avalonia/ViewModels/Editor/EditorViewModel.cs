@@ -309,6 +309,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
                 SetDocument(doc, null);
             }
             ProjectWindow.SetContext(ActiveElementType?.Type ?? ElementType.Object);
+            _ = EnsureTrickTriggersAsync();
         }
         catch (Exception ex)
         {
@@ -453,6 +454,48 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         }
     }
 
+    public ObjectDefinition? ResolveDefinitionName(string? name) => string.IsNullOrEmpty(name) ? null : _reader.ResolveDefinition(name);
+
+    /// <summary>
+    /// Object XML files changed (definitions saved, deleted, files removed): every file is resolved again. Objects
+    /// without a definition whose name now has one become instances of it (their inline children are replaced, as
+    /// Objects with a definition cannot have children); instances whose definition is gone show as MISSING.
+    /// </summary>
+    public async Task RefreshDefinitionsAsync(IEnumerable<string>? changedFiles = null)
+    {
+        if (changedFiles != null)
+            foreach (var file in changedFiles)
+                Context.Objects.Invalidate(file);
+        else
+            Context.Objects.Invalidate();
+        var level = ObjectEdit?.LevelDocument ?? Document;
+        await ResolveDefinitionsAsync(level.Settings);
+        bool changed = false;
+        foreach (var obj in Document.AllElements().OfType<ObjectElement>().ToList())
+        {
+            var definition = ResolveDefinitionName(obj.Name);
+            if (definition != null && obj.Reference == null && obj.Children.Count > 0)
+            {
+                foreach (var child in obj.Children.ToList())
+                {
+                    if (child.IsSelected)
+                    {
+                        child.IsSelected = false;
+                        _selection.Remove(child);
+                    }
+                    obj.RemoveChild(child);
+                }
+                changed = true;
+            }
+            using (SuppressTracking())
+                obj.Reference = definition;
+        }
+        if (changed)
+            MarkChanged();
+        RaiseStructureChanged();
+        RaiseSelectionChanged();
+    }
+
     /// <summary>Builds (once) a definition's content so it can be previewed or placed.</summary>
     public void BuildDefinition(ObjectDefinition definition) => _reader.BuildDefinition(definition);
 
@@ -461,6 +504,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     private void SetDocument(SceneDocument doc, IEnumerable<int>? selectIds)
     {
         Document = doc;
+        _surfacePending.Clear();
+        RestoreSurfaces(doc);
         MoveVisualizer?.OnDocumentReplaced();
         ResetHistory();
         ClearSelectionSilently();
@@ -675,6 +720,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
             MarkSaved();
             await SaveTriggerTypesAsync();
+            await SaveSurfacesAsync();
             StatusText = $"Saved {Document.LevelName}.xml";
             if (errors.Count > 0)
                 await AppServices.Dialogs.ShowMessageAsync("Save", string.Join("\n", errors), MessageKind.Warning);

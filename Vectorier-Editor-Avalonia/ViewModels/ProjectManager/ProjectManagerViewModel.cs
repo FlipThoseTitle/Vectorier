@@ -32,6 +32,9 @@ public abstract partial class PmPageViewModel : ViewModelBase
 
     public virtual bool HasSearch => false;
 
+    /// <summary>What the Delete key does on this page (the page's own delete / remove action), or null.</summary>
+    public virtual System.Windows.Input.ICommand? DeleteShortcut => null;
+
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isLoading;
 

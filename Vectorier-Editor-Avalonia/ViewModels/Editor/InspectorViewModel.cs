@@ -95,16 +95,118 @@ public sealed partial class InspectorViewModel : ObservableObject
             case nameof(ImageElement.Rotation): OnPropertyChanged(nameof(Rotation)); break;
             case nameof(ImageElement.Color): OnPropertyChanged(nameof(ImageColor)); break;
             case nameof(ObjectElement.Reference): OnPropertyChanged(nameof(ReferenceText)); break;
+            case nameof(PlatformElement.Surface): RaiseSurface(); break;
             case nameof(AreaElement.AreaType):
                 OnPropertyChanged(nameof(IsTrickArea));
                 OnPropertyChanged(nameof(NameEditable));
+                OnPropertyChanged(nameof(NameTip));
                 OnPropertyChanged(nameof(CanResize));
-                OnPropertyChanged(nameof(TrickGroupNames));
-                OnPropertyChanged(nameof(TrickName));
                 OnPropertyChanged(nameof(Width));
                 OnPropertyChanged(nameof(Height));
                 break;
         }
+    }
+
+    // ================= PLATFORM SURFACE ================= //
+
+    public static IReadOnlyList<Services.Assets.PlatformSurfaceType> SurfaceTypes { get; } = Enum.GetValues<Services.Assets.PlatformSurfaceType>();
+
+    public bool IsPlatform => _target is PlatformElement;
+    private Services.Assets.PlatformSurfaceSettings? Surface => (_target as PlatformElement)?.Surface;
+    public bool HasSurface => Surface != null;
+    public bool CanAddSurface => _target is PlatformElement { Surface: null };
+
+    /// <summary>Selected platforms that have a surface (edits apply to all of them, like Unity's multi-object editing).</summary>
+    private List<PlatformElement> SurfaceTargets()
+    {
+        var list = _editor.Selection.OfType<PlatformElement>().Where(p => p.Surface != null).ToList();
+        if (_target is PlatformElement { Surface: not null } t && !list.Contains(t))
+            list.Add(t);
+        return list;
+    }
+
+    private void EditSurface(Func<Services.Assets.PlatformSurfaceSettings, Services.Assets.PlatformSurfaceSettings> change)
+    {
+        foreach (var platform in SurfaceTargets())
+            platform.Surface = change(platform.Surface!);
+    }
+
+    public Services.Assets.PlatformSurfaceType SurfaceType
+    {
+        get => Surface?.Type ?? Services.Assets.PlatformSurfaceType.Rough;
+        set { if (Surface is { } s && s.Type != value) EditSurface(x => x with { Type = value }); }
+    }
+
+    /// <summary>Block is only v_black: floor, walls and seed do not apply.</summary>
+    public bool SurfaceHasEdges => Surface is { Type: not Services.Assets.PlatformSurfaceType.Block };
+
+    /// <summary>Smooth never makes floor tiles.</summary>
+    public bool SurfaceFloorEnabled => Surface is { Type: Services.Assets.PlatformSurfaceType.Rough };
+
+    public bool SurfaceFloor
+    {
+        get => Surface?.Floor ?? false;
+        set { if (Surface is { } s && s.Floor != value) EditSurface(x => x with { Floor = value }); }
+    }
+
+    public bool SurfaceLeftWall
+    {
+        get => Surface?.LeftWall ?? false;
+        set { if (Surface is { } s && s.LeftWall != value) EditSurface(x => x with { LeftWall = value }); }
+    }
+
+    public bool SurfaceRightWall
+    {
+        get => Surface?.RightWall ?? false;
+        set { if (Surface is { } s && s.RightWall != value) EditSurface(x => x with { RightWall = value }); }
+    }
+
+    public double SurfaceSeed
+    {
+        get => Surface?.Seed ?? 0;
+        set
+        {
+            int seed = (int)Math.Clamp(Math.Round(value), 1, int.MaxValue);
+            if (Surface is { } s && s.Seed != seed) EditSurface(x => x with { Seed = seed });
+        }
+    }
+
+    private void RaiseSurface()
+    {
+        OnPropertyChanged(nameof(HasSurface));
+        OnPropertyChanged(nameof(CanAddSurface));
+        OnPropertyChanged(nameof(SurfaceType));
+        OnPropertyChanged(nameof(SurfaceHasEdges));
+        OnPropertyChanged(nameof(SurfaceFloorEnabled));
+        OnPropertyChanged(nameof(SurfaceFloor));
+        OnPropertyChanged(nameof(SurfaceLeftWall));
+        OnPropertyChanged(nameof(SurfaceRightWall));
+        OnPropertyChanged(nameof(SurfaceSeed));
+    }
+
+    /// <summary>A separate seed per platform, otherwise a multi-selection gets the same layout everywhere.</summary>
+    [RelayCommand]
+    private void RerollSurface()
+    {
+        foreach (var platform in SurfaceTargets())
+            platform.Surface = platform.Surface! with { Seed = Services.Assets.PlatformSurfaceSettings.NewSeed() };
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RebuildSurface() => await _editor.RebuildSurfaceAsync(SurfaceTargets());
+
+    [RelayCommand]
+    private void RemoveSurface()
+    {
+        foreach (var platform in SurfaceTargets())
+            _editor.RemoveSurface(platform);
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task AddSurface(Services.Assets.PlatformSurfaceType type)
+    {
+        if (_target is PlatformElement { Surface: null } platform)
+            await _editor.AddSurfaceAsync(platform, type);
     }
 
     // ================= HEADER ================= //
@@ -123,6 +225,12 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public bool NameEditable => _target?.NameEditable == true;
 
+    public string NameTip => _target switch
+    {
+        AreaElement { IsTrick: true } => "A Trick Area is named after its trick's TriggerName in moves.xml (set automatically from the trick).",
+        _ => "Image, Animation and Particle names are their texture: rename them in the Project Window.",
+    };
+
     public string Name
     {
         get => _target?.Name ?? string.Empty;
@@ -130,6 +238,13 @@ public sealed partial class InspectorViewModel : ObservableObject
         {
             if (_target == null || !_target.NameEditable || _target.Name == value)
                 return;
+            if (_target is ObjectElement { Children.Count: > 0 } && _editor.ResolveDefinitionName(value) != null)
+            {
+                // Objects with a definition cannot have children: a group keeps its name.
+                _editor.StatusText = $"'{value}' is an object definition; an Object with children cannot use its name.";
+                OnPropertyChanged();
+                return;
+            }
             _target.Name = value;
         }
     }
@@ -179,59 +294,6 @@ public sealed partial class InspectorViewModel : ObservableObject
     // ================= TRICK AREA NAME ================= //
 
     public bool IsTrickArea => _target is AreaElement { IsTrick: true };
-
-    private static List<string>? _trickGroupNames;
-    private static string? _trickGroupProject;
-
-    /// <summary>Names a Trick Area can have: the TriggerName / AreaName entries of moves.xml's TrickGroup.</summary>
-    public IReadOnlyList<string> TrickGroupNames
-    {
-        get
-        {
-            if (_trickGroupProject != _editor.Project.Path)
-            {
-                _trickGroupProject = _editor.Project.Path;
-                _trickGroupNames = null;
-                _ = LoadTrickGroupNamesAsync();
-            }
-            var list = (_trickGroupNames ?? new List<string>()).ToList();
-            if (_target is AreaElement { IsTrick: true } area && !string.IsNullOrEmpty(area.Name) && !list.Contains(area.Name))
-                list.Insert(0, area.Name);
-            return list;
-        }
-    }
-
-    private async System.Threading.Tasks.Task LoadTrickGroupNamesAsync()
-    {
-        try
-        {
-            string path = Services.IO.VPath.Combine(_editor.Project.AnimationsFolder, "moves.xml");
-            if (!await AppServices.FileSystem.FileExistsAsync(path))
-                return;
-            var doc = Services.Xml.XmlHelpers.ParseDocument(await AppServices.FileSystem.ReadAllBytesAsync(path));
-            var group = doc.Root?.Element("ReactionGroups")?.Elements("ReactionGroup")
-                .FirstOrDefault(g => string.Equals((string?)g.Attribute("Name"), "TrickGroup", StringComparison.OrdinalIgnoreCase));
-            _trickGroupNames = group?.Elements()
-                .SelectMany(e => new[] { (string?)e.Attribute("AreaName"), (string?)e.Attribute("TriggerName") })
-                .Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).Distinct().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-            OnPropertyChanged(nameof(TrickGroupNames));
-            OnPropertyChanged(nameof(TrickName));
-        }
-        catch
-        {
-            _trickGroupNames = new List<string>();
-        }
-    }
-
-    public string? TrickName
-    {
-        get => _target is AreaElement { IsTrick: true } a ? a.Name : null;
-        set
-        {
-            if (value != null && _target is AreaElement { IsTrick: true } a && a.Name != value)
-                a.Name = value;
-        }
-    }
 
     public double Width
     {

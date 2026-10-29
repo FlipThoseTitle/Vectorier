@@ -48,6 +48,9 @@ public sealed partial class EditorViewModel
 
     partial void OnCenterTabChanged(CenterTab oldValue, CenterTab newValue)
     {
+        // The status line belongs to the tab it was written for ("Editing object ..." and the like).
+        if (oldValue != newValue)
+            StatusText = string.Empty;
         // Leaving the Object tab ends Edit Object mode (its changes are saved to the object's file).
         if (oldValue == CenterTab.Object && newValue != CenterTab.Object && ObjectEdit != null && !_switchingTab)
             _ = LeaveObjectEditAsync(save: true);
@@ -206,8 +209,9 @@ public sealed partial class EditorViewModel
         using (SuppressTracking())
             ResolveReferences();
         RaiseStructureChanged();
-        CenterRequested?.Invoke(session.LevelCenter);
+        // The Scene view restores the view it had on the level by itself (no jump through the camera first).
         await ProjectWindow.ReloadAsync();
+        StatusText = string.Empty;
         return true;
     }
 
@@ -254,6 +258,7 @@ public sealed partial class EditorViewModel
             Context.Objects.Invalidate(session.File);
             session.SavedFiles.Add(session.File);
             MarkSaved();
+            await SaveSurfacesAsync();
             StatusText = $"Saved object {session.Name} to {session.File}";
             return true;
         }

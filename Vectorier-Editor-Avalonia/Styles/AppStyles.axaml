@@ -72,6 +72,14 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
+    <!-- Grid items keep a white background in both themes (textures read as they do in the game): their
+         placeholder icons and texts stay dark on it. -->
+    <Style Selector="Border.thumbnail PathIcon">
+        <Setter Property="Foreground" Value="#404040" />
+    </Style>
+    <Style Selector="Border.thumbnail TextBlock">
+        <Setter Property="Foreground" Value="#606060" />
+    </Style>
 
     <!-- ===== Icon buttons (toolbars) ===== -->
     <Style Selector="Button.tool">

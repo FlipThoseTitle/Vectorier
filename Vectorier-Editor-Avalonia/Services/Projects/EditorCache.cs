@@ -42,8 +42,28 @@ public sealed class StoredArea
     public string Description { get; set; } = string.Empty;
 }
 
+/// <summary>A Platform's Rough / Smooth / Block settings, found again by its level-space rectangle.</summary>
+public sealed class StoredSurface
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public string Type { get; set; } = "Rough";
+    public bool Floor { get; set; } = true;
+    public bool LeftWall { get; set; } = true;
+    public bool RightWall { get; set; } = true;
+    public int Seed { get; set; } = 1;
+}
+
 public sealed class EditorCacheData
 {
+    /// <summary>
+    /// Platform surface settings per level (or "object:file:name" for object definitions). The game XML has no
+    /// place for them; the generated textures are saved as ordinary images.
+    /// </summary>
+    public Dictionary<string, List<StoredSurface>> PlatformSurfaces { get; set; } = new();
+
     /// <summary>Folders per Project Window context ("Image", "Trigger", "Area", "Model", "Object").</summary>
     public Dictionary<string, List<CacheFolder>> Folders { get; set; } = new();
 

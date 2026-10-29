@@ -262,6 +262,9 @@ public sealed class SceneRenderer
     private readonly HashSet<RenderItem> _dirty = new();
     private readonly List<RenderItem> _visible = new();
     private readonly List<RenderItem> _overlays = new();
+    // Reused every frame (no per-frame allocations while panning or dragging).
+    private readonly List<RenderItem> _candidates = new();
+    private Matrix[] _matrices = Array.Empty<Matrix>();
     private readonly Dictionary<(string, double, uint, double), FormattedText> _texts = new();
     private readonly Dictionary<string, (Geometry? Geometry, Rect Bounds, bool Loaded)> _models = new(StringComparer.OrdinalIgnoreCase);
     private bool _needsRebuild = true;
@@ -392,7 +395,9 @@ public sealed class SceneRenderer
             var childOffset = instance == null ? default : ghostOffset + new Vector(obj.X, obj.Y);
             foreach (var child in Ordered(obj.Children))
                 Visit(child, instance == null ? child : owner, group, instance, childOffset, depth + 1);
-            return;
+            // A level Object whose definition is gone is drawn (and picked) as a MISSING box.
+            if (instance != null || !obj.IsMissingDefinition)
+                return;
         }
 
         var item = new RenderItem
@@ -593,8 +598,15 @@ public sealed class SceneRenderer
 
     private static bool PointInPolygon(Point[] poly, Point p, double tolerance)
     {
-        double minX = poly.Min(c => c.X) - tolerance, maxX = poly.Max(c => c.X) + tolerance;
-        double minY = poly.Min(c => c.Y) - tolerance, maxY = poly.Max(c => c.Y) + tolerance;
+        double minX = double.MaxValue, maxX = double.MinValue, minY = double.MaxValue, maxY = double.MinValue;
+        foreach (var c in poly)
+        {
+            if (c.X < minX) minX = c.X;
+            if (c.X > maxX) maxX = c.X;
+            if (c.Y < minY) minY = c.Y;
+            if (c.Y > maxY) maxY = c.Y;
+        }
+        minX -= tolerance; maxX += tolerance; minY -= tolerance; maxY += tolerance;
         if (p.X < minX || p.X > maxX || p.Y < minY || p.Y > maxY)
             return false;
         // Degenerate shapes (lines/points) are picked by their bounds.
@@ -674,7 +686,7 @@ public sealed class SceneRenderer
         _visible.Clear();
         _overlays.Clear();
         int stamp = ++_stamp;
-        var candidates = new List<RenderItem>();
+        var candidates = _candidates;
         foreach (var group in _groups)
         {
             candidates.Clear();
@@ -705,7 +717,9 @@ public sealed class SceneRenderer
 
         bool animated = false;
         double seconds = AnimationClock.Seconds;
-        var matrices = new Matrix[_groups.Count];
+        if (_matrices.Length < _groups.Count)
+            _matrices = new Matrix[_groups.Count];
+        var matrices = _matrices;
         for (int i = 0; i < _groups.Count; i++)
             matrices[i] = viewport.LevelToScreen(_groups[i]);
 
@@ -744,6 +758,9 @@ public sealed class SceneRenderer
                 return DrawTexturedRect(context, item, e, o, m, seconds);
             case ModelElement model:
                 DrawModel(context, item, model, o, m);
+                return false;
+            case ObjectElement { IsMissingDefinition: true } missing:
+                DrawMissing(context, missing.GetLocalCorners(), o, m);
                 return false;
         }
         return false;

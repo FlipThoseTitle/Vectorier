@@ -19,6 +19,7 @@ public static class ViewRegistry
         ViewLocator.Register<RootPickerViewModel>(() => new RootPickerView());
         ViewLocator.Register<ProjectSelectionViewModel>(() => new ProjectSelectionView());
         ViewLocator.Register<MessageDialogViewModel>(() => new MessageDialogView());
+        ViewLocator.Register<ImportDialogViewModel>(() => new ImportDialogView());
         ViewLocator.Register<ProjectManagerViewModel>(() => new ProjectManager.ProjectManagerView());
         ViewLocator.Register<LevelsPageViewModel>(() => new ProjectManager.LevelsPageView());
         ViewLocator.Register<LocationsPageViewModel>(() => new ProjectManager.LocationsPageView());

@@ -40,6 +40,8 @@ public sealed partial class LevelItemViewModel : ObservableObject
 /// <summary>Levels page: global list of levels per mode, with their properties.</summary>
 public sealed partial class LevelsPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => DeleteLevelCommand;
+
     public const string AllLocations = "All Locations";
 
     private LevelOperations? _ops;

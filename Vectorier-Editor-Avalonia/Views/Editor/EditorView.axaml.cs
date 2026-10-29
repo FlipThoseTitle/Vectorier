@@ -291,11 +291,10 @@ public partial class EditorView : UserControl
 
         if (e.Key is Key.Delete or Key.Back && mods == KeyModifiers.None)
         {
-            // Last clicked in the Project Window's items: Delete removes the selected asset (like its context menu).
-            if (_projectWindowActive && _vm.ProjectWindow.SelectedItem is { } item)
+            // Last clicked in the Project Window: Delete removes its selected files / folders or assets.
+            if (_projectWindowActive && (_vm.ProjectWindow.LastClickInFolders ? _vm.ProjectWindow.SelectedFolders.Count > 0 : _vm.ProjectWindow.SelectedItems.Count > 0))
             {
-                if (_vm.ProjectWindow.CanDelete(item))
-                    _vm.ProjectWindow.DeleteItemCommand.Execute(item);
+                _ = _vm.ProjectWindow.DeleteSelectionAsync();
                 e.Handled = true;
                 return;
             }

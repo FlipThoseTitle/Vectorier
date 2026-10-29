@@ -40,7 +40,7 @@
                     <SolidColorBrush x:Key="AppTabInactive" Color="#DADADA" />
                     <SolidColorBrush x:Key="AppDanger" Color="#C42B1C" />
                     <SolidColorBrush x:Key="AppWarning" Color="#9D5D00" />
-                    <SolidColorBrush x:Key="AppThumbnailBackground" Color="#E8E8E8" />
+                    <SolidColorBrush x:Key="AppThumbnailBackground" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AppGhostForeground" Color="#8A8A8A" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
@@ -62,7 +62,7 @@
                     <SolidColorBrush x:Key="AppTabInactive" Color="#252525" />
                     <SolidColorBrush x:Key="AppDanger" Color="#FF6B5E" />
                     <SolidColorBrush x:Key="AppWarning" Color="#FCC35B" />
-                    <SolidColorBrush x:Key="AppThumbnailBackground" Color="#1B1B1B" />
+                    <SolidColorBrush x:Key="AppThumbnailBackground" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AppGhostForeground" Color="#7D7D7D" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>

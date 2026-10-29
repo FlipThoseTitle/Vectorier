@@ -98,6 +98,7 @@ public sealed class ShellWindow : Window
             WindowState = WindowState.Maximized;
         Content = screen;
         Icon = LoadIcon();
+        Controls.FocusOut.Attach(this);
 
         if (screen is System.ComponentModel.INotifyPropertyChanged notify)
         {

@@ -289,6 +289,12 @@ public sealed partial class ObjectElement : SceneElement
 
     public bool IsReference => Reference != null;
 
+    /// <summary>Size of the MISSING box drawn for an Object whose definition cannot be found.</summary>
+    public const double MissingSize = 100;
+
+    /// <summary>A named Object with no definition and no content: its definition is missing (deleted, renamed...).</summary>
+    public bool IsMissingDefinition => Reference == null && Children.Count == 0 && !string.IsNullOrEmpty(Name);
+
     partial void OnReferenceChanged(ObjectDefinition? value) => OnPropertyChanged(nameof(IsReference));
 
     public void AddChild(SceneElement child, int index = -1)
@@ -327,7 +333,7 @@ public sealed partial class ObjectElement : SceneElement
         if (Reference != null && Reference.Bounds is { } refBounds)
             union = union == null ? refBounds : union.Value.Union(refBounds);
 
-        var content = union ?? new Rect(0, 0, 0, 0);
+        var content = union ?? (IsMissingDefinition ? new Rect(0, 0, MissingSize, MissingSize) : new Rect(0, 0, 0, 0));
         return content.Translate(new Vector(X, Y));
     }
 
@@ -335,8 +341,17 @@ public sealed partial class ObjectElement : SceneElement
     {
         // Objects have no size of their own: scale the children around the pivot expressed in local space.
         var localPivot = new Point(pivot.X - X, pivot.Y - Y);
+        // Surface tiles are regenerated from their scaled Platform instead of being stretched.
+        HashSet<int>? surfaced = null;
         foreach (var child in Children)
+            if (child is PlatformElement { Surface: not null })
+                (surfaced ??= new()).Add(child.Id);
+        foreach (var child in Children)
+        {
+            if (surfaced != null && child is ImageElement { SurfaceOwner: not 0 } tile && surfaced.Contains(tile.SurfaceOwner))
+                continue;
             child.ScaleAround(localPivot, sx, sy);
+        }
         if (Children.Count == 0 && Reference == null)
             return;
         base.ScaleAround(pivot, 1, 1);
@@ -356,10 +371,19 @@ public sealed partial class ObjectElement : SceneElement
         base.CopyTo(target);
         var obj = (ObjectElement)target;
         obj.Reference = Reference;
+        Dictionary<int, int>? platformIds = null;
         foreach (var child in Children)
         {
             var childCopy = child.Clone(keepIds: false);
             obj.AddChild(childCopy);
+            if (child is PlatformElement)
+                (platformIds ??= new())[child.Id] = childCopy.Id;
+        }
+        // Surface tiles follow their (re-numbered) Platform.
+        foreach (var image in obj.Children.OfType<ImageElement>())
+        {
+            if (image.SurfaceOwner != 0)
+                image.SurfaceOwner = platformIds != null && platformIds.TryGetValue(image.SurfaceOwner, out var id) ? id : 0;
         }
     }
 

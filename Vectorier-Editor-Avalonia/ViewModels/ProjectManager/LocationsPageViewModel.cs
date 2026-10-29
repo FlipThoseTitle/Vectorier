@@ -77,6 +77,8 @@ public sealed class LevelPickEntry
 /// <summary>Locations page: collapsible locations whose levels can be added, removed and reordered.</summary>
 public sealed partial class LocationsPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => DeleteLocationCommand;
+
     private LevelOperations? _ops;
     private bool _dirty;
     private bool _suppress;

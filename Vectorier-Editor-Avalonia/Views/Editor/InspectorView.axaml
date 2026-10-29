@@ -3,6 +3,7 @@
              xmlns:vm="using:Vectorier_Editor_Avalonia.ViewModels.Editor"
              xmlns:models="using:Vectorier_Editor_Avalonia.Models.Scene"
              xmlns:c="using:Vectorier_Editor_Avalonia.Controls"
+             xmlns:assets="using:Vectorier_Editor_Avalonia.Services.Assets"
              x:Class="Vectorier_Editor_Avalonia.Views.Editor.InspectorView"
              x:DataType="vm:InspectorViewModel">
     <UserControl.Styles>
@@ -45,11 +46,7 @@
                 <Grid Classes="row" ColumnDefinitions="90,*">
                     <TextBlock Text="Name" />
                     <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding !NameEditable}"
-                             IsVisible="{Binding !IsTrickArea}"
-                             ToolTip.Tip="Image, Animation and Particle names are their texture: rename them in the Project Window." />
-                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" IsVisible="{Binding IsTrickArea}"
-                              ItemsSource="{Binding TrickGroupNames}" SelectedItem="{Binding TrickName}"
-                              ToolTip.Tip="A Trick Area is named after its TrickGroup entry in moves.xml" />
+                             ToolTip.Tip="{Binding NameTip}" />
                 </Grid>
 
                 <TextBlock Classes="section" Text="Transform" />
@@ -380,6 +377,58 @@
                         </DataTemplate>
                     </ContentControl.DataTemplates>
                 </ContentControl>
+
+                <!-- Platform surface (Unity's PlatformComponent): textures rebuilt live from the Platform -->
+                <Border Classes="component" IsVisible="{Binding IsPlatform}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="component-title" Text="Surface" />
+                        <StackPanel IsVisible="{Binding CanAddSurface}" Spacing="4">
+                            <TextBlock Classes="dim" TextWrapping="Wrap" Text="Dress the Platform with block textures. They follow the Platform whenever it is moved or resized." />
+                            <UniformGrid Columns="3">
+                                <Button HorizontalAlignment="Stretch" Margin="0,0,2,0" Content="Rough" Command="{Binding AddSurfaceCommand}" CommandParameter="{x:Static assets:PlatformSurfaceType.Rough}" />
+                                <Button HorizontalAlignment="Stretch" Margin="1,0" Content="Smooth" Command="{Binding AddSurfaceCommand}" CommandParameter="{x:Static assets:PlatformSurfaceType.Smooth}" />
+                                <Button HorizontalAlignment="Stretch" Margin="2,0,0,0" Content="Block" Command="{Binding AddSurfaceCommand}" CommandParameter="{x:Static assets:PlatformSurfaceType.Block}" />
+                            </UniformGrid>
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding HasSurface}">
+                            <Grid Classes="row" ColumnDefinitions="90,*">
+                                <TextBlock Text="Type" />
+                                <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.SurfaceTypes}" SelectedItem="{Binding SurfaceType}" />
+                            </Grid>
+                            <StackPanel IsVisible="{Binding SurfaceHasEdges}">
+                                <Grid Classes="row" ColumnDefinitions="90,*">
+                                    <TextBlock Text="Floor" />
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding SurfaceFloor}" IsEnabled="{Binding SurfaceFloorEnabled}"
+                                              ToolTip.Tip="Floor tiles (Smooth never makes floor tiles: v_black covers the top)" />
+                                </Grid>
+                                <Grid Classes="row" ColumnDefinitions="90,*">
+                                    <TextBlock Text="Left Wall" />
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding SurfaceLeftWall}" />
+                                </Grid>
+                                <Grid Classes="row" ColumnDefinitions="90,*">
+                                    <TextBlock Text="Right Wall" />
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding SurfaceRightWall}" />
+                                </Grid>
+                                <Grid Classes="row" ColumnDefinitions="90,*,Auto">
+                                    <TextBlock Text="Seed" />
+                                    <NumericUpDown Grid.Column="1" Value="{Binding SurfaceSeed, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                                   FormatString="0" Minimum="1" Increment="1" ShowButtonSpinner="False" />
+                                    <Button Grid.Column="2" Margin="4,0,0,0" Content="Reroll" Command="{Binding RerollSurfaceCommand}" ToolTip.Tip="New random layout" />
+                                </Grid>
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
+                                <Button HorizontalAlignment="Stretch" Margin="0,0,2,0" Command="{Binding RebuildSurfaceCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                        <PathIcon Data="{StaticResource Icon.Refresh}" />
+                                        <TextBlock Text="Rebuild Surface" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" HorizontalAlignment="Stretch" Margin="2,0,0,0" Content="Remove Surface" Command="{Binding RemoveSurfaceCommand}"
+                                        ToolTip.Tip="Removes the generated textures; the Platform stays" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- Dynamic transformations (hidden when the element has none) -->
                 <Border Classes="component" IsVisible="{Binding HasDynamics}">

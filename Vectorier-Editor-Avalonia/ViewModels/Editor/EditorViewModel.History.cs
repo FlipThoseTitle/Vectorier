@@ -162,6 +162,9 @@ public sealed partial class EditorViewModel
     public void CommitPending()
     {
         _commitTimer?.Stop();
+        // Live platform surfaces belong to the step of the change that caused them.
+        if (_surfacePending.Count > 0 && !_surfaceFlushing)
+            FlushSurfaces();
         if (_pending)
         {
             _pending = false;
@@ -360,6 +363,8 @@ public sealed partial class EditorViewModel
         }
 
         ElementChanged?.Invoke(element, e.PropertyName);
+        OnSurfacePropertyChanged(element, e.PropertyName);
+        OnAreaPropertyChanged(element, e.PropertyName);
         MarkChanged();
         SceneInvalidated?.Invoke();
     }

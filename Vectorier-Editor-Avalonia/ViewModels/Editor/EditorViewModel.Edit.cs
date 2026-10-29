@@ -162,6 +162,11 @@ public sealed partial class EditorViewModel
                     area.Key = stored.Key;
                     area.Description = stored.Description;
                 }
+                if (area.IsTrick)
+                {
+                    await EnsureTrickTriggersAsync();
+                    area.Name = TrickAreaName(area.ItemName);
+                }
                 element = PlaceRect(area, pos, size);
                 break;
             }
@@ -272,6 +277,9 @@ public sealed partial class EditorViewModel
             default:
                 return null;
         }
+
+        // Objects with a definition never get children: the element goes next to them instead.
+        (parent, index) = HostFor(parent, index);
 
         // Convert the level position into the parent's local space.
         if (parent != null)
@@ -519,7 +527,7 @@ public sealed partial class EditorViewModel
         PasteInto(parent, index);
     }
 
-    private bool CanPasteInto() => _clipboard.Count > 0 && ActiveElement is ObjectElement;
+    private bool CanPasteInto() => _clipboard.Count > 0 && ActiveElement is ObjectElement { IsReference: false };
 
     [RelayCommand(CanExecute = nameof(CanPasteInto))]
     private void PasteInto()
@@ -530,8 +538,23 @@ public sealed partial class EditorViewModel
 
     public bool HasClipboard => _clipboard.Count > 0;
 
+    /// <summary>
+    /// Where an element goes when it is added under <paramref name="parent"/>: Objects with a definition cannot have
+    /// children (under any circumstances), so it goes right after such an Object, at its level.
+    /// </summary>
+    public (ObjectElement? Parent, int Index) HostFor(ObjectElement? parent, int index)
+    {
+        while (parent is { IsReference: true } referenced)
+        {
+            index = Document.SiblingsOf(referenced).IndexOf(referenced) + 1;
+            parent = referenced.Parent;
+        }
+        return (parent, index);
+    }
+
     public void PasteInto(ObjectElement? parent, int index)
     {
+        (parent, index) = HostFor(parent, index);
         if (_clipboard.Count == 0)
             return;
         var pasted = new List<SceneElement>();
@@ -649,6 +672,8 @@ public sealed partial class EditorViewModel
     /// </summary>
     public bool MoveElements(IReadOnlyList<SceneElement> elements, ObjectElement? newParent, int index)
     {
+        if (newParent is { IsReference: true })
+            return false; // Objects with a definition cannot have children
         var list = elements.Where(e => newParent == null || (!ReferenceEquals(e, newParent) && !newParent.IsDescendantOf(e))).ToList();
         if (list.Count == 0)
             return false;

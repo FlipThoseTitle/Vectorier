@@ -135,6 +135,7 @@ public sealed class DialogWindow : Window
 
         dialog.CloseRequested += Close;
         KeyDown += OnKeyDown;
+        Controls.FocusOut.Attach(this);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

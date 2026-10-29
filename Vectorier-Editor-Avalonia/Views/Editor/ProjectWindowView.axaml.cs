@@ -45,9 +45,10 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         TileRows.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
         TileRows.AddHandler(PointerReleasedEvent, OnTileReleased, RoutingStrategies.Tunnel);
         FolderList.AddHandler(PointerPressedEvent, OnFolderPressed, RoutingStrategies.Tunnel);
+        FolderList.AddHandler(PointerReleasedEvent, OnFolderReleased, RoutingStrategies.Tunnel);
         FolderScroll.AddHandler(PointerPressedEvent, OnFolderAreaPressed, RoutingStrategies.Bubble, handledEventsToo: false);
-        _ = new InternalDrag(TileRows, () => _pressedItem is { CanPlace: true } || _pressedItem is { Texture: not null } ? _pressedItem : null);
-        _ = new InternalDrag(FolderList, () => _pressedFolder);
+        _ = new InternalDrag(TileRows, DragPayloadForTiles);
+        _ = new InternalDrag(FolderList, () => _pressedFolder != null && _vm?.CanReorder(_pressedFolder) == true ? _pressedFolder : null);
 
         ContentArea.SizeChanged += (_, _) => ScheduleRows();
         // The ListBox only virtualizes rows; tiles draw their own selection.
@@ -166,6 +167,20 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         return null;
     }
 
+    private static PwSelect ModeFrom(KeyModifiers mods) =>
+        (mods & KeyModifiers.Shift) != 0 ? PwSelect.Range :
+        (mods & (KeyModifiers.Control | KeyModifiers.Meta)) != 0 ? PwSelect.Toggle : PwSelect.Replace;
+
+    /// <summary>One tile drags itself (to the Scene, the Hierarchy or a folder); several selected tiles go to a folder only.</summary>
+    private object? DragPayloadForTiles()
+    {
+        if (_vm == null || _pressedItem == null)
+            return null;
+        if (_vm.HasMultipleItems && _vm.SelectedItems.Contains(_pressedItem))
+            return _vm.ShowsFolders && !_vm.IsObjectContext ? new PwItemGroup(_vm.SelectedItems.ToList()) : null;
+        return _pressedItem is { CanPlace: true } || _pressedItem is { Texture: not null } ? _pressedItem : null;
+    }
+
     // ================= TILES ================= //
 
     private void OnTileAttached(object? sender, VisualTreeAttachmentEventArgs e)
@@ -181,28 +196,74 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             return;
         var item = TagFrom<PwItem>(e.Source);
         _pressedItem = item;
+        _pressPoint = e.GetPosition(this);
+        _vm.LastClickInFolders = false;
+        Focus();
         var point = e.GetCurrentPoint(TileRows);
         if (item == null)
         {
             if (point.Properties.IsLeftButtonPressed)
                 _vm.SelectedItem = null;
+            else if (point.Properties.IsRightButtonPressed)
+                ShowContentMenu();
             return;
         }
-        _vm.SelectedItem = item;
         if (point.Properties.IsRightButtonPressed)
+        {
+            // Right click keeps a multiple selection that contains the tile.
+            if (!_vm.SelectedItems.Contains(item))
+                _vm.SelectItem(item);
             ShowItemMenu(item);
-        else if (e.ClickCount == 2 && item.Definition != null && item.PlatformSurface == null)
+            return;
+        }
+        var mode = ModeFrom(e.KeyModifiers);
+        // Pressing a tile of a multiple selection keeps it (so it can be dragged); a click without drag selects it alone.
+        if (mode == PwSelect.Replace && _vm.HasMultipleItems && _vm.SelectedItems.Contains(item) && e.ClickCount == 1)
+        {
+            _clickReplaces = item;
+            return;
+        }
+        _vm.SelectItem(item, mode);
+        if (mode == PwSelect.Replace && e.ClickCount == 2 && item.Definition != null && item.PlatformSurface == null)
             _ = _vm.EditObjectAsync(item); // double click: Edit Object
     }
 
-    private void OnTileReleased(object? sender, PointerReleasedEventArgs e) => _pressedItem = null;
+    private PwItem? _clickReplaces;
+    private Point _pressPoint;
+
+    private bool IsClick(PointerEventArgs e)
+    {
+        var d = e.GetPosition(this) - _pressPoint;
+        return Math.Abs(d.X) < 4 && Math.Abs(d.Y) < 4;
+    }
+
+    private void OnTileReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_clickReplaces != null && _vm != null && IsClick(e))
+            _vm.SelectItem(_clickReplaces);
+        _clickReplaces = null;
+        _pressedItem = null;
+    }
+
+    /// <summary>Right click on the empty part of the grid.</summary>
+    private void ShowContentMenu()
+    {
+        if (_vm == null || !_vm.CanImport)
+            return;
+        var menu = new ContextMenu();
+        var import = new MenuItem { Header = _vm.ImportLabel, Icon = new PathIcon { Data = (Avalonia.Media.Geometry)this.FindResource("Icon.Import")!, Width = 13, Height = 13 } };
+        import.Click += (_, _) => _vm.ImportCommand.Execute(null);
+        menu.Items.Add(import);
+        menu.Open(TileRows);
+    }
 
     private void ShowItemMenu(PwItem item)
     {
         if (_vm == null)
             return;
         var menu = new ContextMenu();
-        if (item.Definition != null && item.PlatformSurface == null)
+        bool multiple = _vm.HasMultipleItems;
+        if (!multiple && item.Definition != null && item.PlatformSurface == null)
         {
             var edit = new MenuItem { Header = "Edit Object" };
             edit.Click += async (_, _) => await _vm.EditObjectAsync(item);
@@ -211,7 +272,7 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             renameObject.Click += async (_, _) => await _vm.RenameDefinitionAsync(item);
             menu.Items.Add(renameObject);
         }
-        bool canRename = item.Texture != null || item.Trigger != null || item.Area != null;
+        bool canRename = !multiple && (item.Texture != null || item.Trigger != null || item.Area != null);
         bool canDelete = _vm.CanDelete(item);
         if (canRename)
         {
@@ -221,21 +282,29 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         }
         if (canDelete)
         {
-            var delete = new MenuItem { Header = "Delete" };
+            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedItems.Count} Items" : "Delete", InputGesture = new KeyGesture(Key.Delete) };
             delete.Click += (_, _) => _vm.DeleteItemCommand.Execute(item);
             menu.Items.Add(delete);
         }
         if (_vm.ShowsFolders && _vm.Context != PwContext.Objects)
         {
             var move = new MenuItem { Header = "Move to Folder" };
-            foreach (var folder in _vm.Folders)
+            var moving = multiple ? _vm.SelectedItems.ToList() : new List<PwItem> { item };
+            foreach (var folder in _vm.AllFolders)
             {
                 var target = new MenuItem { Header = folder.IsUnorganized ? "Unorganized" : folder.Name };
                 var f = folder;
-                target.Click += async (_, _) => await _vm.AssignItemsAsync(new[] { item }, f);
+                target.Click += async (_, _) => await _vm.AssignItemsAsync(moving, f);
                 move.Items.Add(target);
             }
             menu.Items.Add(move);
+        }
+        if (_vm.CanImport)
+        {
+            menu.Items.Add(new Separator());
+            var import = new MenuItem { Header = _vm.ImportLabel };
+            import.Click += (_, _) => _vm.ImportCommand.Execute(null);
+            menu.Items.Add(import);
         }
         if (menu.Items.Count > 0)
             menu.Open(TileRows);
@@ -249,18 +318,42 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             return;
         var folder = TagFrom<PwFolder>(e.Source);
         _pressedFolder = folder;
+        _pressPoint = e.GetPosition(this);
+        _vm.LastClickInFolders = true;
+        Focus();
         if (folder == null)
             return;
-        _vm.SelectedFolder = folder;
         if (e.GetCurrentPoint(FolderList).Properties.IsRightButtonPressed)
         {
+            if (!_vm.SelectedFolders.Contains(folder))
+                _vm.SelectFolder(folder);
             ShowFolderMenu(folder);
             e.Handled = true;
+            return;
         }
+        var mode = ModeFrom(e.KeyModifiers);
+        if (mode == PwSelect.Replace && _vm.HasMultipleFolders && _vm.SelectedFolders.Contains(folder))
+        {
+            // Keep the multiple selection for a drag; a plain click selects the folder alone on release.
+            _folderClickReplaces = folder;
+            return;
+        }
+        _vm.SelectFolder(folder, mode);
+    }
+
+    private PwFolder? _folderClickReplaces;
+
+    private void OnFolderReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_folderClickReplaces != null && _vm != null && IsClick(e))
+            _vm.SelectFolder(_folderClickReplaces);
+        _folderClickReplaces = null;
     }
 
     private void OnFolderAreaPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (_vm != null)
+            _vm.LastClickInFolders = true;
         // Right click on the empty part of the folder list: create a folder.
         if (_vm == null || TagFrom<PwFolder>(e.Source) != null)
             return;
@@ -276,16 +369,26 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         var create = new MenuItem { Header = _vm.IsObjectContext ? "New Objects File..." : "New Folder..." };
         create.Click += (_, _) => _vm.CreateFolderCommand.Execute(null);
         menu.Items.Add(create);
+        bool multiple = folder != null && _vm.HasMultipleFolders && _vm.SelectedFolders.Contains(folder);
         if (folder is { IsUserFolder: true })
         {
-            var rename = new MenuItem { Header = "Rename..." };
-            rename.Click += (_, _) => _vm.RenameFolderCommand.Execute(folder);
-            var delete = new MenuItem { Header = "Delete Folder" };
+            if (!multiple)
+            {
+                var rename = new MenuItem { Header = "Rename..." };
+                rename.Click += (_, _) => _vm.RenameFolderCommand.Execute(folder);
+                menu.Items.Add(rename);
+            }
+            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedFolders.Count} Folders" : "Delete Folder", InputGesture = new KeyGesture(Key.Delete) };
             delete.Click += (_, _) => _vm.DeleteFolderCommand.Execute(folder);
-            menu.Items.Add(rename);
             menu.Items.Add(delete);
         }
-        if (_vm.IsObjectContext && folder is { IsFile: true } file)
+        if (_vm.IsObjectContext && folder is { IsFile: true })
+        {
+            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedFolders.Count} Files..." : "Delete File...", InputGesture = new KeyGesture(Key.Delete) };
+            delete.Click += (_, _) => _vm.DeleteFolderCommand.Execute(folder);
+            menu.Items.Add(delete);
+        }
+        if (_vm.IsObjectContext && folder is { IsFile: true } file && !multiple)
         {
             // Object XML type: Object (X / Y) or Building (In / Out / Box attributes).
             menu.Items.Add(new Separator());
@@ -325,6 +428,30 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         return p != null && new Rect(ContentArea.Bounds.Size).Contains(p.Value);
     }
 
+    /// <summary>Insertion point for a dragged folder: index in AllFolders and the line's Y in the folder panel.</summary>
+    private (int Index, double Y)? FolderInsertAt(Point position)
+    {
+        if (_vm == null)
+            return null;
+        var p = this.TranslatePoint(position, FolderScroll);
+        if (p == null || !new Rect(FolderScroll.Bounds.Size).Contains(p.Value))
+            return null;
+        Border? last = null;
+        foreach (var border in FolderList.GetVisualDescendants().OfType<Border>().Where(b => b.Tag is PwFolder && b.Classes.Contains("folder")))
+        {
+            var top = border.TranslatePoint(new Point(0, 0), FolderScroll);
+            if (top == null)
+                continue;
+            var folder = (PwFolder)border.Tag!;
+            if (p.Value.Y < top.Value.Y + border.Bounds.Height / 2)
+                return (_vm.AllFolders.ToList().IndexOf(folder), top.Value.Y);
+            last = border;
+        }
+        if (last?.Tag is PwFolder lastFolder && last.TranslatePoint(new Point(0, last.Bounds.Height), FolderScroll) is { } bottom)
+            return (_vm.AllFolders.ToList().IndexOf(lastFolder) + 1, bottom.Y);
+        return null;
+    }
+
     public bool DragOver(object payload, Point position)
     {
         ClearDrop();
@@ -332,14 +459,24 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             return false;
         switch (payload)
         {
-            case PwItem when _vm.ShowsFolders && !_vm.IsObjectContext:
-            case PwFolder:
+            case PwItem or PwItemGroup when _vm.ShowsFolders && !_vm.IsObjectContext:
             {
+                // Into a folder: the folder is highlighted.
                 var border = FolderBorderAt(position);
-                if (border == null)
+                if (border == null || border.Tag is not PwFolder { IsFile: false })
                     return false;
                 border.Classes.Add("drop");
                 _dropFolder = border;
+                return true;
+            }
+            case PwFolder folder when _vm.CanReorder(folder):
+            {
+                // Reordering: a line shows where the folders go (nothing is put inside another folder).
+                if (FolderInsertAt(position) is not { } insert)
+                    return false;
+                double y = Math.Clamp(insert.Y - 1, 0, Math.Max(0, FolderScroll.Bounds.Height - 2));
+                FolderDropLine.Margin = new Thickness(2, FolderScroll.Bounds.Y + y, 2, 0);
+                FolderDropLine.IsVisible = true;
                 return true;
             }
             case HierarchyDragPayload drag:
@@ -354,6 +491,7 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
     {
         _dropFolder?.Classes.Remove("drop");
         _dropFolder = null;
+        FolderDropLine.IsVisible = false;
     }
 
     public async void Drop(object payload, Point position, KeyModifiers modifiers)
@@ -363,12 +501,18 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             return;
         switch (payload)
         {
-            case PwItem item when FolderBorderAt(position) is { Tag: PwFolder folder }:
+            case PwItem item when FolderBorderAt(position) is { Tag: PwFolder { IsFile: false } folder }:
                 await _vm.AssignItemsAsync(new[] { item }, folder);
                 break;
-            case PwFolder source when FolderBorderAt(position) is { Tag: PwFolder target }:
-                await _vm.MoveFolderAsync(source, target);
+            case PwItemGroup group when FolderBorderAt(position) is { Tag: PwFolder { IsFile: false } folder }:
+                await _vm.AssignItemsAsync(group.Items, folder);
                 break;
+            case PwFolder source when FolderInsertAt(position) is { } insert:
+            {
+                var moving = _vm.SelectedFolders.Contains(source) ? _vm.SelectedFolders.ToList() : new List<PwFolder> { source };
+                await _vm.MoveFoldersAsync(moving, insert.Index);
+                break;
+            }
             case HierarchyDragPayload drag when OverContent(position):
                 await _vm.AcceptElementsAsync(drag.Elements);
                 break;

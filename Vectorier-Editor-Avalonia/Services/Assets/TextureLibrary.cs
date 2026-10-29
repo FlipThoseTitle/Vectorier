@@ -314,9 +314,14 @@ public sealed class TextureLibrary
         string key = entry.Path + "|" + width;
         if (_thumbs.TryGetValue(key, out var cached))
             return cached;
-        var bitmap = await ImageLoader.LoadAsync(_fs, entry.Path, width);
-        _thumbs[key] = bitmap;
-        return bitmap;
+        // Tiles showing the same file share one decode.
+        return await _thumbLoading.GetOrAdd("g|" + key, async _ =>
+        {
+            var bitmap = await ImageLoader.LoadAsync(_fs, entry.Path, width);
+            _thumbs[key] = bitmap;
+            _thumbLoading.TryRemove("g|" + key, out Task<Bitmap?>? _);
+            return bitmap;
+        });
     }
 
     public void Invalidate(string name)

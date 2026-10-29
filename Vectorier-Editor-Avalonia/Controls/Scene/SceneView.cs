@@ -66,6 +66,11 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         base.OnPropertyChanged(change);
         if (change.Property == EditorProperty)
             Attach(change.GetNewValue<EditorViewModel?>());
+        else if (change.Property == IsVisibleProperty && change.GetNewValue<bool>())
+        {
+            // Changes made while hidden were skipped.
+            InvalidateVisual();
+        }
         else if (change.Property == BoundsProperty)
         {
             UpdateEditorCenter();
@@ -106,12 +111,18 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             editor.MoveVisualizer.Changed += OnMoveVisualizerChanged;
             editor.MoveVisualizer.FollowRequested += OnMoveVisualizerFollow;
             EditorPreferences.Changed += OnPreferencesChanged;
+            _shownDocument = editor.Document;
             FrameAllWhenReady();
         }
         InvalidateVisual();
     }
 
     private void OnPreferencesChanged(object? sender, EventArgs e) => InvalidateVisual();
+
+    private sealed record ViewState(Point Center, double Zoom);
+
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SceneDocument, ViewState> _viewStates = new();
+    private SceneDocument? _shownDocument;
 
     /// <summary>Looks at a level point without changing the zoom.</summary>
     public void CenterOn(Point level)
@@ -131,6 +142,21 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         }
         else if (e.PropertyName == nameof(EditorViewModel.Document))
         {
+            // Each document keeps the view it was left with (Object tab → Scene tab returns exactly there,
+            // without passing through the level's camera or the origin first).
+            if (_shownDocument != null && _framedOnce)
+                _viewStates.AddOrUpdate(_shownDocument, new ViewState(_center, _zoom));
+            _shownDocument = _editor?.Document;
+            if (_shownDocument != null && _viewStates.TryGetValue(_shownDocument, out var state))
+            {
+                StopFrameAnimation();
+                _center = state.Center;
+                _zoom = state.Zoom;
+                _framedOnce = true;
+                UpdateEditorCenter();
+                InvalidateVisual();
+                return;
+            }
             _framedOnce = false;
             FrameAllWhenReady();
         }
@@ -315,6 +341,10 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     public override void Render(DrawingContext context)
     {
+        // The hidden view (Scene while the Game tab shows, or the Game view) still gets render requests from
+        // every scene change; drawing the whole level for nothing would double the cost of each edit.
+        if (!IsEffectivelyVisible)
+            return;
         MarkFrameRendered();
         var size = Bounds.Size;
         context.FillRectangle(Background, new Rect(size));

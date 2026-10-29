@@ -37,6 +37,8 @@ public sealed partial class TextureItemViewModel : ObservableObject
 /// <summary>Textures page: one grid with every static and animated texture of the project.</summary>
 public sealed partial class TexturesPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => DeleteSelectedCommand;
+
     private readonly List<TextureItemViewModel> _all = new();
 
     public TexturesPageViewModel(ProjectManagerViewModel owner) : base(owner, "Textures", "Textures") { }
@@ -220,6 +222,8 @@ public static class TextureImport
 /// <summary>Animations page: the moves XML and the list of animation .bin files.</summary>
 public sealed partial class AnimationsPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => DeleteSelectedCommand;
+
     public const string MovesFileName = "moves.xml";
     private readonly List<string> _all = new();
 
@@ -370,6 +374,8 @@ public sealed partial class FileItemViewModel : ObservableObject
 /// <summary>Models, Musics, Sounds, Videos and XML pages: a single list of files with import and delete.</summary>
 public sealed partial class FileListPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => DeleteSelectedCommand;
+
     private readonly string _folder;
     private readonly string[] _extensions;
     private readonly HashSet<string> _protected;
@@ -586,6 +592,8 @@ public sealed partial class ShopItemViewModel : ObservableObject
 /// <summary>Shared logic of the Tricks and Gears pages (Shop_payed.xml groups + localization + icons).</summary>
 public abstract partial class ShopPageViewModel : PmPageViewModel
 {
+    public override System.Windows.Input.ICommand? DeleteShortcut => RemoveCommand;
+
     protected ShopPageViewModel(ProjectManagerViewModel owner, string title, string icon) : base(owner, title, icon) { }
 
     public override bool HasSearch => true;
