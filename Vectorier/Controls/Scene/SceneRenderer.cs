@@ -572,7 +572,7 @@ public sealed class SceneRenderer
             double tolerance = 3 / (viewport.Zoom * item.Group.FrameScale);
             if (!Contains(item, p, tolerance))
                 continue;
-            if (best == null || Above(item, best))
+            if (best == null || PickAbove(item, best))
                 best = item;
         }
         return best;
@@ -602,12 +602,59 @@ public sealed class SceneRenderer
             if (Contains(item, p, tolerance))
                 hits.Add(item);
         }
-        hits.Sort((a, b) => Above(a, b) ? -1 : Above(b, a) ? 1 : 0);
+        hits.Sort((a, b) => PickAbove(a, b) ? -1 : PickAbove(b, a) ? 1 : 0);
         var result = new List<SceneElement>();
         foreach (var item in hits)
             if (!result.Contains(item.Owner))
                 result.Add(item.Owner);
         return result;
+    }
+
+    /// <summary>
+    /// Picking priority (what a click selects first): gameplay elements by type (Comment, Item, Camera, Spawn,
+    /// Trigger, Area, Platform, Trapezoid), then visuals by layer (front first), order in layer, type (Image,
+    /// Animation, Particle, Object) and finally drawing order.
+    /// </summary>
+    private static bool PickAbove(RenderItem a, RenderItem b)
+    {
+        int pa = PickPriority(a), pb = PickPriority(b);
+        bool gameplayA = pa < 9, gameplayB = pb < 9;
+        if (gameplayA != gameplayB)
+            return gameplayA;
+        if (gameplayA)
+            return pa != pb ? pa < pb : a.SortKey > b.SortKey;
+        if (a.Group.Index != b.Group.Index)
+            return a.Group.Index > b.Group.Index;
+        int oa = a.Owner.Root.Order, ob = b.Owner.Root.Order;
+        if (oa != ob)
+            return oa > ob;
+        if (pa != pb)
+            return pa < pb;
+        return a.SortKey > b.SortKey;
+    }
+
+    private static int PickPriority(RenderItem item)
+    {
+        // Content of a referenced Object selects the Object: it ranks as an Object.
+        var type = item.Owner is ObjectElement ? ElementType.Object : item.Element.Type;
+        return type switch
+        {
+            ElementType.BuildingIn or ElementType.BuildingOut => 0,
+            ElementType.Comment => 1,
+            ElementType.Item => 2,
+            ElementType.Camera => 3,
+            ElementType.Spawn => 4,
+            ElementType.Trigger => 5,
+            ElementType.Area => 6,
+            ElementType.Platform => 7,
+            ElementType.Trapezoid => 8,
+            ElementType.Image => 9,
+            ElementType.Animation => 10,
+            ElementType.Particle => 11,
+            ElementType.Model => 11,
+            ElementType.Object => 12,
+            _ => 13,
+        };
     }
 
     private static bool Above(RenderItem a, RenderItem b)

@@ -334,6 +334,8 @@ public sealed partial class SceneView
     /// the next element underneath; when there is nothing more underneath, the root Object of the current element
     /// is selected, then it loops back to the topmost element. Only elements of the same root Object are cycled.
     /// </summary>
+    private SceneElement? _cyclePick;
+
     private SceneElement ResolveClick(SceneElement element, int clickCount, Point screen)
     {
         if (_renderer == null || _editor == null)
@@ -342,10 +344,12 @@ public sealed partial class SceneView
         var current = _editor.ActiveElement;
         if (clickCount < 2)
         {
-            // Clicking on what is already selected keeps it (so a picked element underneath can be dragged and the
-            // next double click continues from it).
-            if (current is { IsSelected: true } && hits.Any(h => ReferenceEquals(h, current) || h.IsDescendantOf(current)))
+            // An element reached by double clicking stays selected when clicked again (so it can be dragged and the
+            // next double click continues from it). Anything else: the click picks by priority.
+            if (current is { IsSelected: true } && ReferenceEquals(current, _cyclePick)
+                && hits.Any(h => ReferenceEquals(h, current) || h.IsDescendantOf(current)))
                 return current;
+            _cyclePick = null;
             return element;
         }
         // Cycle from the top: loose elements in front, then the first Object reached (its elements, then the Object
@@ -370,9 +374,9 @@ public sealed partial class SceneView
             return element;
         int index = cycle.IndexOf(anchor);
         if (index < 0)
-            return cycle[0];
+            return _cyclePick = cycle[0];
         // Past the last element underneath, loop back to the topmost one (like Unity).
-        return cycle[(index + 1) % cycle.Count];
+        return _cyclePick = cycle[(index + 1) % cycle.Count];
     }
 
     private void StartPivotTransform(Point pos)

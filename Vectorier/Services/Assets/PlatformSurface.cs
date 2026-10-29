@@ -53,7 +53,7 @@ public static class PlatformSurface
     public const string BlackFill = "v_black";
 
     /// <summary>Bump when the generation changes, so existing surfaces rebuild the next time they are touched.</summary>
-    private const int BuildVersion = 2;
+    private const int BuildVersion = 3;
 
     private const double Epsilon = 0.01;
     private const int MaxTiles = 4096;
@@ -181,7 +181,8 @@ public static class PlatformSurface
                 NativeHeight = (int)sprite.Height,
                 SurfaceOwner = platform.Id,
             };
-            image.AutoSize = width == null && height == null;
+            // The game needs Width / Height on every tile (without them the corners, floor and walls are not drawn).
+            image.AutoSize = false;
             images.Add(image);
         }
 
