@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.ProjectManager.GearsPageView"
+             x:DataType="vm:GearsPageViewModel">
+    <Grid ColumnDefinitions="4*,6,5*">
+        <Border Classes="panel">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="toolbar">
+                    <StackPanel Orientation="Horizontal" Spacing="1">
+                        <Button Classes="tool" ToolTip.Tip="New Gear (choose its model XML)" Command="{Binding AddCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Remove" Command="{Binding RemoveCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Move Up" Command="{Binding MoveUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Move Down" Command="{Binding MoveDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                    </StackPanel>
+                </Border>
+                <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ShopItemViewModel">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Classes="thumbnail" Width="40" Height="36" Margin="0,0,8,0">
+                                    <Image Source="{Binding ShopImage}" Stretch="Uniform" />
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding DisplayName}" Classes="dim" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+        <Border Grid.Column="2" Classes="panel">
+            <Panel>
+                <TextBlock Classes="dim" HorizontalAlignment="Center" Text="Select an item to edit it." IsVisible="{Binding !HasSelection}" />
+                <ScrollViewer IsVisible="{Binding HasSelection}">
+                    <StackPanel Margin="12" Spacing="3">
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Name" />
+                            <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding EditName}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Display Name" />
+                            <TextBox x:Name="DisplayNameBox" Grid.Column="1" Text="{Binding EditDisplayName}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Price" />
+                            <NumericUpDown Grid.Column="1" Minimum="0" Increment="50" FormatString="0"
+                                           Value="{Binding EditPrice, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,2">
+                            <TextBlock Classes="label" Text="Shop Image" />
+                            <TextBlock Classes="dim" FontSize="11" VerticalAlignment="Center" Text="Recommended size: 256 × 226" />
+                        </StackPanel>
+                        <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Command="{Binding ChangeShopImageCommand}" ToolTip.Tip="Click to change">
+                            <Border Classes="thumbnail" Width="256" Height="226">
+                                <Panel>
+                                    <Image Source="{Binding SelectedItem.ShopImage, FallbackValue={x:Null}}" Stretch="Uniform" />
+                                    <TextBlock Classes="dim" Text="Click to set the shop image" HorizontalAlignment="Center"
+                                               IsVisible="{Binding SelectedItem.ShopImage, FallbackValue={x:Null}, Converter={x:Static ObjectConverters.IsNull}}" />
+                                </Panel>
+                            </Border>
+                        </Button>
+                        <Grid Classes="field" ColumnDefinitions="140,*,Auto" Margin="0,10,0,0">
+                            <TextBlock Text="Model XML" />
+                            <TextBlock Grid.Column="1" Text="Model file found in models/" IsVisible="{Binding SelectedItem.HasModel, FallbackValue=False}" />
+                            <TextBlock Grid.Column="1" Classes="error" Text="No model file" IsVisible="{Binding !SelectedItem.HasModel, FallbackValue=False}" />
+                            <Button Grid.Column="2" Command="{Binding ChangeModelCommand}" Content="Browse…" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
+        </Border>
+    </Grid>
+</UserControl>

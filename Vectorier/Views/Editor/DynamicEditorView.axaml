@@ -1,0 +1,136 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Editor"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.Editor.DynamicEditorView"
+             x:DataType="vm:DynamicEditorViewModel">
+    <UserControl.Styles>
+        <Style Selector="Border.track">
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Margin" Value="4,3" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="Background" Value="{DynamicResource AppPanelBackground}" />
+        </Style>
+        <Style Selector="Border.track.active">
+            <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="MinHeight" Value="22" />
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- Top bar -->
+        <Border DockPanel.Dock="Top" Classes="toolbar">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="2" DockPanel.Dock="Right">
+                    <TextBlock Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0" IsVisible="{Binding IsBound}"
+                               Text="{Binding Tracks.Count, StringFormat='{}{0} element(s)'}" />
+                    <Button Classes="tool" Command="{Binding UnbindCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="Stop editing (restores the elements)">
+                        <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Exit" /></StackPanel>
+                    </Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-5" ToolTip.Tip="Back 5 frames"><PathIcon Data="{StaticResource Icon.SkipStart}" /></Button>
+                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-1" ToolTip.Tip="Previous frame"><PathIcon Data="{StaticResource Icon.StepBackward}" /></Button>
+                    <TextBlock Text="Frame" Classes="dim" Margin="4,0" />
+                    <NumericUpDown Value="{Binding Frame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
+                                   Width="80" ShowButtonSpinner="False" />
+                    <TextBlock Text="{Binding FrameText}" Classes="dim" Margin="4,0" />
+                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="1" ToolTip.Tip="Next frame"><PathIcon Data="{StaticResource Icon.StepForward}" /></Button>
+                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="5" ToolTip.Tip="Forward 5 frames"><PathIcon Data="{StaticResource Icon.SkipEnd}" /></Button>
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsPlaying, Mode=OneWay}" Command="{Binding TogglePlayCommand}" ToolTip.Tip="Play / Pause (Space)">
+                        <PathIcon Data="{StaticResource Icon.Play}" />
+                    </ToggleButton>
+                    <Button Classes="tool" Command="{Binding RestartCommand}" ToolTip.Tip="Restart"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                    <TextBlock Text="FPS" Classes="dim" Margin="8,0,4,0" />
+                    <NumericUpDown Value="{Binding Fps, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Maximum="240"
+                                   Width="60" ShowButtonSpinner="False" />
+                    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
+                    <ToggleButton Classes="tool" IsChecked="{Binding CustomEase}" ToolTip.Tip="Custom ease: edit Bezier supports directly (drag the handle in the Scene)">
+                        <TextBlock Text="Custom Ease" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding Onion}" ToolTip.Tip="Onion skin: outlines of the previous and next keys">
+                        <TextBlock Text="Onion" />
+                    </ToggleButton>
+                    <TextBlock Text="Zoom" Classes="dim" Margin="8,0,4,0" />
+                    <Slider Minimum="0.2" Maximum="8" Value="{Binding Zoom}" Width="100" VerticalAlignment="Center" Margin="0,-8" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Bind prompt -->
+        <StackPanel DockPanel.Dock="Top" Margin="12,8" Spacing="6" IsVisible="{Binding !IsBound}">
+            <TextBlock Classes="dim" TextWrapping="Wrap"
+                       Text="Select one or more elements (Cameras and Models cannot be animated), then start editing. Scrub the timeline, move the element in the Scene and press Add Key; Save writes the keys into the element's Transformation." />
+            <Button HorizontalAlignment="Left" Command="{Binding BindSelectionCommand}" IsEnabled="{Binding CanBind}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource Icon.Timeline}" /><TextBlock Text="Edit Selected Elements" /></StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Re-bind strip -->
+        <Border DockPanel.Dock="Top" Margin="4,4,4,0" Padding="6,3" Background="{DynamicResource AppPanelAltBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1">
+            <Border.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsBound" />
+                    <Binding Path="!SelectionMatches" />
+                    <Binding Path="CanBind" />
+                </MultiBinding>
+            </Border.IsVisible>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Edit Selection" Command="{Binding BindSelectionCommand}" />
+                <TextBlock Classes="dim" Text="The selection does not match the elements being edited." />
+            </DockPanel>
+        </Border>
+
+        <!-- Active key -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="8,4,8,0" IsVisible="{Binding HasActiveKey}">
+            <TextBlock Text="Key ease" Classes="dim" />
+            <ComboBox ItemsSource="{x:Static vm:DynamicEditorViewModel.EasePresets}" SelectedItem="{Binding ActiveEase}" Width="110" IsVisible="{Binding ShowEaseCombo}" />
+            <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowSupport}">
+                <TextBlock Text="Support" Classes="dim" />
+                <NumericUpDown Value="{Binding SupportX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="X, relative to the previous key" />
+                <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="Y (up is positive), relative to the previous key" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Tracks -->
+        <ScrollViewer IsVisible="{Binding IsBound}">
+            <ItemsControl ItemsSource="{Binding Tracks}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DynamicTrack">
+                        <Border Classes="track" Classes.active="{Binding IsActive}">
+                            <StackPanel Spacing="4">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="End" Classes="dim" />
+                                        <NumericUpDown Value="{Binding TotalFrames, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1"
+                                                       Width="80" ShowButtonSpinner="False" Tag="{Binding}" ValueChanged="OnEndChanged" />
+                                        <Button Content="Add Key" Tag="{Binding}" Click="OnAddKey" ToolTip.Tip="Key the element's current pose at the playhead" />
+                                        <Button Content="Delete Key" Tag="{Binding}" Click="OnDeleteKey" ToolTip.Tip="Delete the selected keys (or the key at the playhead)" />
+                                        <Button Content="Clear" Tag="{Binding}" Click="OnClear" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" />
+                                        <TextBlock Text="Transformation" Classes="dim" Margin="12,0,0,0" />
+                                        <ComboBox ItemsSource="{Binding TransformationNames}" SelectedItem="{Binding TransformationName, Mode=OneWay}"
+                                                  Width="150" Tag="{Binding}" SelectionChanged="OnTransformationPicked" PlaceholderText="(new)" />
+                                        <Button Classes="tool" Tag="{Binding}" Click="OnRename" ToolTip.Tip="Rename"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
+                                        <Button Classes="tool" Tag="{Binding}" Click="OnNewTransformation" ToolTip.Tip="New transformation"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                                        <Button Classes="tool" Tag="{Binding}" Click="OnRemoveTransformation" ToolTip.Tip="Remove transformation"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
+                                        <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="Bake the keys into the transformation">
+                                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Save" /></StackPanel>
+                                        </Button>
+                                        <TextBlock Classes="dim" Text="{Binding TransformationName}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <c:DynamicTimeline Track="{Binding}" Editor="{Binding $parent[UserControl].((vm:DynamicEditorViewModel)DataContext)}" Height="64" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

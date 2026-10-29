@@ -7,7 +7,7 @@
             "command": "dotnet",
             "args": [
                 "build",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-c",
                 "Debug"
             ],
@@ -23,7 +23,7 @@
             "command": "dotnet",
             "args": [
                 "build",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-c",
                 "Debug",
                 "-r",
@@ -38,7 +38,7 @@
             "command": "dotnet",
             "args": [
                 "build",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-c",
                 "Debug",
                 "-r",
@@ -53,7 +53,7 @@
             "command": "dotnet",
             "args": [
                 "build",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-c",
                 "Debug",
                 "-r",
@@ -68,7 +68,7 @@
             "command": "dotnet",
             "args": [
                 "build",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-c",
                 "Debug",
                 "-r",
@@ -84,7 +84,7 @@
             "command": "dotnet",
             "args": [
                 "publish",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-p:PublishProfile=win-x64"
             ],
             "group": "build",
@@ -97,7 +97,7 @@
             "command": "dotnet",
             "args": [
                 "publish",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-p:PublishProfile=linux-x64"
             ],
             "group": "build",
@@ -110,7 +110,7 @@
             "command": "dotnet",
             "args": [
                 "publish",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-p:PublishProfile=osx-x64"
             ],
             "group": "build",
@@ -123,7 +123,7 @@
             "command": "dotnet",
             "args": [
                 "publish",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Desktop/Vectorier-Editor-Avalonia.Desktop.csproj",
+                "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
                 "-p:PublishProfile=osx-arm64"
             ],
             "group": "build",
@@ -147,7 +147,7 @@
             "command": "dotnet",
             "args": [
                 "publish",
-                "${workspaceFolder}/Vectorier-Editor-Avalonia.Browser",
+                "${workspaceFolder}/Vectorier.Browser",
                 "-c",
                 "Release",
                 "-o",

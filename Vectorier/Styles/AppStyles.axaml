@@ -1,0 +1,309 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== Base ===== -->
+    <Style Selector="Window">
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Background" Value="{DynamicResource AppWindowBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <Style Selector="UserControl">
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="PathIcon">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource AppIconForeground}" />
+    </Style>
+    <Style Selector=":disabled PathIcon">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- ===== Text roles ===== -->
+    <Style Selector="TextBlock.dim">
+        <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+    </Style>
+    <Style Selector="TextBlock.title">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.section">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,6,0,2" />
+    </Style>
+    <Style Selector="TextBlock.label">
+        <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+    <Style Selector="TextBlock.error">
+        <Setter Property="Foreground" Value="{DynamicResource AppDanger}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- ===== Panels ===== -->
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{DynamicResource AppPanelBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.panel-header">
+        <Setter Property="Background" Value="{DynamicResource AppHeaderBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="6,0" />
+    </Style>
+    <Style Selector="Border.panel-header TextBlock.header">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.toolbar">
+        <Setter Property="Background" Value="{DynamicResource AppToolbarBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="4,2" />
+    </Style>
+    <Style Selector="Border.thumbnail">
+        <Setter Property="Background" Value="{DynamicResource AppThumbnailBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <!-- Grid items keep a white background in both themes (textures read as they do in the game): their
+         placeholder icons and texts stay dark on it. -->
+    <Style Selector="Border.thumbnail PathIcon">
+        <Setter Property="Foreground" Value="#404040" />
+    </Style>
+    <Style Selector="Border.thumbnail TextBlock">
+        <Setter Property="Foreground" Value="#606060" />
+    </Style>
+
+    <!-- ===== Icon buttons (toolbars) ===== -->
+    <Style Selector="Button.tool">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="MinWidth" Value="26" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppSelectionBorder}" />
+    </Style>
+    <Style Selector="Button.tool:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+    </Style>
+
+    <Style Selector="ToggleButton.tool">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="MinWidth" Value="28" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+    <Style Selector="ToggleButton.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppSelectionBorder}" />
+    </Style>
+    <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppSelectionBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <Style Selector="ToggleButton.tool:checked">
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+
+    <!-- ===== Fixed panel tabs (Unity-like headers that cannot be dragged) ===== -->
+    <Style Selector="RadioButton.tab">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="TabBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{DynamicResource AppBorder}"
+                        BorderThickness="1,1,1,0"
+                        Padding="10,3"
+                        Margin="0,0,2,0"
+                        MinHeight="24">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AppTabInactive}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="RadioButton.tab:checked">
+        <Setter Property="Background" Value="{DynamicResource AppTabActive}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="RadioButton.tab:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+
+    <!-- ===== Segmented selector (Story | Bonus) ===== -->
+    <Style Selector="RadioButton.segment">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{DynamicResource AppBorderStrong}"
+                        BorderThickness="1"
+                        Padding="12,3">
+                    <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AppPanelBackground}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="RadioButton.segment:checked">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ===== Navigation (Project Manager sidebar) ===== -->
+    <Style Selector="ListBox.nav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem">
+        <Setter Property="Padding" Value="6,8" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- ===== Lists ===== -->
+    <Style Selector="ListBox.compact ListBoxItem">
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="MinHeight" Value="22" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <!-- Tile grids and the Hierarchy are split into rows only for virtualization: the row itself never highlights,
+         each tile / row draws its own hover and selection. -->
+    <Style Selector="ListBox.rows ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:selected:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem">
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+    </Style>
+
+    <!-- ===== Inspector ===== -->
+    <Style Selector="Expander.component">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="8,4,8,8" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="IsExpanded" Value="True" />
+    </Style>
+    <Style Selector="Grid.field">
+        <Setter Property="Margin" Value="0,1" />
+    </Style>
+    <Style Selector="Grid.field > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="NumericUpDown">
+        <Setter Property="ShowButtonSpinner" Value="False" />
+        <Setter Property="MinHeight" Value="22" />
+    </Style>
+    <Style Selector="TextBox">
+        <Setter Property="MinHeight" Value="22" />
+    </Style>
+
+    <!-- ===== Buttons ===== -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button">
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="MinHeight" Value="24" />
+    </Style>
+    <Style Selector="GridSplitter">
+        <Setter Property="Background" Value="{DynamicResource AppBorder}" />
+        <Setter Property="MinWidth" Value="3" />
+        <Setter Property="MinHeight" Value="3" />
+    </Style>
+
+    <!-- ===== Selection tiles (trick / skin pickers): blue highlight and a check mark when chosen ===== -->
+    <Style Selector="ToggleButton.pick-tile">
+        <Setter Property="Background" Value="{DynamicResource AppPanelAltBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ToggleButton.pick-tile:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <Style Selector="ToggleButton.pick-tile:pointerover:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppHover}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <Style Selector="ToggleButton.pick-tile:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+    </Style>
+    <Style Selector="Border.pick-check">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+</Styles>

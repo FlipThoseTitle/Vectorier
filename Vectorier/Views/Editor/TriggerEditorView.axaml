@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Editor"
+             x:Class="Vectorier.Views.Editor.TriggerEditorView"
+             x:DataType="vm:TriggerEditorViewModel"
+             Background="{DynamicResource AppWindowBackground}">
+    <UserControl.Styles>
+        <Style Selector="Border.block">
+            <Setter Property="Background" Value="{DynamicResource AppPanelBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource AppPanelAltBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="TextBlock.block-title">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.card-title">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.missing">
+            <Setter Property="Foreground" Value="{DynamicResource AppDanger}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="TextBox, ComboBox, NumericUpDown">
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border BorderBrush="{DynamicResource AppAccent}" BorderThickness="0,2,0,0">
+        <DockPanel>
+            <!-- Top bar -->
+            <Border DockPanel.Dock="Top" Classes="toolbar">
+                <StackPanel Spacing="2">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                            <TextBlock Classes="dim" Text="Unapplied changes" IsVisible="{Binding IsDirty}" VerticalAlignment="Center" Margin="6,0" />
+                            <Button Classes="accent" Command="{Binding ApplyCommand}" ToolTip.Tip="Write this to the Trigger's content">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Check}" Foreground="White" /><TextBlock Text="Apply" /></StackPanel>
+                            </Button>
+                            <Button Classes="tool" Command="{Binding CloseEditorCommand}" ToolTip.Tip="Close the Trigger Editor">
+                                <PathIcon Data="{StaticResource Icon.Close}" />
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <PathIcon Data="{StaticResource Icon.Trigger}" Width="16" Height="16" />
+                            <TextBlock Text="Trigger Editor" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Title}" Classes="dim" MaxWidth="260" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </DockPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                            <ToggleButton Classes="tool" IsChecked="{Binding ShowXml}" ToolTip.Tip="Preview the XML this produces">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Code}" /><TextBlock Text="XML" /></StackPanel>
+                            </ToggleButton>
+                            <Button Classes="tool" Command="{Binding ReloadTemplatesCommand}"
+                                    ToolTip.Tip="Re-read TriggerTemplates.xml, the level's models and spawns, and the project's moves and sounds">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Refresh}" /><TextBlock Text="Reload" /></StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="Preset" Classes="dim" VerticalAlignment="Center" />
+                            <ComboBox Name="PresetBox" ItemsSource="{Binding Presets}" Width="170" />
+                            <Button Classes="tool" Command="{Binding SavePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="Overwrite this preset with what's on screen">
+                                <PathIcon Data="{StaticResource Icon.Save}" />
+                            </Button>
+                            <Button Classes="tool" Command="{Binding NewPresetCommand}" ToolTip.Tip="Save the current trigger as a new preset">
+                                <PathIcon Data="{StaticResource Icon.Plus}" />
+                            </Button>
+                            <Button Classes="tool" Command="{Binding RenamePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="Rename this preset">
+                                <PathIcon Data="{StaticResource Icon.Pencil}" />
+                            </Button>
+                            <Button Classes="tool" Command="{Binding DeletePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="Delete this preset">
+                                <PathIcon Data="{StaticResource Icon.Minus}" />
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- XML preview -->
+            <Border DockPanel.Dock="Bottom" Height="170" IsVisible="{Binding ShowXml}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+                    Background="{DynamicResource AppPanelBackground}">
+                <DockPanel Margin="6">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="Copy" Click="OnCopyXml" />
+                        <TextBlock Text="XML Preview" FontWeight="SemiBold" />
+                    </DockPanel>
+                    <TextBox Text="{Binding XmlPreview}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                             FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="11" />
+                </DockPanel>
+            </Border>
+
+            <Grid ColumnDefinitions="340,4,*">
+                <!-- Loops + variables -->
+                <Grid RowDefinitions="*,4,*">
+                    <Border Classes="panel" Margin="4,4,0,0">
+                        <DockPanel Margin="4">
+                            <TextBlock DockPanel.Dock="Top" Text="Loops" FontWeight="SemiBold" />
+                            <TextBox DockPanel.Dock="Top" Margin="0,4" PlaceholderText="Search…" Text="{Binding LoopSearch}" />
+                            <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,4,0,0">
+                                <Button HorizontalAlignment="Stretch" Command="{Binding AddLoopCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="New Loop" /></StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Classes="tool" Click="OnLoopUp" ToolTip.Tip="Move up"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                                <Button Grid.Column="2" Classes="tool" Click="OnLoopDown" ToolTip.Tip="Move down"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                                <Button Grid.Column="3" Classes="tool" Command="{Binding DeleteLoopCommand}" ToolTip.Tip="Delete loop"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
+                            </Grid>
+                            <ListBox Name="LoopList" Classes="compact" />
+                        </DockPanel>
+                    </Border>
+                    <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+                    <Border Grid.Row="2" Classes="panel" Margin="4,0,0,4">
+                        <DockPanel Margin="4">
+                            <TextBlock DockPanel.Dock="Top" Text="Variables" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <Button DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Margin="0,4,0,0" Command="{Binding AddVariableCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="New Variable" /></StackPanel>
+                            </Button>
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Name="VarsPanel" Spacing="2" />
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+                <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+                <!-- Main panel -->
+                <Border Grid.Column="2" Classes="panel" Margin="0,4,4,4">
+                    <ScrollViewer Name="MainScroll" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Name="MainPanel" Margin="10,10,20,10" Spacing="4" />
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

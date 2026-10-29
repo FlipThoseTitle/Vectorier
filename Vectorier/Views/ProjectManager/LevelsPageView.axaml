@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
+             xmlns:pm="using:Vectorier.Views.ProjectManager"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.ProjectManager.LevelsPageView"
+             x:DataType="vm:LevelsPageViewModel">
+    <UserControl.Styles>
+        <Style Selector="Border.trick-row">
+            <Setter Property="Background" Value="{DynamicResource AppPanelAltBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
+    </UserControl.Styles>
+    <Grid ColumnDefinitions="5*,6,4*">
+        <!-- List Panel -->
+        <Border Classes="panel">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="toolbar" Padding="6,5">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Classes="segment" GroupName="LevelMode" Content="Story" IsChecked="{Binding IsStoryMode}" />
+                            <RadioButton Classes="segment" GroupName="LevelMode" Content="Bonus" IsChecked="{Binding !IsStoryMode}" />
+                        </StackPanel>
+                        <ToggleSwitch HorizontalAlignment="Right" OnContent="Hunter Mode" OffContent="Hunter Mode" IsChecked="{Binding IsHunterMode}" />
+                    </DockPanel>
+                </Border>
+                <Border DockPanel.Dock="Top" Classes="toolbar">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="1">
+                            <Button Classes="tool" ToolTip.Tip="New Level" Command="{Binding AddLevelCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Delete Level" Command="{Binding DeleteLevelCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Duplicate Level" Command="{Binding DuplicateLevelCommand}"><PathIcon Data="{StaticResource Icon.Duplicate}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Import Level XML…" Command="{Binding ImportXmlCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
+                            <Separator Width="1" Height="18" Margin="4,0" Background="{DynamicResource AppBorder}" />
+                            <Button Classes="tool" ToolTip.Tip="Move Up" Command="{Binding MoveUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Move Down" Command="{Binding MoveDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Open in Editor" Command="{Binding OpenInEditorCommand}"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                            <TextBlock Classes="dim" Text="{Binding CountText}" />
+                            <ComboBox MinWidth="150" ItemsSource="{Binding LocationFilters}" SelectedItem="{Binding SelectedLocationFilter}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Panel>
+                    <ListBox x:Name="LevelList" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LevelItemViewModel">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                                    <Border Classes="thumbnail" Width="72" Height="48" Margin="0,0,10,0">
+                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding DisplayName}" Classes="dim" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource Icon.FileXml}" ToolTip.Tip="Has an XML file" IsVisible="{Binding HasXml}" />
+                                        <Border Background="{DynamicResource AppHeaderBackground}" CornerRadius="3" Padding="5,1">
+                                            <TextBlock Text="{Binding Location}" FontSize="10" />
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Classes="dim" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="20"
+                               IsVisible="{Binding !Items.Count}"
+                               Text="No levels in this mode yet. Click '+' to create one, or import an existing XML." />
+                </Panel>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+        <!-- Properties Panel -->
+        <Border Grid.Column="2" Classes="panel">
+            <Panel>
+                <TextBlock Classes="dim" HorizontalAlignment="Center" Text="Select a level to edit its properties." IsVisible="{Binding !HasSelection}" />
+                <ScrollViewer IsVisible="{Binding HasSelection}">
+                    <StackPanel Margin="12" Spacing="3">
+                        <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
+                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="Click to change the thumbnail (512 × 340 recommended)">
+                            <Border Classes="thumbnail">
+                                <Viewbox Stretch="Uniform">
+                                    <Panel Width="512" Height="340">
+                                        <Image Source="{Binding LargeThumbnail}" Stretch="Uniform" />
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
+                                                    IsVisible="{Binding LargeThumbnail, Converter={x:Static ObjectConverters.IsNull}}">
+                                            <PathIcon Data="{StaticResource Icon.Image}" Width="48" Height="48" Foreground="{DynamicResource AppForegroundDim}" />
+                                            <TextBlock Classes="dim" FontSize="16" Text="Click to set a thumbnail" />
+                                        </StackPanel>
+                                    </Panel>
+                                </Viewbox>
+                            </Border>
+                        </Button>
+
+                        <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="Recommended thumbnail size: 512 × 340" />
+
+                        <DockPanel Margin="0,8,0,0">
+                            <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding OpenInEditorCommand}" ToolTip.Tip="Open this level in the editor (or double-click it in the list)">
+                                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource Icon.Pencil}" Foreground="White" /><TextBlock Text="Edit Level" /></StackPanel>
+                            </Button>
+                            <TextBlock Classes="section" Text="Level" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Internal Name" />
+                            <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding SelectedItem.Name, FallbackValue=''}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Location" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LocationNames}" SelectedItem="{Binding EditLocation}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Display Name" />
+                            <TextBox x:Name="DisplayNameBox" Grid.Column="1" Text="{Binding EditDisplayName}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*,Auto,Auto">
+                            <TextBlock Text="XML Path" />
+                            <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding XmlPathText}" PlaceholderText="(not created yet)" />
+                            <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" ToolTip.Tip="Choose an existing XML file" Command="{Binding BrowseXmlCommand}"><PathIcon Data="{StaticResource Icon.FolderOpen}" /></Button>
+                            <Button Grid.Column="3" Classes="tool" ToolTip.Tip="Delete the XML file" Command="{Binding ClearXmlCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                        </Grid>
+
+                        <TextBlock Classes="section" Text="{Binding IsHunterMode, Converter={x:Static c:HunterModeLabelConverter.Instance}}" Margin="0,12,0,2" />
+                        <pm:UnlockEditorView DataContext="{Binding Track.Unlock, FallbackValue={x:Null}}" />
+
+                        <TextBlock Classes="label" Text="Tricks" Margin="0,8,0,2" />
+                        <ItemsControl ItemsSource="{Binding Track.Tricks, FallbackValue={x:Null}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TrickSlotViewModel">
+                                    <Border Classes="trick-row">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Border Classes="thumbnail" Width="40" Height="40">
+                                                <Panel>
+                                                    <Image Source="{Binding Info.Image, FallbackValue={x:Null}}" Stretch="Uniform" />
+                                                    <PathIcon Data="{StaticResource Icon.ImageOff}" Width="16" Height="16" Foreground="{DynamicResource AppForegroundDim}"
+                                                              IsVisible="{Binding Info.Image, FallbackValue={x:Null}, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                </Panel>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Name}" Classes="dim" FontSize="10" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="tool" VerticalAlignment="Center" ToolTip.Tip="Remove trick"
+                                                    Command="{Binding $parent[UserControl].((vm:LevelsPageViewModel)DataContext).Track.RemoveTrickCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button HorizontalAlignment="Left" Command="{Binding Track.AddTrickCommand, FallbackValue={x:Null}}">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="Add Trick…" /></StackPanel>
+                        </Button>
+
+                        <Grid Classes="field" ColumnDefinitions="140,*" Margin="0,8,0,1">
+                            <TextBlock Text="Stars Template" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.StarsTemplates, FallbackValue={x:Null}}" SelectedItem="{Binding Track.StarsTemplate, FallbackValue={x:Null}}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Reward Template" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.RewardTemplates, FallbackValue={x:Null}}" SelectedItem="{Binding Track.RewardTemplate, FallbackValue={x:Null}}" />
+                        </Grid>
+                        <Button HorizontalAlignment="Right" Command="{Binding EditTemplatesCommand}" Content="Edit Templates…" />
+
+                        <Grid Classes="field" ColumnDefinitions="140,*" Margin="0,8,0,1">
+                            <TextBlock Text="Video Start" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.Videos, FallbackValue={x:Null}}" SelectedItem="{Binding Track.VideoStart, FallbackValue={x:Null}}" />
+                        </Grid>
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Video End" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.Videos, FallbackValue={x:Null}}" SelectedItem="{Binding Track.VideoEnd, FallbackValue={x:Null}}" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
+        </Border>
+    </Grid>
+</UserControl>

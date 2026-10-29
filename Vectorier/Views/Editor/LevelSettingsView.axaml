@@ -1,0 +1,257 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Editor"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.Editor.LevelSettingsView"
+             x:DataType="vm:LevelSettingsViewModel"
+             Background="{DynamicResource AppWindowBackground}">
+    <UserControl.Styles>
+        <Style Selector="Grid.row">
+            <Setter Property="Margin" Value="0,3" />
+        </Style>
+        <Style Selector="Grid.row > DropDownButton">
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+    </UserControl.Styles>
+    <UserControl.Resources>
+        <DataTemplate x:Key="SetList" x:DataType="vm:SetEntry">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,1">
+                <ComboBox HorizontalAlignment="Stretch" SelectedItem="{Binding File}"
+                          ItemsSource="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).XmlFiles}" />
+                <Button Grid.Column="1" Classes="tool" ToolTip.Tip="Move up"
+                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).MoveSetUpCommand}" CommandParameter="{Binding}">
+                    <PathIcon Data="{StaticResource Icon.ArrowUp}" />
+                </Button>
+                <Button Grid.Column="2" Classes="tool" ToolTip.Tip="Move down"
+                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).MoveSetDownCommand}" CommandParameter="{Binding}">
+                    <PathIcon Data="{StaticResource Icon.ArrowDown}" />
+                </Button>
+                <Button Grid.Column="3" Classes="tool" ToolTip.Tip="Remove"
+                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).RemoveSetCommand}" CommandParameter="{Binding}">
+                    <PathIcon Data="{StaticResource Icon.Delete}" />
+                </Button>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Check list of the mode's models ("None" first) -->
+        <DataTemplate x:Key="ModelChoiceList" x:DataType="vm:ModelChoice">
+            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,0,0,1" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="ModelEditor" x:DataType="vm:ModelDefinitionViewModel">
+            <ScrollViewer>
+                <StackPanel Margin="10,0,8,8">
+                    <TextBlock Classes="section" Text="Required" />
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Name" /><TextBox Grid.Column="1" Text="{Binding Name}" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Type" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.TypeNames}"
+                                  SelectedIndex="{Binding TypeIndex}" ToolTip.Tip="Player is controlled by the player, AI by the game" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Color" />
+                        <ColorPicker Grid.Column="1" HorizontalAlignment="Left" Color="{Binding ColorValue}" IsAlphaEnabled="False"
+                                     ToolTip.Tip="Black is written as 0, other colors as RRGGBB" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Birth Spawn" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding BirthSpawnChoices}" SelectedItem="{Binding BirthSpawn}"
+                                  ToolTip.Tip="Spawn of the level where this model appears" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*,6,110"><TextBlock Text="AI" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.AiModes}" SelectedIndex="{Binding AiMode}"
+                                  ToolTip.Tip="AI number, used by triggers to tell models apart" />
+                        <NumericUpDown Grid.Column="3" IsVisible="{Binding IsAiCustom}" Value="{Binding AI, Converter={x:Static c:IntToDecimalConverter.Instance}}"
+                                       FormatString="0" Minimum="0" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Time" />
+                        <NumericUpDown Grid.Column="1" Value="{Binding Time, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###"
+                                       Increment="0.1" Minimum="0" ToolTip.Tip="Delay before this model spawns">
+                            <NumericUpDown.InnerRightContent>
+                                <TextBlock Classes="dim" Text="second" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            </NumericUpDown.InnerRightContent>
+                        </NumericUpDown></Grid>
+
+                    <TextBlock Classes="section" Text="Optional" Margin="0,10,0,0" />
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Respawns" /><TextBox Grid.Column="1" Text="{Binding Respawns}" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Allowed Spawns" /><TextBox Grid.Column="1" Text="{Binding AllowedSpawns}" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Force Blasts" />
+                        <DropDownButton Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Content="{Binding ForceBlastsText}"
+                                        ToolTip.Tip="Models this one can force blast">
+                            <DropDownButton.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <ItemsControl ItemsSource="{Binding ForceBlastChoices}" ItemTemplate="{StaticResource ModelChoiceList}" MinWidth="200" />
+                                </Flyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Murders" />
+                        <DropDownButton Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Content="{Binding MurdersText}"
+                                        ToolTip.Tip="Models this one can murder">
+                            <DropDownButton.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <ItemsControl ItemsSource="{Binding MurderChoices}" ItemTemplate="{StaticResource ModelChoiceList}" MinWidth="200" />
+                                </Flyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Arrests" />
+                        <DropDownButton Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Content="{Binding ArrestsText}"
+                                        ToolTip.Tip="Models this one can arrest">
+                            <DropDownButton.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <ItemsControl ItemsSource="{Binding ArrestChoices}" ItemTemplate="{StaticResource ModelChoiceList}" MinWidth="200" />
+                                </Flyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*" RowDefinitions="Auto,Auto"><TextBlock Text="Skins" />
+                        <TextBox Grid.Column="1" Text="{Binding Skins}" ToolTip.Tip="Model XML names separated by |, e.g. 0|myawesomeskins" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,0" Orientation="Horizontal" Spacing="6">
+                            <Button Command="{Binding AddSkinsCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="Add Skins…" /></StackPanel>
+                            </Button>
+                            <Button Command="{Binding PreviewCommand}" ToolTip.Tip="See the character with these skins running (models/0.xml + skins, 1.xml when there are none)">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" /><TextBlock Text="Preview" /></StackPanel>
+                            </Button>
+                        </StackPanel></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*,6,*"><TextBlock Text="Stocks" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.StockModes}" SelectedIndex="{Binding StocksMode}"
+                                  ToolTip.Tip="Model attached to this one (e.g. a bike)" />
+                        <TextBox Grid.Column="3" Text="{Binding Stocks}" IsVisible="{Binding IsStocksCustom}" PlaceholderText="Model XML name" /></Grid>
+                    <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Life Time" />
+                        <NumericUpDown Grid.Column="1" Value="{Binding LifeTime, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
+                                       ToolTip.Tip="How long this model stays alive (0: not written)" /></Grid>
+                    <WrapPanel Margin="120,6,0,0">
+                        <CheckBox Content="Perform Tricks" IsChecked="{Binding Trick}" Margin="0,0,12,0" />
+                        <CheckBox Content="Collect Items" IsChecked="{Binding Item}" Margin="0,0,12,0" />
+                        <CheckBox Content="Can Win" IsChecked="{Binding Victory}" Margin="0,0,12,0" />
+                        <CheckBox Content="Can Lose" IsChecked="{Binding Lose}" Margin="0,0,12,0" />
+                        <CheckBox Content="Show Icon" IsChecked="{Binding Icon}" />
+                    </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+            <Button Classes="accent" Content="Apply" MinWidth="90" Command="{Binding ApplyCommand}" IsDefault="True" />
+            <Button Content="Cancel" MinWidth="90" Command="{Binding CancelDialogCommand}" IsCancel="True" />
+        </StackPanel>
+        <TabControl>
+            <TabItem Header="General">
+                <ScrollViewer>
+                    <StackPanel Spacing="4" Margin="4">
+                        <TextBlock Classes="section" Text="Thumbnail" IsVisible="{Binding IsLevelMode}" />
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding IsLevelMode}">
+                            <Border Width="256" Height="170" BorderBrush="{DynamicResource AppBorder}" BorderThickness="1" Background="{DynamicResource AppPanelBackground}">
+                                <Panel>
+                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                    <TextBlock Classes="dim" Text="{Binding ThumbnailStatus}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Panel>
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="6" Margin="12,0,0,0">
+                                <Button Command="{Binding PickThumbnailCommand}" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource Icon.Folder}" /><TextBlock Text="Choose Image…" /></StackPanel>
+                                </Button>
+                                <Button Command="{Binding CaptureThumbnailCommand}" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource Icon.Camera}" /><TextBlock Text="Capture from Scene…" /></StackPanel>
+                                </Button>
+                                <TextBlock Classes="dim" TextWrapping="Wrap" Text="Recommended size: 512 × 340. Saved right away to icons/stories." />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Classes="section" Text="Sets" Margin="0,12,0,0" />
+                        <TextBlock Classes="dim" TextWrapping="Wrap"
+                                   Text="Set automatically from the objects used in the level when it is saved: Building files are City sets, Object files are Ground sets." />
+                        <TextBlock Classes="label" Text="City (Building files)" Margin="0,6,0,0" />
+                        <ItemsControl ItemsSource="{Binding CitySets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SetEntry">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,1">
+                                        <PathIcon Data="{StaticResource Icon.FileXml}" Width="12" Height="12" />
+                                        <TextBlock Text="{Binding File}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="dim" Text="None used" Margin="8,1" IsVisible="{Binding !HasCitySets}" />
+                        <TextBlock Classes="label" Text="Ground (Object files)" Margin="0,6,0,0" />
+                        <ItemsControl ItemsSource="{Binding GroundSets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SetEntry">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,1">
+                                        <PathIcon Data="{StaticResource Icon.FileXml}" Width="12" Height="12" />
+                                        <TextBlock Text="{Binding File}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="dim" Text="None used" Margin="8,1" IsVisible="{Binding !HasGroundSets}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                            <TextBlock Classes="label" Text="Library" VerticalAlignment="Center" />
+                            <Border Background="#33FF9800" BorderBrush="#FF9800" BorderThickness="1" CornerRadius="3" Padding="5,0">
+                                <TextBlock Text="Deprecated" FontSize="11" Foreground="#E65100" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Classes="dim" TextWrapping="Wrap"
+                                   Text="Legacy: kept for compatibility with older versions of the game. Prefer City and Ground sets; Library sets are still written to the XML." />
+                        <ItemsControl ItemsSource="{Binding LibrarySets}" ItemTemplate="{StaticResource SetList}" Opacity="0.8" />
+                        <Button HorizontalAlignment="Left" Command="{Binding AddSetCommand}" CommandParameter="Library">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="Add Library (legacy)" /></StackPanel>
+                        </Button>
+
+                        <StackPanel IsVisible="{Binding IsLevelMode}">
+                        <TextBlock Classes="section" Text="Music" Margin="0,12,0,0" />
+                        <Grid Classes="row" ColumnDefinitions="110,*,Auto">
+                            <TextBlock Text="Name" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding MusicChoices}" SelectedItem="{Binding MusicName}"
+                                      PlaceholderText="No music files in the project" />
+                            <Button Grid.Column="2" Margin="6,0,0,0" Command="{Binding ToggleMusicPreviewCommand}" ToolTip.Tip="Preview the music (play / stop)"
+                                    IsEnabled="{Binding MusicName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Panel>
+                                    <PathIcon Data="{StaticResource Icon.Play}" Width="12" Height="12" IsVisible="{Binding !IsMusicPlaying}" />
+                                    <PathIcon Data="{StaticResource Icon.Stop}" Width="12" Height="12" IsVisible="{Binding IsMusicPlaying}" />
+                                </Panel>
+                            </Button>
+                        </Grid>
+                        <Grid Classes="row" ColumnDefinitions="110,*,60">
+                            <TextBlock Text="Volume" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding MusicVolume}" />
+                            <NumericUpDown Grid.Column="2" Value="{Binding MusicVolume, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                           FormatString="0.##" Increment="0.05" Minimum="0" Maximum="1" ShowButtonSpinner="False" Margin="6,0,0,0" />
+                        </Grid>
+
+                        <TextBlock Classes="section" Text="Coins" Margin="0,12,0,0" />
+                        <Grid Classes="row" ColumnDefinitions="110,*">
+                            <TextBlock Text="Coin Value" />
+                            <NumericUpDown Grid.Column="1" Value="{Binding CoinValue, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0" />
+                        </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Models" IsVisible="{Binding IsLevelMode}">
+                <DockPanel Margin="4">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                        <TextBlock Classes="section" Text="{Binding ModeTitle}" VerticalAlignment="Center" />
+                        <ToggleSwitch Grid.Column="1" OnContent="Hunter Mode" OffContent="Hunter Mode" IsChecked="{Binding IsHunterMode}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="190,*">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <Button Command="{Binding AddModelCommand}" ToolTip.Tip="Add model"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                                    <Button Command="{Binding RemoveModelCommand}" ToolTip.Tip="Remove model"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
+                                    <Button Command="{Binding MoveModelCommand}" CommandParameter="Up" ToolTip.Tip="Move up"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                                    <Button Command="{Binding MoveModelCommand}" CommandParameter="Down" ToolTip.Tip="Move down"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                                </StackPanel>
+                                <Button Content="Default" Command="{Binding ResetModelsCommand}" HorizontalAlignment="Stretch"
+                                        ToolTip.Tip="Restore the default Player and Hunter of both modes" />
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding CurrentModels}" SelectedItem="{Binding SelectedModel}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ModelDefinitionViewModel"><TextBlock Text="{Binding Summary}" /></DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                        <ContentControl Grid.Column="1" Content="{Binding SelectedModel}" ContentTemplate="{StaticResource ModelEditor}" />
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

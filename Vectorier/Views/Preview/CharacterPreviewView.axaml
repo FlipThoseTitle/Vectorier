@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Preview"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.Preview.CharacterPreviewView"
+             x:DataType="vm:CharacterPreviewViewModel">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="dim" Text="{Binding FrameText}" HorizontalAlignment="Right" FontSize="11" />
+                <c:TrimTimeline Maximum="{Binding MaxFrame}" Start="{Binding TrimStart}" End="{Binding TrimEnd}" Current="{Binding Frame}"
+                                ToolTip.Tip="Drag the blue handles to trim the start and end frames (playback only), click to move the playhead" />
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="accent" Content="{Binding ApplyText}" MinWidth="80" Command="{Binding ApplyPreviewCommand}" IsVisible="{Binding ShowApply}" IsDefault="True" />
+                        <Button Content="Close" MinWidth="80" Command="{Binding ClosePreviewCommand}" IsCancel="True" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button Classes="tool" Command="{Binding TogglePlayCommand}" ToolTip.Tip="Play / Pause (Space)" Focusable="False">
+                            <Panel>
+                                <PathIcon Data="{StaticResource Icon.Pause}" IsVisible="{Binding IsPlaying}" />
+                                <PathIcon Data="{StaticResource Icon.Play}" IsVisible="{Binding !IsPlaying}" />
+                            </Panel>
+                        </Button>
+                        <Button Classes="tool" Command="{Binding RestartCommand}" ToolTip.Tip="Play from the start frame">
+                            <PathIcon Data="{StaticResource Icon.Undo}" />
+                        </Button>
+                        <TextBlock Text="Start" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        <NumericUpDown Value="{Binding TrimStart, Converter={x:Static c:IntToDecimalConverter.Instance}}" Minimum="0" Maximum="{Binding MaxFrame}" FormatString="0" Width="80" />
+                        <TextBlock Text="End" VerticalAlignment="Center" />
+                        <NumericUpDown Value="{Binding TrimEnd, Converter={x:Static c:IntToDecimalConverter.Instance}}" Minimum="0" Maximum="{Binding MaxFrame}" FormatString="0" Width="80" />
+                        <Button Content="Full Range" Command="{Binding ResetTrimCommand}" />
+                    </StackPanel>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+        <c:CharacterPreviewCanvas Name="Canvas" Preview="{Binding}" ToolTip.Tip="Space: play / pause · Mouse wheel: zoom" />
+    </DockPanel>
+</UserControl>

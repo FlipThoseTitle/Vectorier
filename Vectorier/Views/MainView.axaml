@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Vectorier.Views.MainView"
+             Background="{DynamicResource AppWindowBackground}">
+    <!-- Browser host: the current screen fills the page, dialogs appear in the overlay above it. -->
+    <Panel>
+        <ContentControl x:Name="ScreenHost" />
+        <Panel x:Name="DialogLayer" IsVisible="False" />
+    </Panel>
+</UserControl>

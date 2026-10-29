@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.ProjectManager.TemplatesDialogView"
+             x:DataType="vm:TemplatesDialogViewModel">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Classes="accent" Content="Save" MinWidth="80" Command="{Binding SaveCommand}" IsDefault="True" />
+                <Button Content="Cancel" MinWidth="80" Command="{Binding CancelDialogCommand}" IsCancel="True" />
+            </StackPanel>
+        </Border>
+        <Grid ColumnDefinitions="*,12,*" Margin="12">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <TextBlock Classes="section" Text="Stars Templates" />
+                    <Button HorizontalAlignment="Right" Classes="tool" Command="{Binding AddStarsCommand}" ToolTip.Tip="Add"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                </DockPanel>
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Stars}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:StarsTemplateItem">
+                                <Border Classes="panel" Padding="8" Margin="0,0,0,6">
+                                    <StackPanel Spacing="4">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Remove"
+                                                    Command="{Binding $parent[UserControl].((vm:TemplatesDialogViewModel)DataContext).RemoveStarsCommand}" CommandParameter="{Binding}">
+                                                <PathIcon Data="{StaticResource Icon.Delete}" />
+                                            </Button>
+                                            <TextBox Text="{Binding Name}" />
+                                        </DockPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <CheckBox Content="Completed" IsChecked="{Binding Completed}" />
+                                            <CheckBox Content="Bonuses" IsChecked="{Binding Bonuses}" />
+                                            <CheckBox Content="Tricks" IsChecked="{Binding Tricks}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+            <DockPanel Grid.Column="2">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <TextBlock Classes="section" Text="Reward Templates" />
+                    <Button HorizontalAlignment="Right" Classes="tool" Command="{Binding AddRewardCommand}" ToolTip.Tip="Add"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                </DockPanel>
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Rewards}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RewardTemplateItem">
+                                <Border Classes="panel" Padding="8" Margin="0,0,0,6">
+                                    <StackPanel Spacing="4">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Remove"
+                                                    Command="{Binding $parent[UserControl].((vm:TemplatesDialogViewModel)DataContext).RemoveRewardCommand}" CommandParameter="{Binding}">
+                                                <PathIcon Data="{StaticResource Icon.Delete}" />
+                                            </Button>
+                                            <TextBox Text="{Binding Name}" />
+                                        </DockPanel>
+                                        <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" >
+                                            <TextBlock Text="1★ " Classes="dim" />
+                                            <NumericUpDown Grid.Column="1" Minimum="0" FormatString="0" Value="{Binding Coins1, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                                            <TextBlock Grid.Column="2" Text=" 2★ " Classes="dim" />
+                                            <NumericUpDown Grid.Column="3" Minimum="0" FormatString="0" Value="{Binding Coins2, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                                            <TextBlock Grid.Column="4" Text=" 3★ " Classes="dim" />
+                                            <NumericUpDown Grid.Column="5" Minimum="0" FormatString="0" Value="{Binding Coins3, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

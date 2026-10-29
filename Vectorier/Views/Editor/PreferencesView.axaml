@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Editor"
+             x:Class="Vectorier.Views.Editor.PreferencesView"
+             x:DataType="vm:PreferencesViewModel"
+             Background="{DynamicResource AppWindowBackground}" MinWidth="380">
+    <StackPanel Margin="16" Spacing="6">
+        <TextBlock Classes="section" Text="Appearance" Margin="0" />
+        <ToggleSwitch IsChecked="{Binding IsDark}" OnContent="Dark theme" OffContent="Light theme" />
+
+        <TextBlock Classes="section" Text="Scene" Margin="0,10,0,0" />
+        <TextBlock Classes="label" Text="Trigger &amp; Area" />
+        <CheckBox Content="Show Outline" IsChecked="{Binding ShowOutline}" ToolTip.Tip="Outline around Trigger and Area rectangles" />
+        <CheckBox Content="Show Platform Outline" IsChecked="{Binding ShowPlatformOutline}" ToolTip.Tip="Outline around Platforms and Trapezoids" />
+        <CheckBox Content="Show Trigger Text" IsChecked="{Binding ShowTriggerText}" />
+        <CheckBox Content="Show Area Text" IsChecked="{Binding ShowAreaText}" />
+        <CheckBox Content="Show Area Type" IsChecked="{Binding ShowAreaType}" IsVisible="{Binding ShowAreaText}" Margin="20,0,0,0"
+                  ToolTip.Tip="Show the type after the name: Area [Animation], CoolArea [Catch]" />
+        <Grid ColumnDefinitions="110,*" Margin="0,4,0,0">
+            <TextBlock Text="Text Anchor" />
+            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:PreferencesViewModel.Anchors}" SelectedItem="{Binding TextAnchor}" />
+        </Grid>
+
+        <TextBlock Classes="section" Text="Hierarchy" Margin="0,10,0,0" />
+        <CheckBox Content="Rename Duplicate" IsChecked="{Binding RenameDuplicate}"
+                  ToolTip.Tip="Duplicates keep the original name instead of getting a suffix such as (1)" />
+        <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"
+                   Text="When on, a duplicate keeps its name (Cube stays Cube instead of Cube (1)). Spawns always get a unique name within their root." />
+
+        <Button Classes="accent" Content="Close" HorizontalAlignment="Right" MinWidth="90" Margin="0,12,0,0" Command="{Binding DoneCommand}" IsDefault="True" IsCancel="True" />
+    </StackPanel>
+</UserControl>

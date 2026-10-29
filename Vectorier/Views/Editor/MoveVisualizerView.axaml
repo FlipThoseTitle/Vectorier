@@ -1,0 +1,190 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Editor"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.Editor.MoveVisualizerView"
+             x:DataType="vm:MoveVisualizerViewModel">
+    <UserControl.Styles>
+        <Style Selector="Grid.row">
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="Grid.row > TextBlock:nth-child(1)">
+            <Setter Property="Foreground" Value="{DynamicResource AppForegroundDim}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="NumericUpDown, TextBox, ComboBox">
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,4,0,4" />
+        </Style>
+        <Style Selector="Border.box">
+            <Setter Property="Background" Value="{DynamicResource AppPanelAltBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+        <Style Selector="CheckBox.indented">
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="10" Spacing="2">
+            <!-- ===== Settings ===== -->
+            <TextBlock Classes="section" Text="Settings" />
+            <CheckBox Content="Render Model" IsChecked="{Binding RenderModel}" ToolTip.Tip="Draw the runner as a black silhouette" />
+            <CheckBox Content="Render Edges" IsChecked="{Binding RenderEdges}" ToolTip.Tip="Draw the nodes and bones" />
+            <CheckBox Content="Render Trajectory" IsChecked="{Binding RenderTrajectory}" ToolTip.Tip="Draw the path of the center of mass" />
+            <CheckBox Content="Render Detector" IsChecked="{Binding RenderDetector}" ToolTip.Tip="Draw the DetectorH / DetectorV lines (with the model)" />
+            <StackPanel Margin="16,0,0,0" IsVisible="{Binding RenderDetector}">
+                <Grid Classes="row" ColumnDefinitions="90,*">
+                    <TextBlock Text="Detector H" />
+                    <NumericUpDown Grid.Column="1" Minimum="0" Increment="1" FormatString="0"
+                                   Value="{Binding DeltaDetectorH, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="90,*">
+                    <TextBlock Text="Detector V" />
+                    <NumericUpDown Grid.Column="1" Minimum="0" Increment="1" FormatString="0"
+                                   Value="{Binding DeltaDetectorV, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
+                </Grid>
+            </StackPanel>
+            <CheckBox Content="Follow Camera" IsChecked="{Binding FollowCamera}" ToolTip.Tip="Keep the Scene centered on the model's Camera node" />
+            <CheckBox Content="Reverse" IsChecked="{Binding Reverse}" ToolTip.Tip="Mirror the move (runs to the left)" />
+
+            <!-- ===== Placement ===== -->
+            <StackPanel Margin="0,10,0,0" Spacing="2" IsVisible="{Binding !HasSelectedTrickArea}">
+                <Grid Classes="row" ColumnDefinitions="110,*">
+                    <TextBlock Text="Placement Mode" />
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:MoveVisualizerViewModel.PlacementModes}"
+                              SelectedItem="{Binding PlacementMode}" />
+                </Grid>
+
+                <Grid Classes="row" ColumnDefinitions="110,*" IsVisible="{Binding IsMovementMode}">
+                    <TextBlock Text="Movement Type" />
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:MoveVisualizerViewModel.MovementTypes}"
+                              SelectedItem="{Binding MovementType}" />
+                </Grid>
+
+                <StackPanel Spacing="4" IsVisible="{Binding IsTricksMode}">
+                    <Border Classes="box" IsVisible="{Binding !HasTricks}">
+                        <StackPanel Spacing="6">
+                            <TextBlock TextWrapping="Wrap" Classes="dim"
+                                       Text="No trick .bin files found. Tricks are read from the TrickGroup in moves.xml and loaded from 'animations/data'." />
+                            <Button Content="Refresh" Command="{Binding RefreshTricksCommand}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Spacing="4" IsVisible="{Binding HasTricks}">
+                        <Grid Classes="row" ColumnDefinitions="110,*">
+                            <TextBlock Text="Trick" />
+                            <TextBlock Grid.Column="1" Text="{Binding SelectedTrick.Identifier, FallbackValue=''}" VerticalAlignment="Center" />
+                        </Grid>
+                        <Button Name="SelectTrickButton" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="30" Content="Select Trick...">
+                            <Button.Flyout>
+                                <Flyout Placement="LeftEdgeAlignedTop">
+                                    <DockPanel Width="380">
+                                        <TextBlock DockPanel.Dock="Top" Classes="section" Text="Available Tricks" />
+                                        <ScrollViewer MaxHeight="420">
+                                            <ItemsControl ItemsSource="{Binding Tricks}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:TrickEntry">
+                                                        <Grid ColumnDefinitions="64,*" Height="64" Margin="0,0,0,4">
+                                                            <Border Classes="box" Padding="0" Width="64" Height="64">
+                                                                <Panel>
+                                                                    <Image Source="{Binding Icon}" Stretch="Uniform" IsVisible="{Binding HasIcon}" />
+                                                                    <TextBlock Text="No Image" Classes="dim" FontSize="10" HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                                                                </Panel>
+                                                            </Border>
+                                                            <Button Grid.Column="1" Margin="6,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                                                    HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                                                                    Content="{Binding DisplayName}" Click="OnTrickPicked" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid Classes="row" ColumnDefinitions="110,*,Auto" IsVisible="{Binding IsCustomMode}">
+                    <TextBlock Text="Bin Path" />
+                    <TextBox Grid.Column="1" Text="{Binding CustomBinPath}" PlaceholderText="Projects/…/animations/data/move.bin" />
+                    <Button Grid.Column="2" Content="..." Margin="4,0,0,0" Command="{Binding BrowseCustomBinCommand}" ToolTip.Tip="Select animation bin" />
+                </Grid>
+
+                <Grid Classes="row" ColumnDefinitions="110,*,Auto">
+                    <TextBlock Text="Pivot Node" />
+                    <TextBox Grid.Column="1" Text="{Binding PivotNodeName}" />
+                    <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" ToolTip.Tip="Presets">
+                        <PathIcon Data="{StaticResource Icon.ChevronDown}" Width="10" Height="10" />
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="NPivot" Command="{Binding SetPivotCommand}" CommandParameter="NPivot" />
+                                <MenuItem Header="DetectorH" Command="{Binding SetPivotCommand}" CommandParameter="DetectorH" />
+                                <MenuItem Header="DetectorV" Command="{Binding SetPivotCommand}" CommandParameter="DetectorV" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+                <CheckBox Content="Stay In Place" IsChecked="{Binding StayInPlace}" ToolTip.Tip="The pivot node stays where it was placed" />
+            </StackPanel>
+
+            <Border Classes="box" Margin="0,10,0,0" IsVisible="{Binding HasSelectedTrickArea}">
+                <StackPanel Spacing="2">
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Classes="dim" Text="Selected Area" />
+                        <TextBlock Grid.Column="1" Text="{Binding SelectedAreaName}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Classes="dim" Text="Preview Source" />
+                        <TextBlock Grid.Column="1" Text="moves.xml › ReactionGroups › TrickGroup" TextWrapping="Wrap" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ===== Main buttons ===== -->
+            <Button Margin="0,12,0,0" Height="56" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Classes="accent" Command="{Binding MainButtonCommand}" Content="{Binding MainButtonText}" FontSize="14" />
+            <Button Height="36" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Command="{Binding ClearCommand}" Content="Clear" />
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Classes="dim" Margin="0,4,0,0"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+            <!-- ===== Playback ===== -->
+            <Grid ColumnDefinitions="*,6,*" Margin="0,10,0,0">
+                <Button Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding PlayPauseCommand}"
+                        Content="{Binding PlayButtonText}" IsEnabled="{Binding HasFrames}" />
+                <Button Grid.Column="2" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding RestartCommand}"
+                        Content="Restart" IsEnabled="{Binding HasFrames}" />
+            </Grid>
+            <StackPanel IsEnabled="{Binding HasFrames}" Spacing="2" Margin="0,6,0,0">
+                <Grid Classes="row" ColumnDefinitions="50,*,56">
+                    <TextBlock Text="Frame" />
+                    <Slider Grid.Column="1" VerticalAlignment="Center" Minimum="{Binding StartFrame}" Maximum="{Binding EndFrame}" Value="{Binding Frame}"
+                            IsSnapToTickEnabled="True" TickFrequency="1" Margin="4,0" />
+                    <NumericUpDown Grid.Column="2" Value="{Binding Frame, Converter={x:Static c:IntToDecimalConverter.Instance}}"
+                                   Minimum="{Binding StartFrame}" Maximum="{Binding EndFrame}" FormatString="0" ShowButtonSpinner="False"
+                                   VerticalAlignment="Center" />
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="50,*,8,40,*">
+                    <TextBlock Text="Start" />
+                    <NumericUpDown Grid.Column="1" Value="{Binding StartFrame, Converter={x:Static c:IntToDecimalConverter.Instance}}"
+                                   Minimum="0" Maximum="{Binding MaxFrame}" FormatString="0" />
+                    <TextBlock Grid.Column="3" Text="End" Classes="dim" VerticalAlignment="Center" />
+                    <NumericUpDown Grid.Column="4" Value="{Binding EndFrame, Converter={x:Static c:IntToDecimalConverter.Instance}}"
+                                   Minimum="0" Maximum="{Binding MaxFrame}" FormatString="0" />
+                </Grid>
+            </StackPanel>
+
+            <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Classes="dim" FontSize="11"
+                       Text="Start Placement, then click in the Scene to add the runner (hold C to stick to platforms, Esc to stop). The character stays visible while you keep building; Clear removes it. Spawns and Trick Areas also have a Preview Animation button in the Inspector." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

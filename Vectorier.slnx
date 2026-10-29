@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Vectorier.Browser/Vectorier.Browser.csproj" />
+  <Project Path="Vectorier.Desktop/Vectorier.Desktop.csproj" />
+  <Project Path="Vectorier/Vectorier.csproj" />
+</Solution>

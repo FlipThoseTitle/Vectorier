@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
+             xmlns:pm="using:Vectorier.Views.ProjectManager"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.ProjectManager.LocationsPageView"
+             x:DataType="vm:LocationsPageViewModel">
+    <Grid ColumnDefinitions="5*,6,4*">
+        <Border Classes="panel">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="toolbar" Padding="6,5">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="1">
+                            <Button Classes="tool" ToolTip.Tip="New Location" Command="{Binding AddLocationCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Delete Location" Command="{Binding DeleteLocationCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Move Location Up" Command="{Binding MoveLocationUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Move Location Down" Command="{Binding MoveLocationDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                        </StackPanel>
+                        <ToggleSwitch HorizontalAlignment="Right" OnContent="Hunter Mode" OffContent="Hunter Mode" IsChecked="{Binding IsHunterMode}" />
+                    </DockPanel>
+                </Border>
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Items}" Margin="4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LocationItemViewModel">
+                                <Expander IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                          Margin="0,0,0,4" Padding="8,4,8,8" Tag="{Binding}">
+                                    <Expander.Header>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent" Tag="{Binding}" PointerPressed="OnLocationHeaderPressed">
+                                            <Border Classes="thumbnail" Width="78" Height="30" Margin="0,0,10,0">
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Header}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding DisplayName}" Classes="dim" FontSize="11" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Classes="dim" FontSize="11" Text="{Binding LevelCount, StringFormat='{}{0} levels'}" />
+                                        </Grid>
+                                    </Expander.Header>
+                                    <ItemsControl ItemsSource="{Binding Groups}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:LocationGroupItem">
+                                                <StackPanel Margin="0,2,0,6">
+                                                    <DockPanel Margin="0,0,0,2">
+                                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" Classes="dim" />
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="1">
+                                                            <Button Classes="tool" ToolTip.Tip="Add a level to this location" Tag="{Binding}" Click="OnAddClicked">
+                                                                <PathIcon Data="{StaticResource Icon.Plus}" />
+                                                            </Button>
+                                                            <Button Classes="tool" ToolTip.Tip="Remove the selected level" Tag="{Binding}" Click="OnRemoveClicked">
+                                                                <PathIcon Data="{StaticResource Icon.Minus}" />
+                                                            </Button>
+                                                            <Button Classes="tool" ToolTip.Tip="Move the selected level up" Tag="{Binding}" Click="OnMoveUpClicked">
+                                                                <PathIcon Data="{StaticResource Icon.ArrowUp}" />
+                                                            </Button>
+                                                            <Button Classes="tool" ToolTip.Tip="Move the selected level down" Tag="{Binding}" Click="OnMoveDownClicked">
+                                                                <PathIcon Data="{StaticResource Icon.ArrowDown}" />
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </DockPanel>
+                                                    <ListBox Classes="compact" ItemsSource="{Binding Levels}" Background="Transparent"
+                                                             SelectedItem="{Binding $parent[UserControl].((vm:LocationsPageViewModel)DataContext).SelectedLevel, Mode=OneWay}"
+                                                             SelectionChanged="OnLevelSelectionChanged" DoubleTapped="OnLevelDoubleTapped">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:LocationLevelItem">
+                                                                <DockPanel>
+                                                                    <TextBlock Text="{Binding DisplayName}" Classes="dim" DockPanel.Dock="Right" />
+                                                                    <TextBlock Text="{Binding Name}" />
+                                                                </DockPanel>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                    <TextBlock Classes="dim" FontSize="11" Margin="6,2" Text="No levels" IsVisible="{Binding !Levels.Count}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+        <Border Grid.Column="2" Classes="panel">
+            <Panel>
+                <TextBlock Classes="dim" HorizontalAlignment="Center" Text="Select a location to edit its properties." IsVisible="{Binding !HasSelection}" />
+                <ScrollViewer IsVisible="{Binding HasSelection}">
+                    <StackPanel Margin="12" Spacing="3">
+                        <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
+                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="Click to change the location image (1329 × 512 recommended)">
+                            <Border Classes="thumbnail">
+                                <Viewbox Stretch="Uniform">
+                                    <Panel Width="665" Height="256">
+                                        <Image Source="{Binding LargeThumbnail}" Stretch="Uniform" />
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
+                                                    IsVisible="{Binding LargeThumbnail, Converter={x:Static ObjectConverters.IsNull}}">
+                                            <PathIcon Data="{StaticResource Icon.Image}" Width="44" Height="44" Foreground="{DynamicResource AppForegroundDim}" />
+                                            <TextBlock Classes="dim" FontSize="16" Text="Click to set the location image" />
+                                        </StackPanel>
+                                    </Panel>
+                                </Viewbox>
+                            </Border>
+                        </Button>
+                        <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="Recommended image size: 1329 × 512" />
+                        <TextBlock Classes="section" Text="Location" />
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Location Name" />
+                            <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding EditName}" />
+                        </Grid>
+                        <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" Margin="140,0,0,4"
+                                   Text="Renaming a location renames its levels too (LOCATION_MODE_NN)." />
+                        <Grid Classes="field" ColumnDefinitions="140,*">
+                            <TextBlock Text="Display Name" />
+                            <TextBox x:Name="DisplayNameBox" Grid.Column="1" Text="{Binding EditDisplayName}" />
+                        </Grid>
+                        <TextBlock Classes="section" Text="{Binding IsHunterMode, Converter={x:Static c:HunterModeLabelConverter.Instance}}" Margin="0,12,0,2" />
+                        <pm:UnlockEditorView DataContext="{Binding Unlock, FallbackValue={x:Null}}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
+        </Border>
+    </Grid>
+</UserControl>

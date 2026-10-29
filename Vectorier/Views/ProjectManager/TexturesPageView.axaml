@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
+             xmlns:c="using:Vectorier.Controls"
+             x:Class="Vectorier.Views.ProjectManager.TexturesPageView"
+             x:DataType="vm:TexturesPageViewModel">
+    <UserControl.Styles>
+        <Style Selector="Border.tex-tile">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Width" Value="112" />
+        </Style>
+        <Style Selector="Border.tex-tile:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AppHover}" />
+        </Style>
+        <Style Selector="Border.tex-tile.selected">
+            <Setter Property="Background" Value="{DynamicResource AppSelection}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppSelectionBorder}" />
+        </Style>
+    </UserControl.Styles>
+    <Border Classes="panel" DragDrop.AllowDrop="True" x:Name="DropArea">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Classes="toolbar">
+                <DockPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="1">
+                        <Button Classes="tool" ToolTip.Tip="Import Textures…" Command="{Binding ImportFilesCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Import Folder…" Command="{Binding ImportFolderCommand}"><PathIcon Data="{StaticResource Icon.FolderImport}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Delete Selected" Command="{Binding DeleteSelectedCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                        <TextBlock Classes="dim" Text="Click to select, Ctrl+Click to add, Shift+Click for a range. Drop images or folders here to import (an image with its .plist is an animated texture)."
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="dim" Text="{Binding CountText}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <Panel x:Name="GridArea">
+                <ListBox x:Name="Rows" Classes="rows" Background="Transparent" BorderThickness="0" SelectionMode="Single"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="c:ItemRow">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TextureItemViewModel">
+                                        <Border Classes="tex-tile" Classes.selected="{Binding IsSelected}" Tag="{Binding}" ToolTip.Tip="{Binding Entry.Path}">
+                                            <StackPanel Spacing="3">
+                                                <Border Classes="thumbnail" Width="104" Height="104">
+                                                    <Panel>
+                                                        <c:TexturePreview Library="{Binding Library}" Entry="{Binding Entry}" Margin="4" />
+                                                        <Border Background="{DynamicResource AppAccent}" CornerRadius="2" Padding="3,0" Margin="2"
+                                                                HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="{Binding IsAnimated}">
+                                                            <TextBlock Text="ANIM" Foreground="White" FontSize="9" FontWeight="Bold" />
+                                                        </Border>
+                                                        <PathIcon Data="{StaticResource Icon.Lock}" Width="12" Height="12" Margin="3"
+                                                                  HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding IsProtected}"
+                                                                  ToolTip.Tip="Used by the game itself: it cannot be deleted" />
+                                                    </Panel>
+                                                </Border>
+                                                <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" MaxWidth="106" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Panel>
+        </DockPanel>
+    </Border>
+</UserControl>
