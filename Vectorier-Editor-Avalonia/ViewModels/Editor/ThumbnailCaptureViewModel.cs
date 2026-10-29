@@ -93,7 +93,7 @@ public sealed partial class ThumbnailCaptureViewModel : DialogViewModel
             IsBusy = true;
             using var bitmap = Render();
             using var stream = new MemoryStream();
-            bitmap.Save(stream);
+            bitmap.Save(stream, new PngBitmapEncoderOptions());
             await new LevelThumbnail(Editor.Project, Editor.Document.LevelName).SavePngAsync(stream.ToArray());
             Close(true);
         }

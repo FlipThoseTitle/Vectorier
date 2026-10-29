@@ -210,9 +210,9 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
     private static string Display(string value) => string.IsNullOrEmpty(value) ? NoneChoice : value.Replace("|", ", ");
 
     private IReadOnlyList<ModelChoice>? _forceBlastChoices, _murderChoices, _arrestChoices;
-    public IReadOnlyList<ModelChoice> ForceBlastChoices => _forceBlastChoices ??= BuildChoices(() => ForceBlasts, v => ForceBlasts = v);
-    public IReadOnlyList<ModelChoice> MurderChoices => _murderChoices ??= BuildChoices(() => Murders, v => Murders = v);
-    public IReadOnlyList<ModelChoice> ArrestChoices => _arrestChoices ??= BuildChoices(() => Arrests, v => Arrests = v);
+    public IReadOnlyList<ModelChoice> ForceBlastChoices => _forceBlastChoices ??= BuildChoices(() => ForceBlasts, v => ForceBlasts = v ?? string.Empty);
+    public IReadOnlyList<ModelChoice> MurderChoices => _murderChoices ??= BuildChoices(() => Murders, v => Murders = v ?? string.Empty);
+    public IReadOnlyList<ModelChoice> ArrestChoices => _arrestChoices ??= BuildChoices(() => Arrests, v => Arrests = v ?? string.Empty);
 
     /// <summary>The model lists of the mode changed (added, removed, renamed): rebuild the dropdowns.</summary>
     public void RefreshChoices()

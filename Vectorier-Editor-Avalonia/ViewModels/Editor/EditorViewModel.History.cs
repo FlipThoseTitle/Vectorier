@@ -28,7 +28,6 @@ public sealed partial class EditorViewModel
     private int _versionCounter;
     private int _savedVersion;
     private bool _pending;
-    private bool _commitScheduled;
     private int _gestureDepth;
     private int _suppressTracking;
     private bool _selectionPending;

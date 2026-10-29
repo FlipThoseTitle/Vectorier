@@ -109,7 +109,7 @@
                     <Grid Classes="row" ColumnDefinitions="120,*,6,*"><TextBlock Text="Stocks" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.StockModes}" SelectedIndex="{Binding StocksMode}"
                                   ToolTip.Tip="Model attached to this one (e.g. a bike)" />
-                        <TextBox Grid.Column="3" Text="{Binding Stocks}" IsVisible="{Binding IsStocksCustom}" Watermark="Model XML name" /></Grid>
+                        <TextBox Grid.Column="3" Text="{Binding Stocks}" IsVisible="{Binding IsStocksCustom}" PlaceholderText="Model XML name" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="Life Time" />
                         <NumericUpDown Grid.Column="1" Value="{Binding LifeTime, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
                                        ToolTip.Tip="How long this model stays alive (0: not written)" /></Grid>
