@@ -44,7 +44,7 @@ It does not include, and this license grants no rights in:
        SkiaSharp, HarfBuzzSharp, CommunityToolkit.Mvvm, raylib, Raylib-cs, and
        any fonts or libraries provided by the operating system, which remain
        subject to their own terms. Their licenses and notices are listed in the
-       THIRD-PARTY-NOTICES file, and copies of the Software that include them
+       NOTICES file, and copies of the Software that include them
        must keep those notices.
 
 5. Anything outside the scope of these conditions, including how the Software and

@@ -30,7 +30,7 @@
   </Target>
 
   <!-- Runs after the data folders are copied (CopyVectorierDataOnPublish). -->
-  <Target Name="VectorierPackage" AfterTargets="Publish" DependsOnTargets="VectorierPackagingProps;VectorierMacBundle;VectorierZip" />
+  <Target Name="VectorierPackage" AfterTargets="Publish" DependsOnTargets="VectorierPackagingProps;VectorierMacBundle;VectorierLegal;VectorierZip" />
 
   <Target Name="VectorierMacBundle" Condition="'$(_VectorierIsMac)' == 'true' And '$(PublishDir)' != ''">
     <PropertyGroup>
@@ -65,6 +65,12 @@
     <WriteLinesToFile File="$(_App)Contents/Info.plist" Lines="$(_Plist)" Overwrite="true" />
     <Exec Condition="'$(OS)' != 'Windows_NT'" Command="chmod +x &quot;$(_App)Contents/MacOS/$(AssemblyName)&quot;" />
     <Message Importance="high" Text="Vectorier -> $(_App)" />
+  </Target>
+
+  <!-- LICENSE and NOTICES (third-party licenses) go next to the app in every release. -->
+  <Target Name="VectorierLegal" Condition="'$(PublishDir)' != ''">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../LICENSE;$(MSBuildThisFileDirectory)../NOTICES"
+          DestinationFolder="$(PublishDir)" Condition="Exists('$(MSBuildThisFileDirectory)../NOTICES')" />
   </Target>
 
   <Target Name="VectorierZip"
