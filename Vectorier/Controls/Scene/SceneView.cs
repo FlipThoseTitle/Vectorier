@@ -364,8 +364,11 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         {
             _renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
             RenderMoveVisualizer(context, viewport);
-            _renderer.RenderSelection(context, viewport, _editor.Selection);
+            RenderPaintCanvas(context, viewport);
+            if (!_editor.Paint.IsActive)
+                _renderer.RenderSelection(context, viewport, _editor.Selection);
             RenderToolOverlay(context, viewport);
+            RenderBrushCursor(context, viewport);
         }
 
         UpdateAnimationClock();

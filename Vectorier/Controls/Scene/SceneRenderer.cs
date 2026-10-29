@@ -538,6 +538,9 @@ public sealed class SceneRenderer
         // Eye in the Hierarchy (on the element, an ancestor, or the object whose content this is).
         if ((item.Instance ?? item.Element).IsHiddenInScene)
             return true;
+        // Images being painted: the Brush canvas shows them instead.
+        if (_editor.Paint.IsHidden(item.Element))
+            return true;
         if (!_editor.IsTypeVisible(item.Element.Type))
             return true;
         if (item.Instance != null && !_editor.IsTypeVisible(ElementType.Object))

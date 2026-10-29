@@ -27,6 +27,7 @@ internal enum InteractionMode
     DynamicSupport,
     SnapMove,
     SnapScale,
+    Paint,
 }
 
 [Flags]
@@ -223,6 +224,13 @@ public sealed partial class SceneView
             return;
         }
 
+        // Brush: paint (or start a new image) instead of selecting.
+        if (Tool == EditorTool.Brush && _editor.PlacementType == null)
+        {
+            await TryPaintPressAsync(e, pos);
+            return;
+        }
+
         _pressScreen = pos;
         _dragStarted = false;
         _pendingDrill = null;
@@ -407,6 +415,13 @@ public sealed partial class SceneView
         if (_editor == null || _renderer == null)
             return;
 
+        if (_mode == InteractionMode.Paint || Tool == EditorTool.Brush)
+        {
+            PaintMoved(pos);
+            if (_mode == InteractionMode.Paint)
+                return;
+        }
+
         switch (_mode)
         {
             case InteractionMode.None:
@@ -492,6 +507,13 @@ public sealed partial class SceneView
         var pos = e.GetPosition(this);
         if (_editor == null || _renderer == null)
             return;
+
+        if (_mode == InteractionMode.Paint)
+        {
+            EndPaintStroke();
+            e.Pointer.Capture(null);
+            return;
+        }
 
         switch (_mode)
         {
@@ -593,6 +615,7 @@ public sealed partial class SceneView
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
+        EndPaintStroke();
         if (_mode is InteractionMode.Pan or InteractionMode.Zoom or InteractionMode.RubberBand or InteractionMode.PlaceDrag)
         {
             _mode = InteractionMode.None;
@@ -917,7 +940,7 @@ public sealed partial class SceneView
         if (_editor == null)
             return;
         StandardCursorType type = StandardCursorType.Arrow;
-        if (_editor.PlacementType != null)
+        if (_editor.PlacementType != null || Tool == EditorTool.Brush)
             type = StandardCursorType.Cross;
         else if (_hoverHandle != GizmoHandle.None)
             type = StandardCursorType.Hand;

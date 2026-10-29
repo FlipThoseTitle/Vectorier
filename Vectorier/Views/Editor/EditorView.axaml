@@ -4,6 +4,7 @@
              xmlns:scene="using:Vectorier.Controls.Scene"
              xmlns:models="using:Vectorier.Models.Scene"
              xmlns:views="using:Vectorier.Views.Editor"
+             xmlns:c="using:Vectorier.Controls"
              x:Class="Vectorier.Views.Editor.EditorView"
              x:DataType="vm:EditorViewModel"
              Background="{DynamicResource AppWindowBackground}">
@@ -152,6 +153,10 @@
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Rect}">
                         <PathIcon Data="{StaticResource Icon.Rect}" />
                     </ToggleButton>
+                    <ToggleButton Classes="tool" ToolTip.Tip="Brush (B): click the Scene to paint a new image, or Edit Image on selected images. [ / ] change the brush size." Name="BrushTool"
+                                  Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Brush}">
+                        <PathIcon Data="{StaticResource Icon.Brush}" />
+                    </ToggleButton>
                     <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
                     <Button Classes="tool" Command="{Binding TogglePivotCommand}" MinWidth="72"
                             ToolTip.Tip="Gizmo position: the selection's Center, or the element's Pivot (its position). Display only: the data always keeps the top-left position.">
@@ -190,8 +195,35 @@
                             <TextBlock Text="Level Settings" />
                         </StackPanel>
                     </Button>
+
+                    <!-- Brush options (Brush tool only) -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsBrushTool}" Margin="6,0,0,0">
+                        <Rectangle Width="1" Margin="0,3" Fill="{DynamicResource AppBorder}" />
+                        <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BrushKinds}" SelectedItem="{Binding Paint.Kind}" Width="96"
+                                  ToolTip.Tip="Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held" />
+                        <TextBlock Text="Size" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <NumericUpDown Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
+                                       FormatString="0.#" Width="64" ShowButtonSpinner="False" ToolTip.Tip="Brush diameter in level pixels ([ / ])" />
+                        <TextBlock Text="Opacity" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <NumericUpDown Value="{Binding Paint.Opacity, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="0" Maximum="100"
+                                       FormatString="0'%'" Width="58" ShowButtonSpinner="False" />
+                        <ColorPicker Color="{Binding Paint.Color}" IsAlphaEnabled="False" VerticalAlignment="Center" ToolTip.Tip="Brush color" />
+                        <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BlendModes}" SelectedItem="{Binding Paint.Blend}" Width="100"
+                                  ToolTip.Tip="Blending mode (Erase removes paint)" />
+                        <CheckBox Content="Clip to Image" IsChecked="{Binding Paint.ClipToBounds}" Margin="4,0,0,0" IsEnabled="{Binding !Paint.IsNew}"
+                                  ToolTip.Tip="On: paint stays inside the edited image. Off: paint freely, the image grows (up to 4096 × 4096)." />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Paint.IsActive}">
+                        <Button Classes="tool" Command="{Binding Paint.DiscardCommand}" ToolTip.Tip="Throw the painting away">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Discard" /></StackPanel>
+                        </Button>
+                        <Button Classes="accent" Command="{Binding Paint.ApplyCommand}" ToolTip.Tip="{Binding Paint.SessionTitle, StringFormat='{}{0}: save it into the PNG (or as a duplicate)'}">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Apply" /></StackPanel>
+                        </Button>
+                        <Rectangle Width="1" Margin="2,3" Fill="{DynamicResource AppBorder}" />
+                    </StackPanel>
                     <TextBlock Classes="dim" Text="{Binding Project.Name}" />
                     <Button Classes="tool" ToolTip.Tip="Back to the Project Manager" Command="{Binding QuitCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">

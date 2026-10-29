@@ -206,6 +206,12 @@ public sealed partial class EditorViewModel
     {
         if (IsInGesture)
             return;
+        // While painting, Ctrl+Z takes back strokes.
+        if (Paint.IsActive)
+        {
+            Paint.Undo();
+            return;
+        }
         CommitPending();
         if (_undo.Count == 0 || _baseline == null)
             return;

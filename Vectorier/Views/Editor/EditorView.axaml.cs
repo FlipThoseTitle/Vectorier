@@ -69,6 +69,7 @@ public partial class EditorView : UserControl
         RotateTool.IsChecked = tool == EditorTool.Rotate;
         ScaleTool.IsChecked = tool == EditorTool.Scale;
         RectTool.IsChecked = tool == EditorTool.Rect;
+        BrushTool.IsChecked = tool == EditorTool.Brush;
     }
 
     private bool _uiGesture;
@@ -290,7 +291,7 @@ public partial class EditorView : UserControl
             }
         }
 
-        if (e.Key is Key.Delete or Key.Back && mods == KeyModifiers.None)
+        if (e.Key is Key.Delete or Key.Back && mods == KeyModifiers.None && !_vm.Paint.IsActive)
         {
             // Last clicked in the Project Window: Delete removes its selected files / folders or assets.
             if (_projectWindowActive && (_vm.ProjectWindow.LastClickInFolders ? _vm.ProjectWindow.SelectedFolders.Count > 0 : _vm.ProjectWindow.SelectedItems.Count > 0))
@@ -322,6 +323,13 @@ public partial class EditorView : UserControl
             "]" => 1,
             _ => e.Key == Key.OemOpenBrackets ? -1 : e.Key == Key.OemCloseBrackets ? 1 : 0,
         } : 0;
+        // With the Brush, [ and ] change the brush size instead (repeats while held).
+        if (orderDelta != 0 && _vm.ActiveTool == EditorTool.Brush)
+        {
+            _vm.Paint.StepSize(orderDelta);
+            e.Handled = true;
+            return;
+        }
         if (orderDelta != 0)
         {
             if (_heldKeys.Add(e.Key))
@@ -363,6 +371,7 @@ public partial class EditorView : UserControl
                 Key.W => EditorTool.Rotate,
                 Key.E => EditorTool.Scale,
                 Key.T => EditorTool.Rect,
+                Key.B => EditorTool.Brush,
                 _ => null,
             };
             if (tool != null)

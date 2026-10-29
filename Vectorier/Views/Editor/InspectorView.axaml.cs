@@ -64,4 +64,10 @@ public partial class InspectorView : UserControl
         if (sender is Control { DataContext: Vectorier.Models.Scene.SpawnElement spawn } && DataContext is InspectorViewModel vm)
             _ = vm.PickSpawnFrameAsync(spawn);
     }
+
+    private void OnEditImage(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is InspectorViewModel vm)
+            vm.EditImageCommand.Execute(null);
+    }
 }

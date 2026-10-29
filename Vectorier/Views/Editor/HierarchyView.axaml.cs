@@ -345,6 +345,14 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
                     vm.Select(element);
                 menu.Items.Add(Command("Ungroup", null, "Ctrl+Shift+G", () => vm.Ungroup()));
             }
+            if (element is ImageElement)
+            {
+                if (!element.IsSelected)
+                    vm.Select(element);
+                int images = vm.Selection.Count(x => x is ImageElement);
+                menu.Items.Add(Command(images > 1 ? $"Merge & Edit {images} Images" : "Edit Image", "Icon.Brush", "",
+                    () => _ = vm.Paint.EditSelectionAsync()));
+            }
             if (element is ObjectElement { Reference: not null } defined)
                 menu.Items.Add(Command("Edit Object", "Icon.Object", "", () => _ = vm.EditObjectAsync(defined)));
             menu.Items.Add(new Separator());

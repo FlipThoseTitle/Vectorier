@@ -29,7 +29,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             if (e.PropertyName == nameof(EditorViewModel.ActiveElement))
                 SetTarget(editor.ActiveElement);
         };
-        editor.SelectionChanged += () => OnPropertyChanged(nameof(SelectionNote));
+        editor.SelectionChanged += () => { OnPropertyChanged(nameof(SelectionNote)); OnPropertyChanged(nameof(EditImageText)); };
         editor.StructureChanged += () =>
         {
             OnPropertyChanged(nameof(ChildCount));
@@ -77,6 +77,21 @@ public sealed partial class InspectorViewModel : ObservableObject
         if (element is SpawnElement)
             _ = EnsureMovesAsync();
     }
+
+    // ================= IMAGE ================= //
+
+    /// <summary>"Edit Image", or "Merge &amp; Edit N Images" when several images are selected.</summary>
+    public string EditImageText
+    {
+        get
+        {
+            int count = _editor.Selection.Count(e => e is ImageElement);
+            return count > 1 ? $"Merge & Edit {count} Images" : "Edit Image";
+        }
+    }
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task EditImage() => _editor.Paint.EditSelectionAsync();
 
     // ================= SPAWN ================= //
 

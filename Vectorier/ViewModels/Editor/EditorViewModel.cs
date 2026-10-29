@@ -31,7 +31,8 @@ public enum EditorTool
     Move,
     Rotate,
     Scale,
-    Rect
+    Rect,
+    Brush
 }
 
 /// <summary>
@@ -67,6 +68,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         Hierarchy = new HierarchyViewModel(this);
         Inspector = new InspectorViewModel(this);
         ProjectWindow = new ProjectWindowViewModel(this);
+        Paint = new PaintViewModel(this);
         Dynamics = new DynamicEditorViewModel(this);
         MoveVisualizer = new MoveVisualizerViewModel(this);
 
@@ -82,6 +84,11 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     public InspectorViewModel Inspector { get; }
     public ProjectWindowViewModel ProjectWindow { get; }
     public DynamicEditorViewModel Dynamics { get; }
+
+    /// <summary>The Brush tool and its paint session.</summary>
+    public PaintViewModel Paint { get; }
+
+    public bool IsBrushTool => ActiveTool == EditorTool.Brush;
     public MoveVisualizerViewModel MoveVisualizer { get; }
 
     public ObservableCollection<ElementTypeInfo> ElementTypes { get; } = new();
@@ -197,7 +204,12 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         ProjectWindow.SetContext(newValue?.Type ?? ElementType.Object);
     }
 
-    partial void OnActiveToolChanged(EditorTool value) => ExitPlacement();
+    partial void OnActiveToolChanged(EditorTool value)
+    {
+        ExitPlacement();
+        OnPropertyChanged(nameof(IsBrushTool));
+        SceneInvalidated?.Invoke();
+    }
 
     /// <summary>Element types that are placed from an asset picked in the Project Window.</summary>
     public static bool RequiresAsset(ElementType type) =>
@@ -211,10 +223,24 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     {
         if (tool == EditorTool.Pan)
             tool = EditorTool.Move; // panning is the right mouse button
+        // Leaving the Brush with a painting open asks first (Discard / Keep Editing).
+        if (tool != EditorTool.Brush && Paint.IsActive)
+        {
+            _ = SwitchFromPaintAsync(tool);
+            return;
+        }
         if (ActiveTool != tool)
             ActiveTool = tool; // calls ExitPlacement
         else
             ExitPlacement();
+    }
+
+    private async System.Threading.Tasks.Task SwitchFromPaintAsync(EditorTool tool)
+    {
+        if (await Paint.ConfirmDiscardAsync())
+            SelectTool(tool);
+        else
+            OnPropertyChanged(nameof(ActiveTool)); // the toolbar shows the Brush again
     }
 
     public void ExitPlacement()
@@ -503,6 +529,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
     private void SetDocument(SceneDocument doc, IEnumerable<int>? selectIds)
     {
+        Paint?.Reset();
         Document = doc;
         _surfacePending.Clear();
         RestoreSurfaces(doc);

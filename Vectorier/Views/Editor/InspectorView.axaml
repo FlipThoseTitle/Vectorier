@@ -155,6 +155,13 @@
                                         <CheckBox Grid.Column="1" Content="X" IsChecked="{Binding FlipX}" />
                                         <CheckBox Grid.Column="2" Content="Y" IsChecked="{Binding FlipY}" />
                                     </Grid>
+                                    <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnEditImage"
+                                            ToolTip.Tip="Paint on this image with the Brush. With several images selected, they are merged into one first.">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Brush}" />
+                                            <TextBlock Text="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).EditImageText}" />
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
