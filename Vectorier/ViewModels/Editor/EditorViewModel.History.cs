@@ -359,7 +359,7 @@ public sealed partial class EditorViewModel
 
         if (element is ObjectElement obj && e.PropertyName == nameof(SceneElement.Name))
         {
-            obj.Reference = string.IsNullOrEmpty(obj.Name) ? null : _reader.ResolveDefinition(obj.Name);
+            obj.Reference = SafeReference(obj.Name);
             ElementChanged?.Invoke(element, e.PropertyName);
             StructureChanged?.Invoke();
             MarkChanged();

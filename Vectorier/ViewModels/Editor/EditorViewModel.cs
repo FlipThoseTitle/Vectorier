@@ -476,7 +476,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         foreach (var element in Document.AllElements())
         {
             if (element is ObjectElement obj)
-                obj.Reference = string.IsNullOrEmpty(obj.Name) ? null : _reader.ResolveDefinition(obj.Name);
+                obj.Reference = SafeReference(obj.Name);
         }
     }
 
@@ -499,7 +499,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         bool changed = false;
         foreach (var obj in Document.AllElements().OfType<ObjectElement>().ToList())
         {
-            var definition = ResolveDefinitionName(obj.Name);
+            var definition = SafeReference(obj.Name);
             if (definition != null && obj.Reference == null && obj.Children.Count > 0)
             {
                 foreach (var child in obj.Children.ToList())

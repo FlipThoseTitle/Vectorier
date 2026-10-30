@@ -283,6 +283,24 @@ public sealed partial class EditorViewModel
         return false;
     }
 
+    /// <summary>
+    /// The definition an Object named <paramref name="name"/> links to, unless that would put the object being
+    /// edited inside itself (directly or through other objects): then null, and the Object shows as MISSING instead
+    /// of nesting forever.
+    /// </summary>
+    public ObjectDefinition? SafeReference(string? name)
+    {
+        var def = ResolveDefinitionName(name);
+        if (def == null || ObjectEdit == null)
+            return def;
+        if (def.Name == ObjectEdit.Name || ContainsDefinition(def, ObjectEdit.Name, 0))
+        {
+            StatusText = $"'{def.Name}' would contain '{ObjectEdit.Name}' inside itself: it is not linked (shown as MISSING).";
+            return null;
+        }
+        return def;
+    }
+
     private bool ContainsDefinition(ObjectDefinition def, string name, int depth)
     {
         if (depth > 16)

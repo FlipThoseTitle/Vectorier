@@ -572,6 +572,10 @@ public sealed partial class EditorViewModel
         }
         FixPastedCameras(pasted);
         FixPastedSpawns(pasted);
+        // Editing an object: a pasted instance of it (or of anything containing it) would nest it inside itself.
+        if (ObjectEdit != null)
+            foreach (var obj in pasted.SelectMany(SceneDocument.Walk).OfType<ObjectElement>().Where(o => o.Reference != null))
+                obj.Reference = SafeReference(obj.Name);
         pasted.RemoveAll(e => e.Parent == null && !Document.Roots.Contains(e));
         RaiseStructureChanged();
         MarkChanged();
