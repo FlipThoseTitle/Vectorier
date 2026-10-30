@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Vectorier.Models.Scene;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls.Scene;
 
@@ -52,8 +53,8 @@ public sealed partial class SceneView
             return false;
         }
         _editor.StatusText = platforms
-            ? "Platform snap: drag the selection by the highlighted corner onto a Platform (hold A to scale)."
-            : "Vertex snap: drag the selection by the highlighted corner onto another element (hold A to scale).";
+            ? Loc.T("Platform snap: drag the selection by the highlighted corner onto a Platform (hold A to scale).")
+            : Loc.T("Vertex snap: drag the selection by the highlighted corner onto another element (hold A to scale).");
         InvalidateVisual();
         return true;
     }
@@ -193,7 +194,7 @@ public sealed partial class SceneView
                 sy = Math.Abs(_scaleGrabDelta.Y) > 0.0001 ? (target.Y - _scaleFixed.Y) / _scaleGrabDelta.Y : 1;
             ScaleTargets(_scaleFixed, sx, sy, true);
             _snapSource = new Point(_scaleFixed.X + _scaleGrabDelta.X * sx, _scaleFixed.Y + _scaleGrabDelta.Y * sy);
-            _editor.StatusText = $"Scale snap {sx:0.###} × {sy:0.###}";
+            _editor.StatusText = Loc.F("Scale snap {0:0.###} × {1:0.###}", sx, sy);
         }
         else
         {

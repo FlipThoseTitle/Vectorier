@@ -10,6 +10,7 @@ using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -33,7 +34,7 @@ public sealed partial class LocationGroupItem : ObservableObject
 {
     public LocationGroupItem(string mode) => Mode = mode;
     public string Mode { get; }
-    public string Header => Mode == LocationListService.StoryMode ? "Story" : Mode == LocationListService.BonusMode ? "Bonus" : Mode;
+    public string Header => Mode == LocationListService.StoryMode ? Loc.T("Story") : Mode == LocationListService.BonusMode ? Loc.T("Bonus") : Mode;
     public ObservableCollection<LocationLevelItem> Levels { get; } = new();
 }
 
@@ -48,7 +49,7 @@ public sealed partial class LocationItemViewModel : ObservableObject
     public LocationData Location { get; }
     public int Order { get; }
     public string Name => Location.Name;
-    public string Header => $"{Order}. {Location.Name}";
+    public string Header => Loc.F("{0}. {1}", Order, Location.Name);
 
     [ObservableProperty] private bool _isExpanded = true;
     [ObservableProperty] private Bitmap? _thumbnail;
@@ -83,7 +84,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
     private bool _dirty;
     private bool _suppress;
 
-    public LocationsPageViewModel(ProjectManagerViewModel owner) : base(owner, "Locations", "Locations") { }
+    public LocationsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Locations"), "Locations") { }
 
     private LocationListService List => Owner.LocationList;
     private LocalizationService Localization => Owner.Localization;
@@ -212,7 +213,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
         await Task.Delay(300);
         _saveQueued = false;
         try { await List.SaveAsync(); }
-        catch (Exception ex) { await ShowErrorAsync("Save", ex); }
+        catch (Exception ex) { await ShowErrorAsync(Loc.T("Save"), ex); }
     }
 
     private async Task AfterStructureChangeAsync()
@@ -241,7 +242,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
         location.GetGroup(LocationListService.StoryMode);
         location.GetGroup(LocationListService.BonusMode);
         List.Locations.Add(location);
-        await RunAsync("New Location", AfterStructureChangeAsync);
+        await RunAsync(Loc.T("New Location"), AfterStructureChangeAsync);
         SelectedLocation = Items.FirstOrDefault(i => i.Name == name);
     }
 
@@ -252,12 +253,12 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
         if (item == null)
             return;
         int count = item.Location.AllLevels.Count();
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Location",
-                $"Delete '{item.Name}'{(count > 0 ? $" and its {count} level(s), including their XML files and thumbnails" : "")}?\nThis cannot be undone.",
-                "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Location"),
+                Loc.F("Delete '{0}'{1}?\nThis cannot be undone.", item.Name, (count > 0 ? $" and its {count} level(s), including their XML files and thumbnails" : "")),
+                Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunAsync("Delete Location", async () =>
+        await RunAsync(Loc.T("Delete Location"), async () =>
         {
             await Ops.DeleteLocationAsync(item.Location);
             SelectedLocation = null;
@@ -282,7 +283,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
             return;
         List.Locations.RemoveAt(index);
         List.Locations.Insert(target, item.Location);
-        await RunAsync("Reorder Location", AfterStructureChangeAsync);
+        await RunAsync(Loc.T("Reorder Location"), AfterStructureChangeAsync);
     }
 
     [RelayCommand]
@@ -299,11 +300,11 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
         }
         if (List.FindLocation(formatted) != null)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename Location", $"A location named '{formatted}' already exists.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename Location"), Loc.F("A location named '{0}' already exists.", formatted), MessageKind.Warning);
             EditName = item.Name;
             return;
         }
-        await RunAsync("Rename Location", async () =>
+        await RunAsync(Loc.T("Rename Location"), async () =>
         {
             await Ops.RenameLocationAsync(item.Location, formatted);
             await AfterStructureChangeAsync();
@@ -331,13 +332,13 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Location Image (1329 × 512 recommended)",
+            Title = Loc.T("Select Location Image (1329 × 512 recommended)"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Images")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
         });
         if (files.Count == 0)
             return;
-        await RunAsync("Thumbnail", async () =>
+        await RunAsync(Loc.T("Thumbnail"), async () =>
         {
             await Ops.DeleteImagesAsync(Ops.LocationsIconFolder, item.Name);
             string ext = VPath.GetExtension(files[0].Name).ToLowerInvariant();
@@ -353,7 +354,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
     /// <summary>Entries for the "+" menu of a group: a new level, then levels from other locations.</summary>
     public ObservableCollection<LevelPickEntry> GetAddEntries(LocationItemViewModel location, LocationGroupItem group)
     {
-        var list = new ObservableCollection<LevelPickEntry> { new("New Level", null, group.Mode) };
+        var list = new ObservableCollection<LevelPickEntry> { new(Loc.T("New Level"), null, group.Mode) };
         foreach (var other in List.Locations)
         {
             foreach (var level in other.AllLevels)
@@ -368,7 +369,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
 
     public async Task AddToGroupAsync(LocationItemViewModel location, LocationGroupItem group, LevelPickEntry entry)
     {
-        await RunAsync("Add Level", async () =>
+        await RunAsync(Loc.T("Add Level"), async () =>
         {
             string name;
             if (entry.Level == null)
@@ -387,12 +388,12 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
 
     public async Task RemoveFromGroupAsync(LocationLevelItem level)
     {
-        if (!await AppServices.Dialogs.ConfirmAsync("Remove Level",
-                $"Remove '{level.Name}' from {level.Owner.Name}?\nA level always belongs to a location, so it is deleted together with its XML file and thumbnail.\n\nTo keep it, add it to another location with that location's '+' button instead.",
-                "Delete Level", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Remove Level"),
+                Loc.F("Remove '{0}' from {1}?\nA level always belongs to a location, so it is deleted together with its XML file and thumbnail.\n\nTo keep it, add it to another location with that location's '+' button instead.", level.Name, level.Owner.Name),
+                Loc.T("Delete Level"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunAsync("Remove Level", async () =>
+        await RunAsync(Loc.T("Remove Level"), async () =>
         {
             await Ops.DeleteLevelAsync(level.Level);
             SelectedLevel = null;
@@ -403,7 +404,7 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
     public async Task MoveLevelAsync(LocationLevelItem level, int direction)
     {
         string? name = null;
-        await RunAsync("Reorder Level", async () =>
+        await RunAsync(Loc.T("Reorder Level"), async () =>
         {
             await Ops.MoveWithinGroupAsync(level.Level, direction);
             name = level.Level.Name;

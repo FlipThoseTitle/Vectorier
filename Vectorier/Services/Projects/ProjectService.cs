@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using Vectorier.Services.IO;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Projects;
 
@@ -204,7 +205,7 @@ public sealed class ProjectService
         string target = VPath.Combine(ProjectsFolder, newName);
         bool caseOnly = string.Equals(project.Name, newName, StringComparison.OrdinalIgnoreCase);
         if (!caseOnly && await _fs.DirectoryExistsAsync(target))
-            throw new InvalidOperationException($"A project named '{newName}' already exists.");
+            throw new InvalidOperationException(Loc.F("A project named '{0}' already exists.", newName));
 
         await _fs.MoveDirectoryAsync(project.Path, target);
         return GetProject(newName);

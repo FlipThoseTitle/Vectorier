@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls;
 
@@ -42,7 +43,7 @@ public sealed class HunterModeLabelConverter : IValueConverter
     public static readonly HunterModeLabelConverter Instance = new();
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is true ? "Hunter Mode Settings" : "Common Mode Settings";
+        => value is true ? Loc.T("Hunter Mode Settings") : Loc.T("Common Mode Settings");
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

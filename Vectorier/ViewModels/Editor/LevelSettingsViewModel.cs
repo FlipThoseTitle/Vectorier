@@ -11,6 +11,7 @@ using Vectorier.Services;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -122,7 +123,7 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
     public int Type { get => Num.ParseInt(Get("Type")); set => Set("Type", value.ToString(), keepEmpty: true); }
 
     /// <summary>Type shown by name: 0 is AI, 1 is Player.</summary>
-    public static IReadOnlyList<string> TypeNames { get; } = new[] { "AI (0)", "Player (1)" };
+    public static IReadOnlyList<string> TypeNames => new[] { Loc.T("AI (0)"), Loc.T("Player (1)") };
 
     public int TypeIndex
     {
@@ -176,7 +177,7 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
         set => Set("AI", Math.Max(0, value).ToString(), keepEmpty: true);
     }
 
-    public static IReadOnlyList<string> AiModes { get; } = new[] { "Player (0)", "Hunter (1)", "Custom" };
+    public static IReadOnlyList<string> AiModes => new[] { Loc.T("Player (0)"), Loc.T("Hunter (1)"), Loc.T("Custom") };
 
     public int AiMode
     {
@@ -284,7 +285,7 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
     public bool Lose { get => GetFlag("Lose"); set => SetFlag("Lose", value); }
     public bool Icon { get => GetFlag("Icon"); set => SetFlag("Icon", value); }
 
-    public string Summary => string.IsNullOrEmpty(Name) ? "(unnamed)" : Name;
+    public string Summary => string.IsNullOrEmpty(Name) ? Loc.T("(unnamed)") : Name;
 
     /// <summary>Plays run.bin in a loop on models/0.xml + this model's skins (1.xml when it has none).</summary>
     [RelayCommand]
@@ -292,7 +293,7 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
     {
         if (Owner == null)
             return;
-        await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Owner.Project, $"Preview - {Summary}",
+        await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Owner.Project, Loc.F("Preview - {0}", Summary),
             Services.Assets.CharacterModel.SkinsFrom(Skins),
             ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(Owner.Project, ViewModels.Preview.CharacterPreviewViewModel.RunAnimation),
             ViewModels.Preview.PreviewCamera.FixedOnPivot);
@@ -318,7 +319,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         _editor = editor;
         _settings = settings;
         IsObjectMode = editor.IsEditingObject;
-        Title = IsObjectMode ? $"Object Settings - {editor.ObjectEdit!.Name}" : $"Level Settings - {editor.Document.LevelName}";
+        Title = IsObjectMode ? Loc.F("Object Settings - {0}", editor.ObjectEdit!.Name) : Loc.F("Level Settings - {0}", editor.Document.LevelName);
 
         SpawnNames = editor.Document.AllElements().OfType<SpawnElement>().Select(sp => sp.Name)
             .Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
@@ -370,7 +371,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
             .FirstOrDefault(f => string.Equals(VPath.GetFileNameWithoutExtension(f), name, StringComparison.OrdinalIgnoreCase));
         if (path == null)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Music Preview", $"'{name}' was not found in the project's music folder.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Music Preview"), Loc.F("'{0}' was not found in the project's music folder.", name), MessageKind.Warning);
             return;
         }
         int version = ++_playVersion;
@@ -435,7 +436,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
     private bool _isHunterMode;
 
     public ObservableCollection<ModelDefinitionViewModel> CurrentModels => IsHunterMode ? HunterModels : CommonModels;
-    public string ModeTitle => IsHunterMode ? "Hunter Mode Models" : "Common Mode Models";
+    public string ModeTitle => IsHunterMode ? Loc.T("Hunter Mode Models") : Loc.T("Common Mode Models");
 
     partial void OnIsHunterModeChanged(bool value)
     {
@@ -499,7 +500,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         try
         {
             Thumbnail = await Thumbnails.LoadAsync(512);
-            ThumbnailStatus = Thumbnail == null ? "No thumbnail yet" : string.Empty;
+            ThumbnailStatus = Thumbnail == null ? Loc.T("No thumbnail yet") : string.Empty;
         }
         catch
         {
@@ -515,9 +516,9 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Select Level Thumbnail (512 × 340 recommended)",
+            Title = Loc.T("Select Level Thumbnail (512 × 340 recommended)"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType(Loc.T("Images")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
         });
         if (files.Count == 0)
             return;
@@ -528,7 +529,7 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Thumbnail", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Thumbnail"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -621,9 +622,9 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
     [RelayCommand]
     private async Task ResetModelsAsync()
     {
-        bool ok = await AppServices.Dialogs.ConfirmAsync("Default Models",
-            "Replace the models of both Common Mode and Hunter Mode with the default Player and Hunter?\nEvery model you configured in this level is removed.",
-            "Use Defaults", "Cancel", MessageKind.Warning);
+        bool ok = await AppServices.Dialogs.ConfirmAsync(Loc.T("Default Models"),
+            Loc.T("Replace the models of both Common Mode and Hunter Mode with the default Player and Hunter?\nEvery model you configured in this level is removed."),
+            Loc.T("Use Defaults"), Loc.T("Cancel"), MessageKind.Warning);
         if (!ok)
             return;
         CommonModels.Clear();

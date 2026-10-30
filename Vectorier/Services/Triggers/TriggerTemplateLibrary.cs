@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Services.IO;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Triggers
 {
@@ -43,11 +44,13 @@ namespace Vectorier.Services.Triggers
             public List<BlockRef> refs = new List<BlockRef>();
             internal XmlElement? el;
             List<string>? when, onlyIf, doLines;
+            string? linesLanguage;
 
             // built lazily, nested templates make these slow to describe
             public List<string> Lines(Section s)
             {
                 if (owner == null || el == null) return new List<string>();
+                if (linesLanguage != Loc.CurrentCode) { when = onlyIf = doLines = null; linesLanguage = Loc.CurrentCode; }
                 switch (s)
                 {
                     case Section.When: return when ??= owner.DescribeWhen(el, 0);
@@ -226,7 +229,7 @@ namespace Vectorier.Services.Triggers
             {
                 if (kids[0].GetAttribute("Type") == "Or")
                 {
-                    o.Add("Any of these:");
+                    o.Add(Loc.T("Any of these:"));
                     CondLines(kids[0], o, Indent, depth);
                 }
                 else CondLines(kids[0], o, "", depth);
@@ -245,12 +248,13 @@ namespace Vectorier.Services.Triggers
                         Expand(o, e.GetAttribute("Template"), Section.OnlyIf, depth, ind);
                         break;
                     case "Operator":
-                        o.Add(ind + (e.GetAttribute("Type") == "Or" ? "Any of these:" : "All of these:"));
+                        o.Add(ind + (e.GetAttribute("Type") == "Or" ? Loc.T("Any of these:") : Loc.T("All of these:")));
                         CondLines(e, o, ind + Indent, depth);
                         break;
                     case "Select":
-                        o.Add(ind + "For each " + Pretty(e.GetAttribute("Object")) + " in " + Pretty(e.GetAttribute("From")) +
-                              (e.GetAttribute("Not") == "1" ? ", none of them may match:" : ":"));
+                        o.Add(ind + (e.GetAttribute("Not") == "1"
+                            ? Loc.F("For each {0} in {1}, none of them may match:", Pretty(e.GetAttribute("Object")), Pretty(e.GetAttribute("From")))
+                            : Loc.F("For each {0} in {1}:", Pretty(e.GetAttribute("Object")), Pretty(e.GetAttribute("From")))));
                         CondLines(e, o, ind + Indent, depth);
                         break;
                     case "Equal":
@@ -271,7 +275,8 @@ namespace Vectorier.Services.Triggers
             if (e.HasAttribute("Value1") || e.HasAttribute("Value2")) { a = e.GetAttribute("Value1"); b = e.GetAttribute("Value2"); }
             else { a = e.GetAttribute("Value"); b = e.GetAttribute("Than"); }
             string verb = e.Name == "Greater" ? "greater than" : e.Name == "Less" ? "less than" : "equal to";
-            return Pretty(a) + (e.GetAttribute("Not") == "1" ? " is not " : " is ") + verb + " " + Pretty(b);
+            verb = Loc.T((e.GetAttribute("Not") == "1" ? "is not " : "is ") + verb);
+            return Pretty(a) + " " + verb + " " + Pretty(b);
         }
 
         internal List<string> DescribeDo(XmlElement le, int depth)
@@ -303,9 +308,9 @@ namespace Vectorier.Services.Triggers
             {
                 string order = e.GetAttribute("Order");
                 string set = e.GetAttribute("Set");
-                string head = order == "Sync" ? "All at the same time:"
-                            : order == "Random" ? "Pick " + (string.IsNullOrEmpty(set) ? "1" : set) + " at random:"
-                            : "One after another:";
+                string head = order == "Sync" ? Loc.T("All at the same time:")
+                            : order == "Random" ? Loc.F("Pick {0} at random:", string.IsNullOrEmpty(set) ? "1" : set)
+                            : Loc.T("One after another:");
                 o.Add(ind + head);
                 foreach (var k in Kids(e)) ActLine(k, o, ind + Indent, depth);
                 return;
@@ -319,8 +324,8 @@ namespace Vectorier.Services.Triggers
         {
             if (string.IsNullOrEmpty(full)) return;
             var l = Find(full);
-            if (l == null || l.el == null) { o.Add(ind + "Template " + full + " (not found)"); return; }
-            if (depth >= MaxDepth) { o.Add(ind + "Template " + full); return; }
+            if (l == null || l.el == null) { o.Add(ind + Loc.F("Template {0} (not found)", full)); return; }
+            if (depth >= MaxDepth) { o.Add(ind + Loc.F("Template {0}", full)); return; }
             List<string> lines = s == Section.When ? DescribeWhen(l.el, depth + 1)
                                : s == Section.OnlyIf ? DescribeOnlyIf(l.el, depth + 1)
                                : DescribeDo(l.el, depth + 1);
@@ -330,14 +335,14 @@ namespace Vectorier.Services.Triggers
         // e.g. Force Animation  (Animation: RunForward, On model: {$Model})
         private static string EntryLine(EntryDef? def, XmlElement e)
         {
-            string title = def != null ? def.title : e.Name;
+            string title = def != null ? Loc.T(def.title) : e.Name;
             var parts = new List<string>();
             var done = new HashSet<string>();
             if (def != null)
                 foreach (var pd in def.ps)
                     if (e.HasAttribute(pd.attr))
                     {
-                        parts.Add(pd.label + ": " + Pretty(e.GetAttribute(pd.attr)));
+                        parts.Add(Loc.T(pd.label) + ": " + Pretty(e.GetAttribute(pd.attr)));
                         done.Add(pd.attr);
                     }
             foreach (XmlAttribute a in e.Attributes)
@@ -352,9 +357,9 @@ namespace Vectorier.Services.Triggers
             switch (v.mode)
             {
                 case ValueMode.Variable: return "{" + v.varName + "}";
-                case ValueMode.ModelProp: return Ref(v.modelIsVar, v.model) + "'s " + v.prop;
-                case ValueMode.NodePos: return Ref(v.modelIsVar, v.model) + "'s " + Ref(v.nodeIsVar, v.node) + " " + v.coord;
-                default: return string.IsNullOrEmpty(v.text) ? "(empty)" : v.text;
+                case ValueMode.ModelProp: return Loc.F("{0}'s {1}", Ref(v.modelIsVar, v.model), v.prop);
+                case ValueMode.NodePos: return Loc.F("{0}'s {1}", Ref(v.modelIsVar, v.model), Ref(v.nodeIsVar, v.node) + " " + v.coord);
+                default: return string.IsNullOrEmpty(v.text) ? Loc.T("(empty)") : v.text;
             }
         }
 

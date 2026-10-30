@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Input;
 using Vectorier.Models.Scene;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls.Scene;
 
@@ -798,7 +799,7 @@ public sealed partial class SceneView
                     angle = Math.Round(angle / step) * step;
                 }
                 RotateTargets(angle);
-                _editor.StatusText = $"Rotate {-angle * 180 / Math.PI:0.##}°";
+                _editor.StatusText = Loc.F("Rotate {0:0.##}°", -angle * 180 / Math.PI);
                 break;
             }
 
@@ -816,7 +817,7 @@ public sealed partial class SceneView
                     (sx, sy) = GizmoScale(pos);
                     if (!ScaleLocal(sx, sy))
                         ScaleTargets(_pivotScreen, sx, sy, ctrl);
-                    _editor.StatusText = $"Scale {sx:0.###} × {sy:0.###}";
+                    _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
                     break;
                 }
                 if (_axis == 'X') sy = 1;
@@ -827,7 +828,7 @@ public sealed partial class SceneView
                     sy = Math.Abs(d0.Y) > 2 ? Math.Abs(d1.Y / d0.Y) : 1;
                 }
                 ScaleTargets(_pivotScreen, sx, sy, ctrl);
-                _editor.StatusText = $"Scale {sx:0.###} × {sy:0.###}";
+                _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
                 break;
             }
 
@@ -1052,9 +1053,9 @@ public sealed partial class SceneView
         _mode = key switch { 'G' => InteractionMode.ModalMove, 'R' => InteractionMode.ModalRotate, _ => InteractionMode.ModalScale };
         _editor.StatusText = key switch
         {
-            'G' => "Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)",
-            'R' => "Rotate: click to confirm, right click or Esc to cancel (Ctrl snaps 15°)",
-            _ => "Scale: click to confirm, right click or Esc to cancel (X / Y lock an axis)",
+            'G' => Loc.T("Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)"),
+            'R' => Loc.T("Rotate: click to confirm, right click or Esc to cancel (Ctrl snaps 15°)"),
+            _ => Loc.T("Scale: click to confirm, right click or Esc to cancel (X / Y lock an axis)"),
         };
         InvalidateVisual();
         return true;
@@ -1071,7 +1072,7 @@ public sealed partial class SceneView
         _memento = new TransformMemento(_targets);
         _pressScreen = pos;
         _mode = InteractionMode.Stamp;
-        _editor.StatusText = "Keep Alt held and click to place more copies; release Alt to stop.";
+        _editor.StatusText = Loc.T("Keep Alt held and click to place more copies; release Alt to stop.");
     }
 
     private void FinishGesture()
@@ -1094,7 +1095,7 @@ public sealed partial class SceneView
             _memento = null;
             _axis = '\0';
             _editor.CancelGesture();
-            _editor.StatusText = "Cancelled";
+            _editor.StatusText = Loc.T("Cancelled");
             InvalidateVisual();
             return true;
         }

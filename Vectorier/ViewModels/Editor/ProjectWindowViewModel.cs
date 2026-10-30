@@ -19,6 +19,7 @@ using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.Services.Xml;
 using Vectorier.ViewModels.ProjectManager;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -66,6 +67,9 @@ public sealed partial class PwFolder : ObservableObject
 
     public bool IsUnorganized { get; }
 
+    /// <summary>Name shown in the folder list ("All" / "Unorganized" are translated).</summary>
+    public string DisplayName => IsUnorganized ? Loc.T(Name) : Name;
+
     public bool IsFile => FileName != null;
 
     public bool IsUserFolder => !IsUnorganized && FileName == null;
@@ -77,7 +81,7 @@ public sealed partial class PwFolder : ObservableObject
     [NotifyPropertyChangedFor(nameof(TypeBadge), nameof(HasTypeBadge))]
     private bool? _isBuilding;
 
-    public string TypeBadge => IsBuilding == true ? "Building" : "Object";
+    public string TypeBadge => IsBuilding == true ? Loc.T("Building") : Loc.T("Object");
     public bool HasTypeBadge => IsFile && IsBuilding != null;
 }
 
@@ -214,7 +218,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     [ObservableProperty] private PwItem? _selectedItem;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private string _header = "Project";
+    [ObservableProperty] private string _header = Loc.T("Project");
     [ObservableProperty] private double _tileSize = 96;
 
     public bool ShowsFolders => Context is PwContext.Objects or PwContext.Textures or PwContext.Triggers or PwContext.Areas or PwContext.Models;
@@ -230,25 +234,25 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     /// <summary>Image / Animation / Particle and Model assets can be imported into the project (not Objects).</summary>
     public bool CanImport => Context is PwContext.Textures or PwContext.Models;
 
-    public string ImportLabel => Context == PwContext.Models ? "Import Models..." : "Import Textures...";
+    public string ImportLabel => Context == PwContext.Models ? Loc.T("Import Models...") : Loc.T("Import Textures...");
 
     public string EmptyText => Context switch
     {
         PwContext.None => _elementType switch
         {
-            ElementType.Platform => "Click in the Scene to add a 100 × 100 Platform, or drag to size it.",
-            ElementType.Trapezoid => "Click in the Scene to add a Trapezoid. Resizing keeps the 26.565° slope; hold Ctrl to size freely.",
-            ElementType.Camera => "Click in the Scene to add a Camera (one per game mode).",
-            ElementType.Spawn => "Click in the Scene to add a Spawn.",
-            ElementType.Comment => "Click in the Scene to add a Comment, or drag to size it. Its text is its name.",
+            ElementType.Platform => Loc.T("Click in the Scene to add a 100 × 100 Platform, or drag to size it."),
+            ElementType.Trapezoid => Loc.T("Click in the Scene to add a Trapezoid. Resizing keeps the 26.565° slope; hold Ctrl to size freely."),
+            ElementType.Camera => Loc.T("Click in the Scene to add a Camera (one per game mode)."),
+            ElementType.Spawn => Loc.T("Click in the Scene to add a Spawn."),
+            ElementType.Comment => Loc.T("Click in the Scene to add a Comment, or drag to size it. Its text is its name."),
             _ => string.Empty,
         },
-        PwContext.Objects => HasMultipleFolders ? "Several files are selected: drag them to reorder, or press Delete to remove them."
-            : SelectedFolder == null ? "Select an XML file on the left." : "This file has no objects. Drag elements from the Hierarchy here to save them.",
-        PwContext.Textures => "No textures here. Drag images or folders from your file explorer to import them.",
-        PwContext.Triggers => "Drag a Trigger from the Hierarchy here to keep it for later. Click in the Scene to add a generic Trigger.",
-        PwContext.Areas => "Drag an Area from the Hierarchy here to keep it for later. Click in the Scene to add a generic Area.",
-        PwContext.Models => "No model files in this folder.",
+        PwContext.Objects => HasMultipleFolders ? Loc.T("Several files are selected: drag them to reorder, or press Delete to remove them.")
+            : SelectedFolder == null ? Loc.T("Select an XML file on the left.") : Loc.T("This file has no objects. Drag elements from the Hierarchy here to save them."),
+        PwContext.Textures => Loc.T("No textures here. Drag images or folders from your file explorer to import them."),
+        PwContext.Triggers => Loc.T("Drag a Trigger from the Hierarchy here to keep it for later. Click in the Scene to add a generic Trigger."),
+        PwContext.Areas => Loc.T("Drag an Area from the Hierarchy here to keep it for later. Click in the Scene to add a generic Area."),
+        PwContext.Models => Loc.T("No model files in this folder."),
         _ => string.Empty,
     };
 
@@ -447,7 +451,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             // Several assets are for organizing (folders, delete): nothing is placed, no preview follows the cursor.
             if (_editor.PlacementType == _elementType)
                 _editor.PlacementType = null;
-            _editor.StatusText = $"{_selectedItems.Count} items selected";
+            _editor.StatusText = Loc.F("{0} items selected", _selectedItems.Count);
             return;
         }
 
@@ -456,7 +460,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         if (Context == PwContext.Models && !newValue.CanPlace)
         {
             _editor.PlacementType = null;
-            _editor.StatusText = $"{newValue.Label} cannot be rendered, so it cannot be placed.";
+            _editor.StatusText = Loc.F("{0} cannot be rendered, so it cannot be placed.", newValue.Label);
             return;
         }
         // Picking an asset arms placement: the next click in the Scene creates it.
@@ -481,15 +485,15 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         };
         Header = type switch
         {
-            ElementType.Object => "Objects",
-            ElementType.Image => "Images",
-            ElementType.Animation => "Animations",
-            ElementType.Particle => "Particles",
-            ElementType.Trigger => "Triggers",
-            ElementType.Area => "Areas",
-            ElementType.Model => "Models",
-            ElementType.Item => "Items",
-            ElementType.Platform => "Platforms",
+            ElementType.Object => Loc.T("Objects"),
+            ElementType.Image => Loc.T("Images"),
+            ElementType.Animation => Loc.T("Animations"),
+            ElementType.Particle => Loc.T("Particles"),
+            ElementType.Trigger => Loc.T("Triggers"),
+            ElementType.Area => Loc.T("Areas"),
+            ElementType.Model => Loc.T("Models"),
+            ElementType.Item => Loc.T("Items"),
+            ElementType.Platform => Loc.T("Platforms"),
             _ => type.ToString(),
         };
 
@@ -543,7 +547,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _editor.StatusText = "Project Window: " + ex.Message;
+            _editor.StatusText = Loc.T("Project Window: ") + ex.Message;
         }
         finally
         {
@@ -664,7 +668,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     // Objects that contain themselves are loaded without the self-reference (see SceneXmlReader).
                     var cyclic = items.Where(i => SceneXmlReader.CyclicReferences.ContainsKey(i.Label)).Select(i => i.Label).ToList();
                     if (cyclic.Count > 0)
-                        _editor.StatusText = $"Skipped a reference to itself inside: {string.Join(", ", cyclic)} (it would nest forever).";
+                        _editor.StatusText = Loc.F("Skipped a reference to itself inside: {0} (it would nest forever).", string.Join(", ", cyclic));
                     break;
                 }
                 case PwContext.Textures:
@@ -710,7 +714,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _editor.StatusText = "Project Window: " + ex.Message;
+            _editor.StatusText = Loc.T("Project Window: ") + ex.Message;
         }
 
         if (version != _loadVersion)
@@ -824,12 +828,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         var model = await Assets.Models.GetAsync(item.ModelName);
         if (model == null)
         {
-            item.Status = "Could not be read";
+            item.Status = Loc.T("Could not be read");
             return;
         }
         if (!model.IsSelfContained)
         {
-            item.Status = "Not rendered: references outside the file (" + string.Join(", ", model.MissingReferences.Take(3)) + ")";
+            item.Status = Loc.T("Not rendered: references outside the file (") + string.Join(", ", model.MissingReferences.Take(3)) + ")";
             return;
         }
         try
@@ -845,7 +849,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            item.Status = "Not rendered: " + ex.Message;
+            item.Status = Loc.T("Not rendered: ") + ex.Message;
         }
     }
 
@@ -862,10 +866,10 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         if (!CanCreateFolder)
             return;
         string key = CacheKey;
-        string? name = await AppServices.Dialogs.PromptAsync("New Folder", "Folder name:", Cache.UniqueFolderName(key, "New Folder"),
-            text => string.IsNullOrWhiteSpace(text) ? "Enter a name." :
-                Cache.GetFolders(key).Any(f => string.Equals(f.Name, text.Trim(), StringComparison.OrdinalIgnoreCase)) ? "A folder with this name already exists." :
-                text.Trim() is "Unorganized" or "All" ? "This name is reserved." : null);
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("New Folder"), Loc.T("Folder name:"), Cache.UniqueFolderName(key, "New Folder"),
+            text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.") :
+                Cache.GetFolders(key).Any(f => string.Equals(f.Name, text.Trim(), StringComparison.OrdinalIgnoreCase)) ? Loc.T("A folder with this name already exists.") :
+                text.Trim() is "Unorganized" or "All" ? Loc.T("This name is reserved.") : null);
         if (name == null)
             return;
         Cache.GetFolders(key).Add(new CacheFolder { Name = name });
@@ -891,13 +895,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     private async Task CreateObjectFileAsync()
     {
         var existing = (await ObjectFilesAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        string? input = await AppServices.Dialogs.PromptAsync("New Object XML File", "Name (e.g. \"my cool object\" is saved as my_cool_object.xml in xmlroot):", "new objects",
+        string? input = await AppServices.Dialogs.PromptAsync(Loc.T("New Object XML File"), Loc.T("Name (e.g. \"my cool object\" is saved as my_cool_object.xml in xmlroot):"), "new objects",
             text =>
             {
-                if (string.IsNullOrWhiteSpace(text)) return "Enter a name.";
+                if (string.IsNullOrWhiteSpace(text)) return Loc.T("Enter a name.");
                 string file = MakeObjectFileName(text);
-                if (file == ".xml") return "Use letters or numbers.";
-                if (string.Equals(file, "TriggerTemplates.xml", StringComparison.OrdinalIgnoreCase)) return "This name is reserved.";
+                if (file == ".xml") return Loc.T("Use letters or numbers.");
+                if (string.Equals(file, "TriggerTemplates.xml", StringComparison.OrdinalIgnoreCase)) return Loc.T("This name is reserved.");
                 return existing.Contains(file) ? $"{file} already exists." : null;
             });
         if (input == null)
@@ -916,10 +920,10 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         if (folder == null || !folder.IsUserFolder)
             return;
         string key = CacheKey;
-        string? name = await AppServices.Dialogs.PromptAsync("Rename Folder", "Folder name:", folder.Name,
-            text => string.IsNullOrWhiteSpace(text) ? "Enter a name." :
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Folder"), Loc.T("Folder name:"), folder.Name,
+            text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.") :
                 !string.Equals(text.Trim(), folder.Name, StringComparison.OrdinalIgnoreCase) &&
-                Cache.GetFolders(key).Any(f => string.Equals(f.Name, text.Trim(), StringComparison.OrdinalIgnoreCase)) ? "A folder with this name already exists." : null);
+                Cache.GetFolders(key).Any(f => string.Equals(f.Name, text.Trim(), StringComparison.OrdinalIgnoreCase)) ? Loc.T("A folder with this name already exists.") : null);
         if (name == null)
             return;
         var cached = Cache.GetFolders(key).FirstOrDefault(f => f.Name == folder.Name);
@@ -948,13 +952,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             {
                 if (_editor.ObjectEdit is { } edit && files.Contains(edit.File, StringComparer.OrdinalIgnoreCase))
                 {
-                    await AppServices.Dialogs.ShowMessageAsync("Delete Object XML", $"{edit.File} is open in the Object tab. Return to the Scene tab first.", MessageKind.Info);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete Object XML"), Loc.F("{0} is open in the Object tab. Return to the Scene tab first.", edit.File), MessageKind.Info);
                     return;
                 }
                 string list = files.Count == 1 ? files[0] : $"{files.Count} files ({string.Join(", ", files.Take(4))}{(files.Count > 4 ? ", ..." : "")})";
-                if (!await AppServices.Dialogs.ConfirmAsync("Delete Object XML",
-                        $"Delete {list} from xmlroot?\n\nThis cannot be undone. Objects of {(files.Count == 1 ? "this file" : "these files")} used in levels will show as MISSING.",
-                        "Delete", "Cancel", MessageKind.Warning))
+                if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Object XML"),
+                        Loc.F("Delete {0} from xmlroot?\n\nThis cannot be undone. Objects of {1} used in levels will show as MISSING.", list, (files.Count == 1 ? "this file" : "these files")),
+                        Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
                     return;
                 foreach (var file in files)
                 {
@@ -963,14 +967,14 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 }
                 await Cache.SaveAsync();
                 await _editor.RefreshDefinitionsAsync(files);
-                _editor.StatusText = $"Deleted {string.Join(", ", files)}";
+                _editor.StatusText = Loc.F("Deleted {0}", string.Join(", ", files));
                 await ReloadAsync();
                 return;
             }
             if (userFolders.Count == 0)
                 return;
             string names = userFolders.Count == 1 ? $"the folder '{userFolders[0].Name}'" : $"{userFolders.Count} folders";
-            if (!await AppServices.Dialogs.ConfirmAsync("Delete Folder", $"Delete {names}? Their items move to Unorganized; no files are deleted.", "Delete"))
+            if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Folder"), Loc.F("Delete {0}? Their items move to Unorganized; no files are deleted.", names), Loc.T("Delete")))
                 return;
             var removed = userFolders.Select(f => f.Name).ToHashSet();
             Cache.GetFolders(CacheKey).RemoveAll(f => removed.Contains(f.Name));
@@ -979,7 +983,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Delete", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -1065,9 +1069,9 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 case PwContext.Textures when item.Texture != null:
                 {
                     var entry = item.Texture;
-                    string? name = await AppServices.Dialogs.PromptAsync("Rename Texture", "Texture name:", entry.Name,
-                        text => string.IsNullOrWhiteSpace(text) ? "Enter a name." :
-                            text.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || text.Contains('/') ? "The name contains invalid characters." : null);
+                    string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Texture"), Loc.T("Texture name:"), entry.Name,
+                        text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.") :
+                            text.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || text.Contains('/') ? Loc.T("The name contains invalid characters.") : null);
                     if (name == null || name == entry.Name)
                         return;
                     string? folder = Cache.FolderOf(TexturesKey, entry.FileName);
@@ -1078,12 +1082,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         Cache.AssignToFolder(TexturesKey, name + entry.Extension, folder);
                         await Cache.SaveAsync();
                     }
-                    _editor.StatusText = $"Renamed {entry.Name} to {name}. Levels using the old name are not changed.";
+                    _editor.StatusText = Loc.F("Renamed {0} to {1}. Levels using the old name are not changed.", entry.Name, name);
                     break;
                 }
                 case PwContext.Triggers when item.Trigger != null:
                 {
-                    string? name = await AppServices.Dialogs.PromptAsync("Rename Trigger", "Name:", item.Trigger.Name, t => string.IsNullOrWhiteSpace(t) ? "Enter a name." : null);
+                    string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Trigger"), Loc.T("Name:"), item.Trigger.Name, t => string.IsNullOrWhiteSpace(t) ? Loc.T("Enter a name.") : null);
                     if (name == null) return;
                     item.Trigger.Name = name;
                     await Cache.SaveAsync();
@@ -1091,7 +1095,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 }
                 case PwContext.Areas when item.Area != null:
                 {
-                    string? name = await AppServices.Dialogs.PromptAsync("Rename Area", "Name:", item.Area.Name, t => string.IsNullOrWhiteSpace(t) ? "Enter a name." : null);
+                    string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Area"), Loc.T("Name:"), item.Area.Name, t => string.IsNullOrWhiteSpace(t) ? Loc.T("Enter a name.") : null);
                     if (name == null) return;
                     item.Area.Name = name;
                     await Cache.SaveAsync();
@@ -1104,7 +1108,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -1134,13 +1138,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     var deletable = items.Where(i => i.Texture != null && !TextureLibrary.IsProtected(i.Texture)).ToList();
                     if (deletable.Count == 0)
                     {
-                        await AppServices.Dialogs.ShowMessageAsync("Delete Texture", "The selected textures are required by the game and cannot be deleted.", MessageKind.Warning);
+                        await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete Texture"), Loc.T("The selected textures are required by the game and cannot be deleted."), MessageKind.Warning);
                         return;
                     }
                     string kept = deletable.Count < items.Count ? $"\n({items.Count - deletable.Count} texture(s) required by the game are kept.)" : "";
-                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Texture",
-                            $"Delete {ListNames(deletable.Select(d => d.Texture!.FileName).ToList())} from the project? Levels using them will show them as missing.{kept}",
-                            "Delete", kind: MessageKind.Warning))
+                    if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Texture"),
+                            Loc.F("Delete {0} from the project? Levels using them will show them as missing.{1}", ListNames(deletable.Select(d => d.Texture!.FileName).ToList()), kept),
+                            Loc.T("Delete"), kind: MessageKind.Warning))
                         return;
                     foreach (var item in deletable)
                     {
@@ -1151,8 +1155,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 }
                 case PwContext.Triggers or PwContext.Areas:
                 {
-                    if (!await AppServices.Dialogs.ConfirmAsync(Context == PwContext.Triggers ? "Delete Trigger" : "Delete Area",
-                            $"Remove {ListNames(items.Select(i => i.Label).ToList())} from the Project Window?", "Delete", kind: MessageKind.Warning))
+                    if (!await AppServices.Dialogs.ConfirmAsync(Context == PwContext.Triggers ? Loc.T("Delete Trigger") : Loc.T("Delete Area"),
+                            Loc.F("Remove {0} from the Project Window?", ListNames(items.Select(i => i.Label).ToList())), Loc.T("Delete"), kind: MessageKind.Warning))
                         return;
                     foreach (var item in items)
                     {
@@ -1174,24 +1178,24 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     var names = items.Where(i => i.Definition != null).Select(i => i.Definition!.Name).ToList();
                     if (_editor.ObjectEdit is { } edit && string.Equals(edit.File, file, StringComparison.OrdinalIgnoreCase) && names.Contains(edit.Name))
                     {
-                        await AppServices.Dialogs.ShowMessageAsync("Delete Object", $"'{edit.Name}' is open in the Object tab. Return to the Scene tab first.", MessageKind.Info);
+                        await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete Object"), Loc.F("'{0}' is open in the Object tab. Return to the Scene tab first.", edit.Name), MessageKind.Info);
                         return;
                     }
-                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Object",
-                            $"Remove {ListNames(names)} from {file}?\n\nLevels that use {(names.Count == 1 ? "it" : "them")} will show {(names.Count == 1 ? "it" : "them")} as MISSING.",
-                            "Delete", kind: MessageKind.Warning))
+                    if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Object"),
+                            Loc.F("Remove {0} from {1}?\n\nLevels that use {2} will show {3} as MISSING.", ListNames(names), file, (names.Count == 1 ? "it" : "them"), (names.Count == 1 ? "it" : "them")),
+                            Loc.T("Delete"), kind: MessageKind.Warning))
                         return;
                     await RemoveDefinitionsAsync(file, names);
                     await _editor.RefreshDefinitionsAsync(new[] { file });
-                    _editor.StatusText = $"Removed {ListNames(names)} from {file}";
+                    _editor.StatusText = Loc.F("Removed {0} from {1}", ListNames(names), file);
                     break;
                 }
                 case PwContext.Models:
                 {
                     var names = items.Where(i => i.ModelName != null).Select(i => i.ModelName!).ToList();
-                    if (!await AppServices.Dialogs.ConfirmAsync("Delete Model",
-                            $"Delete {ListNames(names.Select(n => n + ".xml").ToList())} (and the model folder of the same name, if any) from the project? Levels using them will show them as missing.",
-                            "Delete", kind: MessageKind.Warning))
+                    if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Model"),
+                            Loc.F("Delete {0} (and the model folder of the same name, if any) from the project? Levels using them will show them as missing.", ListNames(names.Select(n => n + ".xml").ToList())),
+                            Loc.T("Delete"), kind: MessageKind.Warning))
                         return;
                     foreach (var name in names)
                     {
@@ -1204,7 +1208,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         Assets.Models.Invalidate(name);
                         Cache.AssignToFolder(ModelsKey, name, null);
                     }
-                    _editor.StatusText = $"Deleted {ListNames(names)}";
+                    _editor.StatusText = Loc.F("Deleted {0}", ListNames(names));
                     break;
                 }
                 default:
@@ -1215,7 +1219,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Delete", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -1229,12 +1233,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             return;
         bool models = Context == PwContext.Models;
         var dialog = models
-            ? new ViewModels.Dialogs.ImportDialogViewModel("Import Models",
-                "Model XML files, with their folder (a folder of the same name). Folders holding model XML files import everything in them.",
-                "Model XML", new[] { "*.xml" })
-            : new ViewModels.Dialogs.ImportDialogViewModel("Import Textures",
-                "Images (with their .plist / .json for animated textures). Folders are imported recursively and become folders here.",
-                "Textures", new[] { "*.png", "*.jpg", "*.jpeg", "*.plist", "*.json" });
+            ? new ViewModels.Dialogs.ImportDialogViewModel(Loc.T("Import Models"),
+                Loc.T("Model XML files, with their folder (a folder of the same name). Folders holding model XML files import everything in them."),
+                Loc.T("Model XML"), new[] { "*.xml" })
+            : new ViewModels.Dialogs.ImportDialogViewModel(Loc.T("Import Textures"),
+                Loc.T("Images (with their .plist / .json for animated textures). Folders are imported recursively and become folders here."),
+                Loc.T("Textures"), new[] { "*.png", "*.jpg", "*.jpeg", "*.plist", "*.json" });
         if (await AppServices.Dialogs.ShowAsync(dialog) is not IReadOnlyList<IStorageItem> picked || picked.Count == 0)
             return;
         if (models)
@@ -1274,7 +1278,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         if (xmls.Count == 0 && folders.Count == 0)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Import Models", "No model XML file or folder was selected.", MessageKind.Info);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Import Models"), Loc.T("No model XML file or folder was selected."), MessageKind.Info);
             return;
         }
         try
@@ -1283,7 +1287,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             string root = _editor.Project.ModelsFolder;
             await AppServices.FileSystem.CreateDirectoryAsync(root);
             var imported = new List<string>();
-            var replace = new ReplaceAsker("Import Models");
+            var replace = new ReplaceAsker(Loc.T("Import Models"));
             foreach (var file in xmls)
             {
                 string target = VPath.Combine(root, file.Name);
@@ -1299,7 +1303,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 string target = VPath.Combine(root, folder.Name);
                 if (await AppServices.FileSystem.DirectoryExistsAsync(target))
                 {
-                    if (!await replace.AskAsync($"The folder {folder.Name} already exists in models. Replace it?"))
+                    if (!await replace.AskAsync(Loc.F("The folder {0} already exists in models. Replace it?", folder.Name)))
                         continue;
                     await AppServices.FileSystem.DeleteDirectoryAsync(target);
                 }
@@ -1311,13 +1315,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 foreach (var name in imported)
                     Cache.AssignToFolder(ModelsKey, name, selected.Name);
             await Cache.SaveAsync();
-            _editor.StatusText = $"Imported {imported.Count} model(s) and {copiedFolders} folder(s)";
+            _editor.StatusText = Loc.F("Imported {0} model(s) and {1} folder(s)", imported.Count, copiedFolders);
             await ReloadAsync();
             await RevealNewAsync(imported);
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Import Models", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Import Models"), ex.Message, MessageKind.Error);
         }
         finally
         {
@@ -1342,7 +1346,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             if (files.Count == 0)
                 return;
 
-            var replaceTexture = new ReplaceAsker("Import");
+            var replaceTexture = new ReplaceAsker(Loc.T("Import"));
             var imported = await Textures.ImportAsync(
                 files.Select(f => (f.File.Name, (Func<Task<byte[]>>)(() => StorageImport.ReadAllBytesAsync(f.File)))).ToList(),
                 name => replaceTexture.AskAsync($"{name} already exists. Replace it?"));
@@ -1378,13 +1382,13 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             }
 
             await Cache.SaveAsync();
-            _editor.StatusText = $"Imported {imported.Count} texture(s)";
+            _editor.StatusText = Loc.F("Imported {0} texture(s)", imported.Count);
             await ReloadAsync();
             await RevealNewAsync(imported.Select(n => Textures.Find(n)?.FileName).OfType<string>().ToList());
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Import", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Import"), ex.Message, MessageKind.Error);
         }
         finally
         {
@@ -1427,7 +1431,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     if (SelectedFolder is { IsUserFolder: true } folder)
                         Cache.AssignToFolder(TriggersKey, stored.Id, folder.Name);
                     await Cache.SaveAsync();
-                    _editor.StatusText = $"Stored Trigger '{trigger.Name}'";
+                    _editor.StatusText = Loc.F("Stored Trigger '{0}'", trigger.Name);
                     await RevealNewAsync(new[] { stored.Id });
                     return;
                 }
@@ -1442,12 +1446,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     if (SelectedFolder is { IsUserFolder: true } folder)
                         Cache.AssignToFolder(AreasKey, stored.Id, folder.Name);
                     await Cache.SaveAsync();
-                    _editor.StatusText = $"Stored Area '{area.Name}'";
+                    _editor.StatusText = Loc.F("Stored Area '{0}'", area.Name);
                     await RevealNewAsync(new[] { stored.Id });
                     return;
                 }
                 case PwContext.Triggers or PwContext.Areas:
-                    await AppServices.Dialogs.ShowMessageAsync("Project Window", $"Drag exactly one {(Context == PwContext.Triggers ? "Trigger" : "Area")} here.", MessageKind.Info);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Project Window"), Loc.F("Drag exactly one {0} here.", (Context == PwContext.Triggers ? "Trigger" : "Area")), MessageKind.Info);
                     return;
                 default:
                     return;
@@ -1456,7 +1460,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Save to Project", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save to Project"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -1532,9 +1536,9 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
         await AppServices.FileSystem.WriteAllBytesAsync(path, XmlHelpers.ToBytes(doc));
         Assets.Objects.Invalidate(file);
-        _editor.StatusText = $"Saved {string.Join(", ", saved)} to {file}";
+        _editor.StatusText = Loc.F("Saved {0} to {1}", string.Join(", ", saved), file);
         if (writer.Errors.Count > 0)
-            await AppServices.Dialogs.ShowMessageAsync("Save to Project", string.Join("\n", writer.Errors), MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save to Project"), string.Join("\n", writer.Errors), MessageKind.Warning);
         return result;
     }
 
@@ -1610,11 +1614,11 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             await ObjectFileOps.WriteAsync(path, doc);
             Assets.Objects.Invalidate(file);
             folder.IsBuilding = building;
-            _editor.StatusText = $"{file} is now {(building ? "a Building" : "an Object")} file";
+            _editor.StatusText = Loc.F("{0} is now {1} file", file, (building ? "a Building" : "an Object"));
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Object XML Type", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Object XML Type"), ex.Message, MessageKind.Error);
         }
     }
 
@@ -1638,18 +1642,18 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             foreach (var d in await Assets.Objects.GetFileDefinitionsAsync(file))
                 allNames.Add(d.Name);
 
-        string? name = await AppServices.Dialogs.PromptAsync("Rename Object", $"New name for '{def.Name}' ({def.SourceFile}):", def.Name,
-            text => string.IsNullOrWhiteSpace(text) ? "Enter a name." : null);
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Object"), Loc.F("New name for '{0}' ({1}):", def.Name, def.SourceFile), def.Name,
+            text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.") : null);
         if (name == null || (name = name.Trim()) == def.Name)
             return;
         if (allNames.Contains(name))
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename Object", $"An object named '{name}' already exists. The name was not changed.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename Object"), Loc.F("An object named '{0}' already exists. The name was not changed.", name), MessageKind.Warning);
             return;
         }
-        if (!await AppServices.Dialogs.ConfirmAsync("Rename Object",
-                $"Rename '{def.Name}' to '{name}'?\n\nEvery reference in the Object XML files and levels that use {def.SourceFile} is updated too. This can take a moment.",
-                "Rename", "Cancel", MessageKind.Question))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Rename Object"),
+                Loc.F("Rename '{0}' to '{1}'?\n\nEvery reference in the Object XML files and levels that use {2} is updated too. This can take a moment.", def.Name, name, def.SourceFile),
+                Loc.T("Rename"), Loc.T("Cancel"), MessageKind.Question))
             return;
         try
         {
@@ -1659,11 +1663,11 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             Assets.Objects.Invalidate();
             await _editor.OnDefinitionRenamedAsync(old, name);
             await ReloadAsync();
-            _editor.StatusText = $"Renamed {old} to {name} in {report.ChangedFiles.Count} file(s)";
+            _editor.StatusText = Loc.F("Renamed {0} to {1} in {2} file(s)", old, name, report.ChangedFiles.Count);
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename Object", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename Object"), ex.Message, MessageKind.Error);
         }
         finally
         {

@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Vectorier.Models.Scene;
 using Vectorier.Services.Assets;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -222,7 +223,7 @@ public sealed partial class EditorViewModel
         platform.Surface = new PlatformSurfaceSettings(type, Seed: PlatformSurfaceSettings.NewSeed());
         RebuildSurfaceNow(platform, force: true);
         CommitPending();
-        StatusText = $"Platform surface: {type}";
+        StatusText = Loc.F("Platform surface: {0}", type);
     }
 
     /// <summary>Removes the surface and its generated textures (the platform itself stays).</summary>
@@ -248,7 +249,7 @@ public sealed partial class EditorViewModel
         RaiseStructureChanged();
         RaiseSelectionChanged();
         CommitPending();
-        StatusText = "Platform surface removed";
+        StatusText = Loc.T("Platform surface removed");
     }
 
     /// <summary>"Rebuild Surface": regenerates even when nothing changed (picks up re-imported textures).</summary>

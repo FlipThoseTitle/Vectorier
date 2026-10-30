@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -31,7 +32,7 @@ public sealed partial class TemplatesDialogViewModel : DialogViewModel
     public TemplatesDialogViewModel(LocationListService list)
     {
         _list = list;
-        Title = "Edit Templates";
+        Title = Loc.T("Edit Templates");
         foreach (var t in list.StarsTemplates)
             Stars.Add(new StarsTemplateItem { Name = t.Name, Completed = t.Completed, Bonuses = t.Bonuses, Tricks = t.Tricks });
         foreach (var t in list.RewardTemplates)

@@ -7,6 +7,7 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Dialogs;
 
@@ -66,7 +67,7 @@ public sealed partial class ImportDialogViewModel : DialogViewModel
         get
         {
             int folders = Entries.Count(e => e.IsFolder), files = Entries.Count - folders;
-            return Entries.Count == 0 ? "Nothing selected yet." : $"{files} file(s), {folders} folder(s)";
+            return Entries.Count == 0 ? Loc.T("Nothing selected yet.") : Loc.F("{0} file(s), {1} folder(s)", files, folders);
         }
     }
 
@@ -104,7 +105,7 @@ public sealed partial class ImportDialogViewModel : DialogViewModel
         var provider = AppServices.Shell?.CurrentTopLevel?.StorageProvider;
         if (provider == null || !provider.CanPickFolder)
             return;
-        var folders = await provider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = Title + " (folders are imported with their content)", AllowMultiple = true });
+        var folders = await provider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = Title + Loc.T(" (folders are imported with their content)"), AllowMultiple = true });
         Add(folders);
     }
 

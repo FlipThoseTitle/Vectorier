@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -177,7 +178,7 @@ public sealed partial class EditorViewModel
         foreach (var e in targets)
             e.IsHidden = hide;
         SceneInvalidated?.Invoke();
-        StatusText = hide ? $"Hidden ({targets.Count})" : $"Shown ({targets.Count})";
+        StatusText = hide ? Loc.F("Hidden ({0})", targets.Count) : Loc.F("Shown ({0})", targets.Count);
     }
 
     public void RevealInHierarchy(SceneElement element)

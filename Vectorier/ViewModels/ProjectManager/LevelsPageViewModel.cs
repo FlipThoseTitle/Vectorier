@@ -11,6 +11,7 @@ using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -42,13 +43,13 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
 {
     public override System.Windows.Input.ICommand? DeleteShortcut => DeleteLevelCommand;
 
-    public const string AllLocations = "All Locations";
+    public static string AllLocations => Loc.T("All Locations");
 
     private LevelOperations? _ops;
     private bool _suppress;
     private readonly List<LevelItemViewModel> _allItems = new();
 
-    public LevelsPageViewModel(ProjectManagerViewModel owner) : base(owner, "Levels", "Levels")
+    public LevelsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Levels"), "Levels")
     {
         // "All Locations" is always present, so the filter box never starts blank.
         LocationFilters.Add(AllLocations);
@@ -85,7 +86,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
 
     public bool HasSelection => SelectedItem != null;
     public string Mode => IsStoryMode ? LocationListService.StoryMode : LocationListService.BonusMode;
-    public string ModeLabel => IsStoryMode ? "Story" : "Bonus";
+    public string ModeLabel => IsStoryMode ? Loc.T("Story") : Loc.T("Bonus");
 
     partial void OnIsStoryModeChanged(bool value)
     {
@@ -182,7 +183,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
                 continue;
             Items.Add(item);
         }
-        CountText = $"{Items.Count} {ModeLabel.ToLowerInvariant()} level{(Items.Count == 1 ? "" : "s")}";
+        CountText = IsStoryMode ? Loc.F("Story levels: {0}", Items.Count) : Loc.F("Bonus levels: {0}", Items.Count);
         if (selected != null && Items.Contains(selected))
             SelectedItem = selected;
     }
@@ -280,7 +281,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Save", ex);
+            await ShowErrorAsync(Loc.T("Save"), ex);
         }
     }
 
@@ -304,7 +305,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         if (target == null)
             return;
 
-        await RunAsync("Move Level", async () =>
+        await RunAsync(Loc.T("Move Level"), async () =>
         {
             await Ops.MoveToLocationAsync(item.Level, target, item.Level.Mode);
             await Ops.SaveAllAsync();
@@ -332,7 +333,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         if (location != null)
             return location;
 
-        if (!await AppServices.Dialogs.ConfirmAsync("New Level", "Levels belong to a location, and this project has none yet.\n\nCreate a location now?", "Create Location"))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("New Level"), Loc.T("Levels belong to a location, and this project has none yet.\n\nCreate a location now?"), Loc.T("Create Location")))
             return null;
 
         location = new LocationData { Name = "NEW_LOCATION" };
@@ -344,7 +345,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
     [RelayCommand]
     private async Task AddLevelAsync()
     {
-        await RunAsync("New Level", async () =>
+        await RunAsync(Loc.T("New Level"), async () =>
         {
             var location = await EnsureLocationAsync();
             if (location == null)
@@ -363,12 +364,12 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         var item = SelectedItem;
         if (item == null)
             return;
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Level",
-                $"Delete '{item.Name}'?\nIts XML file and thumbnail are deleted too, and the following levels are renumbered.",
-                "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Level"),
+                Loc.F("Delete '{0}'?\nIts XML file and thumbnail are deleted too, and the following levels are renumbered.", item.Name),
+                Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunAsync("Delete Level", async () =>
+        await RunAsync(Loc.T("Delete Level"), async () =>
         {
             await Ops.DeleteLevelAsync(item.Level);
             await Ops.SaveAllAsync();
@@ -384,7 +385,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         var item = SelectedItem;
         if (item == null)
             return;
-        await RunAsync("Duplicate Level", async () =>
+        await RunAsync(Loc.T("Duplicate Level"), async () =>
         {
             var copy = await Ops.DuplicateLevelAsync(item.Level);
             await Ops.SaveAllAsync();
@@ -402,14 +403,14 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import Level XML",
+            Title = Loc.T("Import Level XML"),
             AllowMultiple = true,
-            FileTypeFilter = new[] { new FilePickerFileType("Level XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Level XML")) { Patterns = new[] { "*.xml" } } },
         });
         if (files.Count == 0)
             return;
 
-        await RunAsync("Import Level", async () =>
+        await RunAsync(Loc.T("Import Level"), async () =>
         {
             var location = await EnsureLocationAsync();
             if (location == null)
@@ -440,7 +441,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         var item = SelectedItem;
         if (item == null)
             return;
-        await RunAsync("Reorder Level", async () =>
+        await RunAsync(Loc.T("Reorder Level"), async () =>
         {
             await Ops.MoveWithinGroupAsync(item.Level, direction);
             await Ops.SaveAllAsync();
@@ -462,10 +463,10 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         var start = await AppServices.FileSystem.GetStorageFolderAsync(Project.LevelsFolder, topLevel.StorageProvider);
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = $"Select the XML for {item.Name}",
+            Title = Loc.F("Select the XML for {0}", item.Name),
             AllowMultiple = false,
             SuggestedStartLocation = start,
-            FileTypeFilter = new[] { new FilePickerFileType("Level XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Level XML")) { Patterns = new[] { "*.xml" } } },
         });
         if (files.Count == 0)
             return;
@@ -476,10 +477,10 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
             return;
 
         if (await AppServices.FileSystem.FileExistsAsync(target) &&
-            !await AppServices.Dialogs.ConfirmAsync("Level XML", $"{item.Name}.xml already exists and will be replaced. Continue?", "Replace", "Cancel", MessageKind.Warning))
+            !await AppServices.Dialogs.ConfirmAsync(Loc.T("Level XML"), Loc.F("{0}.xml already exists and will be replaced. Continue?", item.Name), Loc.T("Replace"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunAsync("Level XML", async () =>
+        await RunAsync(Loc.T("Level XML"), async () =>
         {
             await StorageImport.CopyFileAsync(AppServices.FileSystem, files[0], target);
             await RefreshSelectionDetailsAsync();
@@ -492,7 +493,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         var item = SelectedItem;
         if (item == null || !item.HasXml)
             return;
-        if (!await AppServices.Dialogs.ConfirmAsync("Level XML", $"Delete {item.Name}.xml?\nThe level entry itself is kept.", "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Level XML"), Loc.F("Delete {0}.xml?\nThe level entry itself is kept.", item.Name), Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
         await AppServices.FileSystem.DeleteFileAsync(Ops.XmlPathFor(item.Name));
         await RefreshSelectionDetailsAsync();
@@ -508,14 +509,14 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Level Thumbnail (512 × 340 recommended)",
+            Title = Loc.T("Select Level Thumbnail (512 × 340 recommended)"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Images")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
         });
         if (files.Count == 0)
             return;
 
-        await RunAsync("Thumbnail", async () =>
+        await RunAsync(Loc.T("Thumbnail"), async () =>
         {
             await Ops.DeleteImagesAsync(Ops.StoriesIconFolder, item.Name);
             string ext = VPath.GetExtension(files[0].Name).ToLowerInvariant();
@@ -540,7 +541,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         if (await AppServices.Dialogs.ShowAsync(dialog) is true)
         {
             dialog.Apply();
-            await RunAsync("Templates", async () =>
+            await RunAsync(Loc.T("Templates"), async () =>
             {
                 await List.SaveAsync();
                 BuildTrackEditor();

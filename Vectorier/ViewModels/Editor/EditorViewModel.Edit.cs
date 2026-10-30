@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -54,7 +55,7 @@ public sealed partial class EditorViewModel
             case ElementType.Animation:
                 if (ProjectWindow.SelectedTextureName is not { } texture)
                 {
-                    await AppServices.Dialogs.ShowMessageAsync($"Create {type}", "Select an image in the Project Window first.", MessageKind.Warning);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.F("Create {0}", type), Loc.T("Select an image in the Project Window first."), MessageKind.Warning);
                     return;
                 }
                 source = new ElementSource(TextureName: texture);
@@ -62,7 +63,7 @@ public sealed partial class EditorViewModel
             case ElementType.Model:
                 if (ProjectWindow.SelectedModelName is not { } model)
                 {
-                    await AppServices.Dialogs.ShowMessageAsync("Create Model", "Select a model in the Project Window first.", MessageKind.Warning);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Create Model"), Loc.T("Select a model in the Project Window first."), MessageKind.Warning);
                     return;
                 }
                 source = new ElementSource(ModelName: model);
@@ -93,7 +94,7 @@ public sealed partial class EditorViewModel
                 if (IsPlacementDenied(source, out string denied))
                 {
                     StatusText = denied;
-                    await AppServices.Dialogs.ShowMessageAsync("Edit Object", denied, MessageKind.Warning);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Object"), denied, MessageKind.Warning);
                     return null;
                 }
                 if (source?.Definition is { } def)
@@ -202,8 +203,8 @@ public sealed partial class EditorViewModel
                 var cameras = Document.AllElements().OfType<CameraElement>().ToList();
                 if (cameras.Count >= 2)
                 {
-                    await AppServices.Dialogs.ShowMessageAsync("Create Camera",
-                        "This level already has a Camera for Common Mode and one for Hunter Mode. Delete one of them first.", MessageKind.Warning);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Create Camera"),
+                        Loc.T("This level already has a Camera for Common Mode and one for Hunter Mode. Delete one of them first."), MessageKind.Warning);
                     return null;
                 }
                 var camera = new CameraElement { Name = "Camera", X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
@@ -213,7 +214,7 @@ public sealed partial class EditorViewModel
                     if (existing.Selection == ModeSelection.All)
                     {
                         existing.Selection = ModeSelection.CommonMode;
-                        StatusText = "The existing Camera now applies to Common Mode only; the new one to Hunter Mode.";
+                        StatusText = Loc.T("The existing Camera now applies to Common Mode only; the new one to Hunter Mode.");
                     }
                     camera.Selection = existing.Selection == ModeSelection.HunterMode ? ModeSelection.CommonMode : ModeSelection.HunterMode;
                 }
@@ -233,7 +234,7 @@ public sealed partial class EditorViewModel
                 string? model = source?.ModelName;
                 if (string.IsNullOrEmpty(model))
                 {
-                    await AppServices.Dialogs.ShowMessageAsync("Place Model", "Select a model in the Project Window first.", MessageKind.Error);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Place Model"), Loc.T("Select a model in the Project Window first."), MessageKind.Error);
                     return null;
                 }
                 element = new ModelElement { Name = model, X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
@@ -440,9 +441,9 @@ public sealed partial class EditorViewModel
         if (others.Count == 0)
             return null;
         if (value == ModeSelection.All)
-            return "Another Camera exists, so this Camera cannot apply to both modes. Delete the other Camera first.";
+            return Loc.T("Another Camera exists, so this Camera cannot apply to both modes. Delete the other Camera first.");
         if (others.Any(o => o.Selection == value || o.Selection == ModeSelection.All))
-            return $"Another Camera already applies to {(value == ModeSelection.HunterMode ? "Hunter Mode" : "Common Mode")}.";
+            return Loc.F("Another Camera already applies to {0}.", value == ModeSelection.HunterMode ? Loc.T("Hunter Mode") : Loc.T("Common Mode"));
         return null;
     }
 
@@ -463,7 +464,7 @@ public sealed partial class EditorViewModel
             else
             {
                 Document.Remove(camera);
-                StatusText = "A Camera was not pasted: both modes already have one.";
+                StatusText = Loc.T("A Camera was not pasted: both modes already have one.");
             }
         }
     }
@@ -493,7 +494,7 @@ public sealed partial class EditorViewModel
         RaiseStructureChanged();
         RaiseSelectionChanged();
         MarkChanged();
-        StatusText = targets.Count == 1 ? $"Deleted {targets[0].DisplayName}" : $"Deleted {targets.Count} elements";
+        StatusText = targets.Count == 1 ? Loc.F("Deleted {0}", targets[0].DisplayName) : Loc.F("Deleted {0} elements", targets.Count);
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -505,7 +506,7 @@ public sealed partial class EditorViewModel
         _clipboard = targets.Select(e => new ClipboardItem(e.Clone(keepIds: false), e.WorldPosition, e.EffectiveLayer)).ToList();
         PasteCommand.NotifyCanExecuteChanged();
         PasteIntoCommand.NotifyCanExecuteChanged();
-        StatusText = $"Copied {targets.Count} element(s)";
+        StatusText = Loc.F("Copied {0} element(s)", targets.Count);
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -582,7 +583,7 @@ public sealed partial class EditorViewModel
         Select(pasted);
         if (pasted.Count > 0)
             RevealInHierarchy(pasted[^1]);
-        StatusText = $"Pasted {pasted.Count} element(s)";
+        StatusText = Loc.F("Pasted {0} element(s)", pasted.Count);
     }
 
     /// <summary>Ctrl+D: duplicates the selection in place, right after each original.</summary>
@@ -695,7 +696,7 @@ public sealed partial class EditorViewModel
         MarkChanged();
         Select(group);
         RevealInHierarchy(group);
-        StatusText = $"Grouped {targets.Count} element(s)";
+        StatusText = Loc.F("Grouped {0} element(s)", targets.Count);
     }
 
     /// <summary>

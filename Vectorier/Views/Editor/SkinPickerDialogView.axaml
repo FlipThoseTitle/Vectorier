@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Editor"
              x:Class="Vectorier.Views.Editor.SkinPickerDialogView"
@@ -6,15 +7,15 @@
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1" Padding="8,6,8,0">
             <StackPanel Orientation="Horizontal" Spacing="2">
-                <RadioButton Classes="tab" GroupName="SkinTabs" IsChecked="{Binding IsGearsTab}" Content="Gears" />
-                <RadioButton Classes="tab" GroupName="SkinTabs" IsChecked="{Binding IsXmlTab}" Content="XML" />
+                <RadioButton Classes="tab" GroupName="SkinTabs" IsChecked="{Binding IsGearsTab}" Content="{l:Tr 'Gears'}" />
+                <RadioButton Classes="tab" GroupName="SkinTabs" IsChecked="{Binding IsXmlTab}" Content="{l:Tr 'XML'}" />
             </StackPanel>
         </Border>
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Classes="accent" Content="Done" MinWidth="80" Command="{Binding DoneCommand}" IsDefault="True" />
+                <Button DockPanel.Dock="Right" Classes="accent" Content="{l:Tr 'Done'}" MinWidth="80" Command="{Binding DoneCommand}" IsDefault="True" />
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <TextBlock Classes="dim" Text="Skins:" />
+                    <TextBlock Classes="dim" Text="{l:Tr 'Skins:'}" />
                     <TextBlock Text="{Binding SkinsText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="460" />
                 </StackPanel>
             </DockPanel>
@@ -23,7 +24,7 @@
             <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Height="3" IsVisible="{Binding IsLoading}" />
             <!-- Gears -->
             <Panel IsVisible="{Binding IsGearsTab}">
-                <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" Text="This project has no gears."
+                <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{l:Tr 'This project has no gears.'}"
                            IsVisible="{Binding !Gears.Count}" />
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="8">
                     <ItemsControl ItemsSource="{Binding Gears}">
@@ -36,7 +37,7 @@
                                     <Grid RowDefinitions="*,Auto">
                                         <Panel>
                                             <Image Source="{Binding Image}" Stretch="Uniform" Width="128" Height="113" />
-                                            <TextBlock Classes="dim" FontSize="11" Text="No Image" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            <TextBlock Classes="dim" FontSize="11" Text="{l:Tr 'No Image'}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        IsVisible="{Binding Image, Converter={x:Static ObjectConverters.IsNull}}" />
                                             <Border Classes="pick-check" IsVisible="{Binding IsSelected}">
                                                 <PathIcon Data="{StaticResource Icon.Check}" Width="12" Height="12" Foreground="White" />
@@ -53,7 +54,7 @@
             </Panel>
             <!-- Model XML files -->
             <Panel IsVisible="{Binding IsXmlTab}">
-                <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" Text="No XML files in the models folder."
+                <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{l:Tr 'No XML files in the models folder.'}"
                            IsVisible="{Binding !XmlFiles.Count}" />
                 <ScrollViewer Margin="8">
                     <ItemsControl ItemsSource="{Binding XmlFiles}">

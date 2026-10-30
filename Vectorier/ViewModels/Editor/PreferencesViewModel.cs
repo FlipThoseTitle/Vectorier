@@ -12,7 +12,7 @@ public sealed partial class PreferencesViewModel : DialogViewModel
 {
     public PreferencesViewModel()
     {
-        Title = "Preferences";
+        Title = Services.Localization.Loc.T("Preferences");
         _isDark = EditorPreferences.Theme == "Dark";
         _showOutline = EditorPreferences.ShowOutline;
         _showPlatformOutline = EditorPreferences.ShowPlatformOutline;
@@ -21,6 +21,18 @@ public sealed partial class PreferencesViewModel : DialogViewModel
         _showAreaType = EditorPreferences.ShowAreaType;
         _textAnchor = EditorPreferences.TextAnchor;
         _renameDuplicate = EditorPreferences.RenameDuplicate;
+        _language = Services.Localization.Loc.CurrentLanguage;
+    }
+
+    /// <summary>Languages of the editor (one file each in Assets/Localization).</summary>
+    public static IReadOnlyList<Services.Localization.LanguageInfo> Languages => Services.Localization.Loc.Languages;
+
+    [ObservableProperty] private Services.Localization.LanguageInfo _language;
+
+    partial void OnLanguageChanged(Services.Localization.LanguageInfo value)
+    {
+        if (value != null && value.Code != Services.Localization.Loc.CurrentCode)
+            Services.Localization.Loc.SetLanguage(value.Code);
     }
 
     public static IReadOnlyList<LabelAnchor> Anchors { get; } = Enum.GetValues<LabelAnchor>();

@@ -12,6 +12,7 @@ using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -24,7 +25,7 @@ public sealed partial class ThumbnailCaptureViewModel : DialogViewModel
     public ThumbnailCaptureViewModel(EditorViewModel editor)
     {
         Editor = editor;
-        Title = $"Capture Thumbnail - {editor.Document.LevelName}";
+        Title = Loc.F("Capture Thumbnail - {0}", editor.Document.LevelName);
         var camera = editor.Document.Roots.SelectMany(SceneDocument.Walk).OfType<CameraElement>().FirstOrDefault();
         if (camera != null)
         {
@@ -99,7 +100,7 @@ public sealed partial class ThumbnailCaptureViewModel : DialogViewModel
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Capture Thumbnail", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Capture Thumbnail"), ex.Message, MessageKind.Error);
         }
         finally
         {

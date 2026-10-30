@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
              x:Class="Vectorier.Views.ProjectManager.FileListPageView"
@@ -8,17 +9,17 @@
             <Border DockPanel.Dock="Top" Classes="toolbar">
                 <DockPanel>
                     <StackPanel Orientation="Horizontal" Spacing="1">
-                        <Button Classes="tool" ToolTip.Tip="Import…" Command="{Binding ImportCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
-                        <Button Classes="tool" ToolTip.Tip="Delete Selected" Command="{Binding DeleteSelectedCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
-                        <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="{l:Tr 'Import…'}" Command="{Binding ImportCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="{l:Tr 'Delete Selected'}" Command="{Binding DeleteSelectedCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="{l:Tr 'Reload'}" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding CanPlay}" ToolTip.Tip="Preview volume">
+                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding CanPlay}" ToolTip.Tip="{l:Tr 'Preview volume'}">
                             <PathIcon Data="{StaticResource Icon.Speaker}" Width="14" Height="14" VerticalAlignment="Center" />
                             <Slider Width="120" Minimum="0" Maximum="100" Value="{Binding Volume}" VerticalAlignment="Center" Margin="0,-8" />
                             <TextBlock Classes="dim" Width="34" VerticalAlignment="Center" Text="{Binding Volume, StringFormat='{}{0:0}%'}" />
                         </StackPanel>
-                        <TextBlock Classes="dim" Text="Drop files here to import." VerticalAlignment="Center" />
+                        <TextBlock Classes="dim" Text="{l:Tr 'Drop files here to import.'}" VerticalAlignment="Center" />
                         <TextBlock Classes="dim" Text="{Binding CountText}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
@@ -28,7 +29,7 @@
                     <DataTemplate x:DataType="vm:FileItemViewModel">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <Panel Width="28">
-                                <Button Classes="tool" Padding="2" MinWidth="22" MinHeight="22" ToolTip.Tip="Play / Stop"
+                                <Button Classes="tool" Padding="2" MinWidth="22" MinHeight="22" ToolTip.Tip="{l:Tr 'Play / Stop'}"
                                         IsVisible="{Binding $parent[UserControl].((vm:FileListPageViewModel)DataContext).CanPlay}"
                                         Command="{Binding $parent[UserControl].((vm:FileListPageViewModel)DataContext).PlayCommand}"
                                         CommandParameter="{Binding}">
@@ -39,7 +40,7 @@
                                 </Button>
                             </Panel>
                             <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Margin="4,0" />
-                            <PathIcon Grid.Column="2" Data="{StaticResource Icon.Lock}" ToolTip.Tip="Required by the game; cannot be deleted" IsVisible="{Binding IsProtected}" />
+                            <PathIcon Grid.Column="2" Data="{StaticResource Icon.Lock}" ToolTip.Tip="{l:Tr 'Required by the game; cannot be deleted'}" IsVisible="{Binding IsProtected}" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

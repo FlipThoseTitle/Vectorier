@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
              xmlns:c="using:Vectorier.Controls"
@@ -6,12 +7,12 @@
              x:DataType="vm:UnlockEditorViewModel">
     <StackPanel Spacing="2">
         <Grid Classes="field" ColumnDefinitions="140,*">
-            <TextBlock Text="Unlock Price" />
+            <TextBlock Text="{l:Tr 'Unlock Price'}" />
             <NumericUpDown Grid.Column="1" Minimum="0" Increment="50" FormatString="0"
                            Value="{Binding UnlockPrice, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
         </Grid>
         <Grid Classes="field" ColumnDefinitions="140,*">
-            <TextBlock Text="Stars Required" />
+            <TextBlock Text="{l:Tr 'Stars Required'}" />
             <NumericUpDown Grid.Column="1" Minimum="0" Increment="1" FormatString="0"
                            Maximum="{Binding MaxStars, Converter={x:Static c:IntToDecimalConverter.Instance}}"
                            Value="{Binding StarsRequired, Converter={x:Static c:IntToDecimalConverter.Instance}}" />
@@ -19,11 +20,11 @@
         <TextBlock Classes="dim" FontSize="11" Margin="140,0,0,2" TextWrapping="Wrap" Text="{Binding StarsHint}"
                    IsVisible="{Binding StarsHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <Grid Classes="field" ColumnDefinitions="140,*" IsVisible="{Binding ShowSubject}">
-            <TextBlock Text="Subject" />
+            <TextBlock Text="{l:Tr 'Subject'}" />
             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:UnlockEditorViewModel.Subjects}" SelectedItem="{Binding Subject}" />
         </Grid>
         <Grid Classes="field" ColumnDefinitions="140,*" IsVisible="{Binding ShowSubjectName}">
-            <TextBlock Text="Subject Name" />
+            <TextBlock Text="{l:Tr 'Subject Name'}" />
             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding SubjectNames}" SelectedItem="{Binding SubjectName}" />
         </Grid>
     </StackPanel>

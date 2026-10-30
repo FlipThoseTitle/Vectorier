@@ -11,6 +11,7 @@ using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -58,7 +59,7 @@ public sealed partial class SkinPickerDialogViewModel : DialogViewModel
     {
         _model = model;
         _project = project;
-        Title = $"Add Skins - {model.Summary}";
+        Title = Loc.F("Add Skins - {0}", model.Summary);
         _ = LoadAsync();
     }
 
@@ -81,7 +82,7 @@ public sealed partial class SkinPickerDialogViewModel : DialogViewModel
 
     [ObservableProperty] private bool _isLoading = true;
 
-    public string SkinsText => string.IsNullOrEmpty(_model.Skins) ? "(none)" : _model.Skins;
+    public string SkinsText => string.IsNullOrEmpty(_model.Skins) ? Loc.T("(none)") : _model.Skins;
 
     private List<string> Current() => _model.Skins.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
 
@@ -139,7 +140,7 @@ public sealed partial class SkinPickerDialogViewModel : DialogViewModel
         catch (Exception ex)
         {
             IsLoading = false;
-            await AppServices.Dialogs.ShowMessageAsync("Add Skins", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Add Skins"), ex.Message, MessageKind.Error);
         }
     }
 

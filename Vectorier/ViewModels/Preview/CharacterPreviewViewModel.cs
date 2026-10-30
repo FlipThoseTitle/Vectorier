@@ -13,6 +13,7 @@ using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Preview;
 
@@ -49,7 +50,7 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
         _frames = frames;
         Camera = camera;
         ShowApply = showApply;
-        ApplyText = applyText ?? "Apply";
+        ApplyText = applyText ?? Loc.T("Apply");
         MaxFrame = frames.Count - 1;
         _trimEnd = MaxFrame;
         _trimStart = startFrame >= 0 && startFrame <= MaxFrame ? startFrame : 0;
@@ -82,7 +83,7 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
     [ObservableProperty] private int _trimStart;
     [ObservableProperty] private int _trimEnd;
 
-    public string FrameText => $"Frame {(int)Math.Floor(Frame)} / {MaxFrame}   ·   Range {TrimStart} – {TrimEnd}";
+    public string FrameText => Loc.F("Frame {0} / {1}   ·   Range {2} – {3}", (int)Math.Floor(Frame), MaxFrame, TrimStart, TrimEnd);
     public string PlayIcon => IsPlaying ? "Icon.Pause" : "Icon.Play";
 
     public event Action? Redraw;
@@ -210,13 +211,13 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
         {
             var character = await CharacterModel.LoadAsync(project, skins);
             if (!await AppServices.FileSystem.FileExistsAsync(animationPath))
-                throw new CharacterPreviewException($"Animation not found: {VPath.GetFileName(animationPath)}");
+                throw new CharacterPreviewException(Loc.F("Animation not found: {0}", VPath.GetFileName(animationPath)));
             var frames = character.ReadAnimation(await AppServices.FileSystem.ReadAllBytesAsync(animationPath));
             vm = new CharacterPreviewViewModel(title, character, frames, camera, startFrame, showApply, applyText);
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Character Preview", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Character Preview"), ex.Message, MessageKind.Error);
             return null;
         }
         return await AppServices.Dialogs.ShowAsync(vm) as CharacterPreviewResult;

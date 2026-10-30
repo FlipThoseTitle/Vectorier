@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Vectorier.ViewModels;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services;
 
@@ -28,12 +29,12 @@ public interface IDialogService
 {
     Task ShowMessageAsync(string title, string message, MessageKind kind = MessageKind.Info);
 
-    Task<bool> ConfirmAsync(string title, string message, string confirmText = "OK", string cancelText = "Cancel", MessageKind kind = MessageKind.Question);
+    Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, string? cancelText = null, MessageKind kind = MessageKind.Question);
 
     Task<SaveChoice> AskSaveChangesAsync(string documentName);
 
     /// <summary>Asks for a line of text. <paramref name="validate"/> returns an error message or null.</summary>
-    Task<string?> PromptAsync(string title, string label, string initialText = "", Func<string, string?>? validate = null, string confirmText = "OK");
+    Task<string?> PromptAsync(string title, string label, string initialText = "", Func<string, string?>? validate = null, string? confirmText = null);
 
     /// <summary>Shows any dialog view model and returns the value passed to <see cref="DialogViewModel.Close"/>.</summary>
     Task<object?> ShowAsync(DialogViewModel dialog);
@@ -48,28 +49,28 @@ public sealed class DialogService : IDialogService
     public Task ShowMessageAsync(string title, string message, MessageKind kind = MessageKind.Info)
     {
         var vm = new MessageDialogViewModel(title, message, kind);
-        vm.Buttons.Add(new DialogButton("OK", true, isDefault: true, isCancel: true));
+        vm.Buttons.Add(new DialogButton(Loc.T("OK"), true, isDefault: true, isCancel: true));
         return ShowAsync(vm);
     }
 
-    public async Task<bool> ConfirmAsync(string title, string message, string confirmText = "OK", string cancelText = "Cancel", MessageKind kind = MessageKind.Question)
+    public async Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, string? cancelText = null, MessageKind kind = MessageKind.Question)
     {
         var vm = new MessageDialogViewModel(title, message, kind);
-        vm.Buttons.Add(new DialogButton(confirmText, true, isDefault: true));
-        vm.Buttons.Add(new DialogButton(cancelText, false, isCancel: true));
+        vm.Buttons.Add(new DialogButton(confirmText ?? Loc.T("OK"), true, isDefault: true));
+        vm.Buttons.Add(new DialogButton(cancelText ?? Loc.T("Cancel"), false, isCancel: true));
         return await ShowAsync(vm) is true;
     }
 
     public async Task<SaveChoice> AskSaveChangesAsync(string documentName)
     {
-        var vm = new MessageDialogViewModel("Unsaved Changes", $"Do you want to save the changes made to '{documentName}'?", MessageKind.Warning);
-        vm.Buttons.Add(new DialogButton("Save", SaveChoice.Save, isDefault: true));
-        vm.Buttons.Add(new DialogButton("Don't Save", SaveChoice.DontSave));
-        vm.Buttons.Add(new DialogButton("Cancel", SaveChoice.Cancel, isCancel: true));
+        var vm = new MessageDialogViewModel(Loc.T("Unsaved Changes"), Loc.F("Do you want to save the changes made to '{0}'?", documentName), MessageKind.Warning);
+        vm.Buttons.Add(new DialogButton(Loc.T("Save"), SaveChoice.Save, isDefault: true));
+        vm.Buttons.Add(new DialogButton(Loc.T("Don't Save"), SaveChoice.DontSave));
+        vm.Buttons.Add(new DialogButton(Loc.T("Cancel"), SaveChoice.Cancel, isCancel: true));
         return await ShowAsync(vm) is SaveChoice choice ? choice : SaveChoice.Cancel;
     }
 
-    public async Task<string?> PromptAsync(string title, string label, string initialText = "", Func<string, string?>? validate = null, string confirmText = "OK")
+    public async Task<string?> PromptAsync(string title, string label, string initialText = "", Func<string, string?>? validate = null, string? confirmText = null)
     {
         var vm = new MessageDialogViewModel(title, label, MessageKind.Info)
         {
@@ -77,8 +78,8 @@ public sealed class DialogService : IDialogService
             InputText = initialText,
             Validator = validate,
         };
-        vm.Buttons.Add(new DialogButton(confirmText, true, isDefault: true) { RequiresValidInput = true });
-        vm.Buttons.Add(new DialogButton("Cancel", false, isCancel: true));
+        vm.Buttons.Add(new DialogButton(confirmText ?? Loc.T("OK"), true, isDefault: true) { RequiresValidInput = true });
+        vm.Buttons.Add(new DialogButton(Loc.T("Cancel"), false, isCancel: true));
         return await ShowAsync(vm) is true ? vm.InputText.Trim() : null;
     }
 
@@ -171,9 +172,9 @@ public sealed class ReplaceAsker
     {
         if (_forAll is bool remembered)
             return remembered;
-        var dialog = new ViewModels.Dialogs.MessageDialogViewModel(_title, message, MessageKind.Warning) { CheckBoxText = "Apply to all files" };
-        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Replace", true, isDefault: true));
-        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Skip", false, isCancel: true));
+        var dialog = new ViewModels.Dialogs.MessageDialogViewModel(_title, message, MessageKind.Warning) { CheckBoxText = Loc.T("Apply to all files") };
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Replace"), true, isDefault: true));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Skip"), false, isCancel: true));
         bool replace = await AppServices.Dialogs.ShowAsync(dialog) is true;
         if (dialog.IsChecked)
             _forAll = replace;

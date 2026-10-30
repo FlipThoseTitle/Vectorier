@@ -19,6 +19,7 @@ using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.MoveVisualizer;
 using Vectorier.Services.Xml;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -186,7 +187,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     public bool HasSelectedTrickArea => SelectedArea is { AreaType: "Trick" };
     public string SelectedAreaName => SelectedArea?.Name ?? string.Empty;
 
-    public string MainButtonText => HasSelectedTrickArea ? "Preview Animation" : IsPlacementActive ? "Stop Placement" : "Start Placement";
+    public string MainButtonText => HasSelectedTrickArea ? Loc.T("Preview Animation") : IsPlacementActive ? Loc.T("Stop Placement") : Loc.T("Start Placement");
 
     /// <summary>An Area to preview, with where its parent sits (it may come from an Object's referenced content).</summary>
     public sealed record AreaTarget(AreaElement Area, Point Origin, SceneElement Host, string? ParentName);
@@ -245,7 +246,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     [ObservableProperty] private bool _hasFrames;
     [ObservableProperty] private bool _isPlaying = true;
 
-    public string PlayButtonText => IsPlaying ? "Pause" : "Play";
+    public string PlayButtonText => IsPlaying ? Loc.T("Pause") : Loc.T("Play");
 
     partial void OnIsPlayingChanged(bool value)
     {
@@ -375,7 +376,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             if (await EnsureModelAsync() == null)
                 IsPlacementActive = false;
             else
-                StatusMessage = "Click in the Scene to place the runner. Hold C to stick to platforms.";
+                StatusMessage = Loc.T("Click in the Scene to place the runner. Hold C to stick to platforms.");
         }
         else
         {
@@ -446,10 +447,10 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         var start = await AppServices.FileSystem.GetStorageFolderAsync(_editor.Project.AnimationsFolder, topLevel.StorageProvider);
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select animation bin",
+            Title = Loc.T("Select animation bin"),
             AllowMultiple = false,
             SuggestedStartLocation = start,
-            FileTypeFilter = new[] { new FilePickerFileType("Animation bin") { Patterns = new[] { "*.bin", "*.bytes" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Animation bin")) { Patterns = new[] { "*.bin", "*.bytes" } } },
         });
         if (files.Count == 0) return;
         try
@@ -463,7 +464,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report("Could not read the bin: " + ex.Message);
+            Report(Loc.T("Could not read the bin: ") + ex.Message);
         }
     }
 
@@ -656,7 +657,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             {
                 if (string.IsNullOrWhiteSpace(CustomBinPath))
                 {
-                    Report("Custom Bin Path is empty.");
+                    Report(Loc.T("Custom Bin Path is empty."));
                     return null;
                 }
                 if (_customBinData != null && CustomBinPath == _customBinName)
@@ -668,13 +669,13 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
                 if (!TricksLoaded) await DiscoverTricksAsync();
                 if (SelectedTrick == null)
                 {
-                    Report("No trick selected.");
+                    Report(Loc.T("No trick selected."));
                     return null;
                 }
                 string? path = await ResolveProjectFileAsync($"{BinsRelativeFolder}/{SelectedTrick.FileName}");
                 if (path == null)
                 {
-                    Report($"Animation bin not found: {VPath.Combine(_editor.Project.Path, BinsRelativeFolder, SelectedTrick.FileName)}");
+                    Report(Loc.F("Animation bin not found: {0}", VPath.Combine(_editor.Project.Path, BinsRelativeFolder, SelectedTrick.FileName)));
                     return null;
                 }
                 return await AppServices.FileSystem.ReadAllBytesAsync(path);
@@ -700,7 +701,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             Report(ex.Message);
             return null;
         }
-        Report("Bin file not found: " + path);
+        Report(Loc.T("Bin file not found: ") + path);
         return null;
     }
 
@@ -784,7 +785,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report($"Preview Animation failed for '{spawn.Name}': {ex.Message}");
+            Report(Loc.F("Preview Animation failed for '{0}': {1}", spawn.Name, ex.Message));
         }
     }
 
@@ -798,7 +799,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         var area = target.Area;
         if (area.AreaType != "Trick")
         {
-            Report("Preview Animation is only available when the Area's Type is Trick.");
+            Report(Loc.T("Preview Animation is only available when the Area's Type is Trick."));
             return;
         }
         try
@@ -853,7 +854,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report($"Preview Animation failed for '{area.Name}': {ex.Message}");
+            Report(Loc.F("Preview Animation failed for '{0}': {1}", area.Name, ex.Message));
         }
     }
 
@@ -1022,6 +1023,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     private void Report(string message)
     {
         StatusMessage = message;
-        _editor.StatusText = "Move Visualizer: " + message;
+        _editor.StatusText = Loc.T("Move Visualizer: ") + message;
     }
 }

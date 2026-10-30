@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -653,7 +654,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         track ??= ActiveTrack;
         if (track == null) return;
-        if (!await AppServices.Dialogs.ConfirmAsync("Clear Timeline", $"Clear all keyframes on '{track.Header}'?", "Clear"))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Clear Timeline"), Loc.F("Clear all keyframes on '{0}'?", track.Header), Loc.T("Clear")))
             return;
         track.Keys.Clear();
         track.SelectedFrames.Clear();
@@ -670,7 +671,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         Clipboard.Clear();
         foreach (var k in keys)
             Clipboard.Add((k.Frame - keys[0].Frame, k.Clone()));
-        _editor.StatusText = $"Copied {keys.Count} keyframe(s)";
+        _editor.StatusText = Loc.F("Copied {0} keyframe(s)", keys.Count);
     }
 
     public void PasteKeys()
@@ -919,7 +920,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         else list.Add(baked);
         RefreshNames(track);
         _editor.MarkChanged();
-        _editor.StatusText = $"Saved transformation '{name}' on {track.Header}";
+        _editor.StatusText = Loc.F("Saved transformation '{0}' on {1}", name, track.Header);
         RaiseTimeline();
     }
 
@@ -1054,21 +1055,21 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         int randomCount = 1;
         if (level.Count > 1 && names.Count > 1)
         {
-            var dialog = new ViewModels.Dialogs.MessageDialogViewModel("Add Trigger",
-                $"How should the {names.Count} transformations run when the trigger fires?", MessageKind.Question);
-            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run After Another", "Straight", isDefault: true));
-            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run at the Same Time", "Sync"));
-            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Run Randomly", "Random"));
-            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Cancel", null, isCancel: true));
+            var dialog = new ViewModels.Dialogs.MessageDialogViewModel(Loc.T("Add Trigger"),
+                Loc.F("How should the {0} transformations run when the trigger fires?", names.Count), MessageKind.Question);
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Run After Another"), "Straight", isDefault: true));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Run at the Same Time"), "Sync"));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Run Randomly"), "Random"));
+            dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Cancel"), null, isCancel: true));
             if (await AppServices.Dialogs.ShowAsync(dialog) is not string picked)
                 return;
             order = picked;
             if (order == "Random")
             {
                 int available = names.Count;
-                string? text = await AppServices.Dialogs.PromptAsync("Run Randomly",
-                    $"How many of the {available} transformations should run (picked at random)?", "1",
-                    value => ValidateRandomCount(value, available), "Add Trigger");
+                string? text = await AppServices.Dialogs.PromptAsync(Loc.T("Run Randomly"),
+                    Loc.F("How many of the {0} transformations should run (picked at random)?", available), "1",
+                    value => ValidateRandomCount(value, available), Loc.T("Add Trigger"));
                 if (text == null)
                     return;
                 randomCount = int.Parse(text.Trim(), System.Globalization.CultureInfo.InvariantCulture);
@@ -1106,21 +1107,21 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         trigger.Name = "TriggerTransform";
         trigger.ContentXml = content;
         _editor.StatusText = names.Count == 0
-            ? "Added a trigger (no transformation name to play)."
-            : $"Added a trigger that plays {string.Join(", ", names)}. Save the transformations so the names exist.";
+            ? Loc.T("Added a trigger (no transformation name to play).")
+            : Loc.F("Added a trigger that plays {0}. Save the transformations so the names exist.", string.Join(", ", names));
     }
 
     /// <summary>Run Randomly: a whole number from 1 to the number of transformations.</summary>
     private static string? ValidateRandomCount(string value, int available)
     {
         if (!int.TryParse(value.Trim(), System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out int count))
-            return "Enter a whole number (for example 1).";
+            return Loc.T("Enter a whole number (for example 1).");
         if (count < 0)
-            return "Warning: the number can't be negative.";
+            return Loc.T("Warning: the number can't be negative.");
         if (count == 0)
-            return "Warning: at least 1 transformation has to run.";
+            return Loc.T("Warning: at least 1 transformation has to run.");
         if (count > available)
-            return $"Error: there are only {available} transformations.";
+            return Loc.F("Error: there are only {0} transformations.", available);
         return null;
     }
 }

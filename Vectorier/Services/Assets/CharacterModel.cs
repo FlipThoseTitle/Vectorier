@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Assets;
 
@@ -58,14 +59,14 @@ public sealed class CharacterModel
         {
             string path = VPath.Combine(project.ModelsFolder, name + ".xml");
             if (!await fs.FileExistsAsync(path))
-                throw new CharacterPreviewException($"Model file not found: models/{name}.xml");
+                throw new CharacterPreviewException(Loc.F("Model file not found: models/{0}.xml", name));
             try
             {
                 files.Add((name + ".xml", XDocument.Parse(ModelData.DecodeText(await fs.ReadAllBytesAsync(path)))));
             }
             catch (Exception ex)
             {
-                throw new CharacterPreviewException($"models/{name}.xml could not be read: {ex.Message}");
+                throw new CharacterPreviewException(Loc.F("models/{0}.xml could not be read: {1}", name, ex.Message));
             }
         }
 
@@ -125,10 +126,10 @@ public sealed class CharacterModel
         }
         catch (EndOfStreamException)
         {
-            throw new CharacterPreviewException("The animation file is truncated.");
+            throw new CharacterPreviewException(Loc.T("The animation file is truncated."));
         }
         if (frames.Count == 0)
-            throw new CharacterPreviewException("The animation has no frames.");
+            throw new CharacterPreviewException(Loc.T("The animation has no frames."));
         return frames;
     }
 

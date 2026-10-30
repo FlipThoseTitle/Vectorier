@@ -12,6 +12,7 @@ using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls.Scene;
 
@@ -932,7 +933,7 @@ public sealed class SceneRenderer
         double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X), minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
         double w = maxX - minX, h = maxY - minY;
         // Reference text at size 100, scaled to fit 70 % of the width and 40 % of the height (padding around it).
-        _missingText ??= new FormattedText("Missing", CultureInfo.InvariantCulture, FlowDirection.LeftToRight, MissingTypeface, 100, MissingTextBrush);
+        _missingText ??= new FormattedText(Loc.T("Missing"), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, MissingTypeface, 100, MissingTextBrush);
         double scale = Math.Min(w * 0.7 / _missingText.Width, h * 0.4 / _missingText.Height);
         if (scale * 100 < 7)
             return;
@@ -1054,7 +1055,7 @@ public sealed class SceneRenderer
                 var center = new Point(o.X + marker.X, o.Y + marker.Y);
                 DrawMarker(context, m, center, marker.IsIn ? Colors.LimeGreen : Colors.Red);
                 var r = ScreenRect(e, o, m);
-                DrawCaption(context, marker.IsIn ? "In" : "Out", new Point(r.Center.X, r.Bottom + 2), marker.IsIn ? Brushes.DarkGreen : Brushes.DarkRed);
+                DrawCaption(context, marker.IsIn ? Loc.T("In") : Loc.T("Out"), new Point(r.Center.X, r.Bottom + 2), marker.IsIn ? Brushes.DarkGreen : Brushes.DarkRed);
                 return false;
             }
             case SpawnElement spawn:
@@ -1099,7 +1100,7 @@ public sealed class SceneRenderer
                 context.DrawRectangle(null, CameraPen, Snap(sr));
                 var sc = center.Transform(m);
                 DrawCameraIcon(context, sc);
-                string mode = camera.Selection switch { ModeSelection.CommonMode => "Camera (Common)", ModeSelection.HunterMode => "Camera (Hunter)", _ => "Camera" };
+                string mode = camera.Selection switch { ModeSelection.CommonMode => Loc.T("Camera (Common)"), ModeSelection.HunterMode => Loc.T("Camera (Hunter)"), _ => Loc.T("Camera") };
                 DrawCaption(context, mode, new Point(sc.X, sc.Y + 14), CameraIconBrush);
                 return false;
             }

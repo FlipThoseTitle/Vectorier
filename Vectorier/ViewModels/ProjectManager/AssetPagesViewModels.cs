@@ -11,6 +11,7 @@ using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -41,7 +42,7 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
 
     private readonly List<TextureItemViewModel> _all = new();
 
-    public TexturesPageViewModel(ProjectManagerViewModel owner) : base(owner, "Textures", "Textures") { }
+    public TexturesPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Textures"), "Textures") { }
 
     public override bool HasSearch => true;
 
@@ -75,7 +76,7 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
             gone.IsSelected = false;
             SelectedItems.Remove(gone);
         }
-        CountText = $"{Items.Count} texture{(Items.Count == 1 ? "" : "s")}";
+        CountText = Loc.F("Textures: {0}", Items.Count);
         ItemsRebuilt?.Invoke();
     }
 
@@ -135,9 +136,9 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import Textures (select an image and its .plist together for animated textures)",
+            Title = Loc.T("Import Textures (select an image and its .plist together for animated textures)"),
             AllowMultiple = true,
-            FileTypeFilter = new[] { new FilePickerFileType("Textures") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.plist", "*.json" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Textures")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.plist", "*.json" } } },
         });
         if (files.Count > 0)
             await ImportItemsAsync(files);
@@ -149,7 +150,7 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
         var topLevel = AppServices.Shell.CurrentTopLevel;
         if (topLevel == null || !topLevel.StorageProvider.CanPickFolder)
             return;
-        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Import a folder of textures", AllowMultiple = false });
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = Loc.T("Import a folder of textures"), AllowMultiple = false });
         if (folders.Count > 0)
             await ImportItemsAsync(folders);
     }
@@ -161,14 +162,14 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
         try
         {
             var files = await TextureImport.CollectAsync(items);
-            var replace = new ReplaceAsker("Import Textures");
+            var replace = new ReplaceAsker(Loc.T("Import Textures"));
             await Library.ImportAsync(files.Select(f => (f.File.Name, (Func<Task<byte[]>>)(() => StorageImport.ReadAllBytesAsync(f.File)))).ToList(),
-                name => replace.AskAsync($"'{name}' already exists. Replace it?"));
+                name => replace.AskAsync(Loc.F("'{0}' already exists. Replace it?", name)));
             await LoadAsync();
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Import Textures", ex);
+            await ShowErrorAsync(Loc.T("Import Textures"), ex);
         }
         finally
         {
@@ -185,11 +186,11 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
         var deletable = selected.Where(s => !s.IsProtected).ToList();
         if (deletable.Count == 0)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Delete Textures", "The selected textures are used by the game itself and cannot be deleted.", MessageKind.Info);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete Textures"), Loc.T("The selected textures are used by the game itself and cannot be deleted."), MessageKind.Info);
             return;
         }
         string list = string.Join(", ", deletable.Take(5).Select(d => d.FileName)) + (deletable.Count > 5 ? $" and {deletable.Count - 5} more" : "");
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Textures", $"Delete {list}?\nLevels that use them will show them as missing.", "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Textures"), Loc.F("Delete {0}?\nLevels that use them will show them as missing.", list), Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
         foreach (var item in deletable)
@@ -228,7 +229,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
     public const string MovesFileName = "moves.xml";
     private readonly List<string> _all = new();
 
-    public AnimationsPageViewModel(ProjectManagerViewModel owner) : base(owner, "Animations", "Animations")
+    public AnimationsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Animations"), "Animations")
     {
         SelectedItems.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanPreview));
     }
@@ -243,7 +244,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
         if (!CanPreview)
             return;
         string name = SelectedItems[0];
-        await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Project, $"Preview - {name}",
+        await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Project, Loc.F("Preview - {0}", name),
             new[] { Services.Assets.CharacterModel.DefaultSkin }, VPath.Combine(DataFolder, name), ViewModels.Preview.PreviewCamera.FollowCameraNode);
     }
 
@@ -275,7 +276,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
         Items.Clear();
         foreach (var name in _all.Where(Matches))
             Items.Add(name);
-        CountText = $"{Items.Count} animation{(Items.Count == 1 ? "" : "s")}";
+        CountText = Loc.F("Animations: {0}", Items.Count);
     }
 
     /// <summary>Replaces animations/moves.xml (always saved under that name, whatever the source is called).</summary>
@@ -287,9 +288,9 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select the Moves XML",
+            Title = Loc.T("Select the Moves XML"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Moves XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Moves XML")) { Patterns = new[] { "*.xml" } } },
         });
         if (files.Count == 0)
             return;
@@ -300,7 +301,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Moves XML", ex);
+            await ShowErrorAsync(Loc.T("Moves XML"), ex);
         }
     }
 
@@ -312,9 +313,9 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import Animations",
+            Title = Loc.T("Import Animations"),
             AllowMultiple = true,
-            FileTypeFilter = new[] { new FilePickerFileType("Animation") { Patterns = new[] { "*.bin", "*.bytes" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Animation")) { Patterns = new[] { "*.bin", "*.bytes" } } },
         });
         await ImportItemsAsync(files);
     }
@@ -323,7 +324,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
     {
         try
         {
-            var replace = new ReplaceAsker("Import");
+            var replace = new ReplaceAsker(Loc.T("Import"));
             foreach (var (file, _) in await TextureImport.CollectAsync(items))
             {
                 if (VPath.HasExtension(file.Name, ".bin", ".bytes"))
@@ -335,7 +336,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Import Animations", ex);
+            await ShowErrorAsync(Loc.T("Import Animations"), ex);
         }
     }
 
@@ -345,7 +346,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
         var selected = SelectedItems.ToList();
         if (selected.Count == 0)
             return;
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Animations", $"Delete {selected.Count} animation file(s)?", "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Animations"), Loc.F("Delete {0} animation file(s)?", selected.Count), Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
         foreach (var name in selected)
             await AppServices.FileSystem.DeleteFileAsync(VPath.Combine(DataFolder, name));
@@ -393,17 +394,17 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         _protected = new HashSet<string>(protectedNames ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
         CanPlay = canPlay;
         _includeLevels = includeLevels;
-        ProtectedReason = protectedReason ?? "This file is required by the game and cannot be deleted.";
+        ProtectedReason = protectedReason ?? Loc.T("This file is required by the game and cannot be deleted.");
     }
 
     public static FileListPageViewModel Models(ProjectManagerViewModel o) =>
-        new(o, "Models", "Models", "models", new[] { ".xml" }, new[] { "0", "1" });
+        new(o, Loc.T("Models"), "Models", "models", new[] { ".xml" }, new[] { "0", "1" });
 
     public static FileListPageViewModel Musics(ProjectManagerViewModel o) =>
-        new(o, "Musics", "Music", "music", new[] { ".wav", ".mp3", ".ogg" }, new[] { "menu" }, canPlay: true);
+        new(o, Loc.T("Musics"), "Music", "music", new[] { ".wav", ".mp3", ".ogg" }, new[] { "menu" }, canPlay: true);
 
     public static FileListPageViewModel Sounds(ProjectManagerViewModel o) =>
-        new(o, "Sounds", "Sounds", "sounds", new[] { ".wav" }, new[]
+        new(o, Loc.T("Sounds"), "Sounds", "sounds", new[] { ".wav" }, new[]
         {
             "bonus_pickup", "cash_register", "enemy_charge", "enemy_discharge",
             "glass_break", "glass_item_drop1", "glass_item_drop2", "glass_item_drop3",
@@ -413,11 +414,11 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         }, canPlay: true);
 
     public static FileListPageViewModel Videos(ProjectManagerViewModel o) =>
-        new(o, "Videos", "Videos", "videos", new[] { ".mp4" }, new[] { "intro" });
+        new(o, Loc.T("Videos"), "Videos", "videos", new[] { ".mp4" }, new[] { "intro" });
 
     public static FileListPageViewModel XmlFiles(ProjectManagerViewModel o) =>
-        new(o, "XML Files", "Xml", "xmlroot", new[] { ".xml" }, new[] { "TriggerTemplates" }, includeLevels: true,
-            protectedReason: "TriggerTemplates.xml cannot be deleted. Importing a file with the same name replaces it.");
+        new(o, Loc.T("XML Files"), "Xml", "xmlroot", new[] { ".xml" }, new[] { "TriggerTemplates" }, includeLevels: true,
+            protectedReason: Loc.T("TriggerTemplates.xml cannot be deleted. Importing a file with the same name replaces it."));
 
     public override bool HasSearch => true;
     public bool CanPlay { get; }
@@ -453,7 +454,7 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         Items.Clear();
         foreach (var item in _all.Where(i => Matches(i.DisplayName)))
             Items.Add(item);
-        CountText = $"{Items.Count} file{(Items.Count == 1 ? "" : "s")}";
+        CountText = Loc.F("Files: {0}", Items.Count);
     }
 
     [RelayCommand]
@@ -464,7 +465,7 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import " + Title,
+            Title = Loc.F("Import {0}", Title),
             AllowMultiple = true,
             FileTypeFilter = new[] { new FilePickerFileType(Title) { Patterns = _extensions.Select(e => "*" + e).ToArray() } },
         });
@@ -475,14 +476,14 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
     {
         try
         {
-            var replace = new ReplaceAsker("Import");
+            var replace = new ReplaceAsker(Loc.T("Import"));
             foreach (var (file, _) in await TextureImport.CollectAsync(items))
             {
                 if (!VPath.HasExtension(file.Name, _extensions))
                     continue;
                 string target = VPath.Combine(FolderPath, file.Name);
                 bool exists = await AppServices.FileSystem.FileExistsAsync(target);
-                if (exists && !await replace.AskAsync($"'{file.Name}' already exists. Replace it?"))
+                if (exists && !await replace.AskAsync(Loc.F("'{0}' already exists. Replace it?", file.Name)))
                     continue;
                 await StorageImport.CopyFileAsync(AppServices.FileSystem, file, target);
             }
@@ -494,7 +495,7 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Import", ex);
+            await ShowErrorAsync(Loc.T("Import"), ex);
         }
     }
 
@@ -507,11 +508,11 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         var deletable = selected.Where(s => !s.IsProtected).ToList();
         if (deletable.Count == 0)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Delete", ProtectedReason, MessageKind.Info);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Delete"), ProtectedReason, MessageKind.Info);
             return;
         }
         string skipped = deletable.Count < selected.Count ? $"\n({selected.Count - deletable.Count} protected file(s) will be kept.)" : "";
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete", $"Delete {deletable.Count} file(s)?{skipped}", "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete"), Loc.F("Delete {0} file(s)?{1}", deletable.Count, skipped), Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
         foreach (var item in deletable)
             await AppServices.FileSystem.DeleteFileAsync(item.Path);
@@ -708,7 +709,7 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
         }
         if (All.Any(a => a != item && a.Name == formatted))
         {
-            await AppServices.Dialogs.ShowMessageAsync(Title, $"'{formatted}' already exists.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Title, Loc.F("'{0}' already exists.", formatted), MessageKind.Warning);
             EditName = item.Name;
             return;
         }
@@ -762,7 +763,7 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
         var item = SelectedItem;
         if (item == null)
             return;
-        if (!await AppServices.Dialogs.ConfirmAsync(Title, $"Remove '{item.Name}' and its images?", "Remove", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Title, Loc.F("Remove '{0}' and its images?", item.Name), Loc.T("Remove"), Loc.T("Cancel"), MessageKind.Warning))
             return;
         await DeleteAssetsAsync(item);
         Owner.Localization.Remove(item.Name);
@@ -801,7 +802,7 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
     {
         var item = SelectedItem;
         if (item == null) return;
-        var file = await PickImageAsync("Select Shop Image (256 × 226 recommended)");
+        var file = await PickImageAsync(Loc.T("Select Shop Image (256 × 226 recommended)"));
         if (file == null) return;
         if (string.IsNullOrEmpty(item.Item.ShopImage)) item.Item.ShopImage = "SHOP_" + item.Name;
         await ReplaceImageAsync(ShopIcons, item.Item.ShopImage, file);
@@ -818,7 +819,7 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
         {
             Title = title,
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Images")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
         });
         return files.Count > 0 ? files[0] : null;
     }
@@ -842,7 +843,7 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
 
 public sealed partial class TricksPageViewModel : ShopPageViewModel
 {
-    public TricksPageViewModel(ProjectManagerViewModel owner) : base(owner, "Tricks", "Tricks") { }
+    public TricksPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Tricks"), "Tricks") { }
 
     protected override string Group => ShopService.TrickGroup;
     protected override string Prefix => "TRICK_";
@@ -885,7 +886,7 @@ public sealed partial class TricksPageViewModel : ShopPageViewModel
     {
         var item = SelectedItem;
         if (item == null) return;
-        var file = await PickImageAsync("Select Track Image (117 × 117)");
+        var file = await PickImageAsync(Loc.T("Select Track Image (117 × 117)"));
         if (file == null) return;
         if (string.IsNullOrEmpty(item.Item.TrackImage)) item.Item.TrackImage = "TRACK_" + item.Name;
         await ReplaceImageAsync(TrickIcons, item.Item.TrackImage, file);
@@ -896,7 +897,7 @@ public sealed partial class TricksPageViewModel : ShopPageViewModel
 
 public sealed partial class GearsPageViewModel : ShopPageViewModel
 {
-    public GearsPageViewModel(ProjectManagerViewModel owner) : base(owner, "Gears", "Gears") { }
+    public GearsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Gears"), "Gears") { }
 
     protected override string Group => ShopService.ClothingGroup;
     protected override string Prefix => "GEAR_";
@@ -918,9 +919,9 @@ public sealed partial class GearsPageViewModel : ShopPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select the gear's model XML",
+            Title = Loc.T("Select the gear's model XML"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Model XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Model XML")) { Patterns = new[] { "*.xml" } } },
         });
 
         string name = files.Count > 0 ? FormatName(VPath.GetFileNameWithoutExtension(files[0].Name)) : "GEAR_NEW";
@@ -960,9 +961,9 @@ public sealed partial class GearsPageViewModel : ShopPageViewModel
             return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select the gear's model XML",
+            Title = Loc.T("Select the gear's model XML"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Model XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Model XML")) { Patterns = new[] { "*.xml" } } },
         });
         if (files.Count == 0)
             return;

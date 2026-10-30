@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
              xmlns:pm="using:Vectorier.Views.ProjectManager"
@@ -22,24 +23,24 @@
                 <Border DockPanel.Dock="Top" Classes="toolbar" Padding="6,5">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton Classes="segment" GroupName="LevelMode" Content="Story" IsChecked="{Binding IsStoryMode}" />
-                            <RadioButton Classes="segment" GroupName="LevelMode" Content="Bonus" IsChecked="{Binding !IsStoryMode}" />
+                            <RadioButton Classes="segment" GroupName="LevelMode" Content="{l:Tr 'Story'}" IsChecked="{Binding IsStoryMode}" />
+                            <RadioButton Classes="segment" GroupName="LevelMode" Content="{l:Tr 'Bonus'}" IsChecked="{Binding !IsStoryMode}" />
                         </StackPanel>
-                        <ToggleSwitch HorizontalAlignment="Right" OnContent="Hunter Mode" OffContent="Hunter Mode" IsChecked="{Binding IsHunterMode}" />
+                        <ToggleSwitch HorizontalAlignment="Right" OnContent="{l:Tr 'Hunter Mode'}" OffContent="{l:Tr 'Hunter Mode'}" IsChecked="{Binding IsHunterMode}" />
                     </DockPanel>
                 </Border>
                 <Border DockPanel.Dock="Top" Classes="toolbar">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" Spacing="1">
-                            <Button Classes="tool" ToolTip.Tip="New Level" Command="{Binding AddLevelCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Delete Level" Command="{Binding DeleteLevelCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Duplicate Level" Command="{Binding DuplicateLevelCommand}"><PathIcon Data="{StaticResource Icon.Duplicate}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Import Level XML…" Command="{Binding ImportXmlCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'New Level'}" Command="{Binding AddLevelCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Delete Level'}" Command="{Binding DeleteLevelCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Duplicate Level'}" Command="{Binding DuplicateLevelCommand}"><PathIcon Data="{StaticResource Icon.Duplicate}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Import Level XML…'}" Command="{Binding ImportXmlCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
                             <Separator Width="1" Height="18" Margin="4,0" Background="{DynamicResource AppBorder}" />
-                            <Button Classes="tool" ToolTip.Tip="Move Up" Command="{Binding MoveUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Move Down" Command="{Binding MoveDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Open in Editor" Command="{Binding OpenInEditorCommand}"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Move Up'}" Command="{Binding MoveUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Move Down'}" Command="{Binding MoveDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Open in Editor'}" Command="{Binding OpenInEditorCommand}"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Reload'}" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
                             <TextBlock Classes="dim" Text="{Binding CountText}" />
@@ -60,7 +61,7 @@
                                         <TextBlock Text="{Binding DisplayName}" Classes="dim" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <PathIcon Data="{StaticResource Icon.FileXml}" ToolTip.Tip="Has an XML file" IsVisible="{Binding HasXml}" />
+                                        <PathIcon Data="{StaticResource Icon.FileXml}" ToolTip.Tip="{l:Tr 'Has an XML file'}" IsVisible="{Binding HasXml}" />
                                         <Border Background="{DynamicResource AppHeaderBackground}" CornerRadius="3" Padding="5,1">
                                             <TextBlock Text="{Binding Location}" FontSize="10" />
                                         </Border>
@@ -71,7 +72,7 @@
                     </ListBox>
                     <TextBlock Classes="dim" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="20"
                                IsVisible="{Binding !Items.Count}"
-                               Text="No levels in this mode yet. Click '+' to create one, or import an existing XML." />
+                               Text="{l:Tr 'No levels in this mode yet. Click \'+\' to create one, or import an existing XML.'}" />
                 </Panel>
             </DockPanel>
         </Border>
@@ -81,11 +82,11 @@
         <!-- Properties Panel -->
         <Border Grid.Column="2" Classes="panel">
             <Panel>
-                <TextBlock Classes="dim" HorizontalAlignment="Center" Text="Select a level to edit its properties." IsVisible="{Binding !HasSelection}" />
+                <TextBlock Classes="dim" HorizontalAlignment="Center" Text="{l:Tr 'Select a level to edit its properties.'}" IsVisible="{Binding !HasSelection}" />
                 <ScrollViewer IsVisible="{Binding HasSelection}">
                     <StackPanel Margin="12" Spacing="3">
                         <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
-                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="Click to change the thumbnail (512 × 340 recommended)">
+                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Click to change the thumbnail (512 × 340 recommended)'}">
                             <Border Classes="thumbnail">
                                 <Viewbox Stretch="Uniform">
                                     <Panel Width="512" Height="340">
@@ -93,44 +94,44 @@
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
                                                     IsVisible="{Binding LargeThumbnail, Converter={x:Static ObjectConverters.IsNull}}">
                                             <PathIcon Data="{StaticResource Icon.Image}" Width="48" Height="48" Foreground="{DynamicResource AppForegroundDim}" />
-                                            <TextBlock Classes="dim" FontSize="16" Text="Click to set a thumbnail" />
+                                            <TextBlock Classes="dim" FontSize="16" Text="{l:Tr 'Click to set a thumbnail'}" />
                                         </StackPanel>
                                     </Panel>
                                 </Viewbox>
                             </Border>
                         </Button>
 
-                        <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="Recommended thumbnail size: 512 × 340" />
+                        <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="{l:Tr 'Recommended thumbnail size: 512 × 340'}" />
 
                         <DockPanel Margin="0,8,0,0">
-                            <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding OpenInEditorCommand}" ToolTip.Tip="Open this level in the editor (or double-click it in the list)">
-                                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource Icon.Pencil}" Foreground="White" /><TextBlock Text="Edit Level" /></StackPanel>
+                            <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding OpenInEditorCommand}" ToolTip.Tip="{l:Tr 'Open this level in the editor (or double-click it in the list)'}">
+                                <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource Icon.Pencil}" Foreground="White" /><TextBlock Text="{l:Tr 'Edit Level'}" /></StackPanel>
                             </Button>
-                            <TextBlock Classes="section" Text="Level" VerticalAlignment="Center" />
+                            <TextBlock Classes="section" Text="{l:Tr 'Level'}" VerticalAlignment="Center" />
                         </DockPanel>
                         <Grid Classes="field" ColumnDefinitions="140,*">
-                            <TextBlock Text="Internal Name" />
+                            <TextBlock Text="{l:Tr 'Internal Name'}" />
                             <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding SelectedItem.Name, FallbackValue=''}" />
                         </Grid>
                         <Grid Classes="field" ColumnDefinitions="140,*">
-                            <TextBlock Text="Location" />
+                            <TextBlock Text="{l:Tr 'Location'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LocationNames}" SelectedItem="{Binding EditLocation}" />
                         </Grid>
                         <Grid Classes="field" ColumnDefinitions="140,*">
-                            <TextBlock Text="Display Name" />
+                            <TextBlock Text="{l:Tr 'Display Name'}" />
                             <TextBox x:Name="DisplayNameBox" Grid.Column="1" Text="{Binding EditDisplayName}" />
                         </Grid>
                         <Grid Classes="field" ColumnDefinitions="140,*,Auto,Auto">
-                            <TextBlock Text="XML Path" />
-                            <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding XmlPathText}" PlaceholderText="(not created yet)" />
-                            <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" ToolTip.Tip="Choose an existing XML file" Command="{Binding BrowseXmlCommand}"><PathIcon Data="{StaticResource Icon.FolderOpen}" /></Button>
-                            <Button Grid.Column="3" Classes="tool" ToolTip.Tip="Delete the XML file" Command="{Binding ClearXmlCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                            <TextBlock Text="{l:Tr 'XML Path'}" />
+                            <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding XmlPathText}" PlaceholderText="{l:Tr '(not created yet)'}" />
+                            <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" ToolTip.Tip="{l:Tr 'Choose an existing XML file'}" Command="{Binding BrowseXmlCommand}"><PathIcon Data="{StaticResource Icon.FolderOpen}" /></Button>
+                            <Button Grid.Column="3" Classes="tool" ToolTip.Tip="{l:Tr 'Delete the XML file'}" Command="{Binding ClearXmlCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
                         </Grid>
 
                         <TextBlock Classes="section" Text="{Binding IsHunterMode, Converter={x:Static c:HunterModeLabelConverter.Instance}}" Margin="0,12,0,2" />
                         <pm:UnlockEditorView DataContext="{Binding Track.Unlock, FallbackValue={x:Null}}" />
 
-                        <TextBlock Classes="label" Text="Tricks" Margin="0,8,0,2" />
+                        <TextBlock Classes="label" Text="{l:Tr 'Tricks'}" Margin="0,8,0,2" />
                         <ItemsControl ItemsSource="{Binding Track.Tricks, FallbackValue={x:Null}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:TrickSlotViewModel">
@@ -147,7 +148,7 @@
                                                 <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding Name}" Classes="dim" FontSize="10" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
-                                            <Button Grid.Column="2" Classes="tool" VerticalAlignment="Center" ToolTip.Tip="Remove trick"
+                                            <Button Grid.Column="2" Classes="tool" VerticalAlignment="Center" ToolTip.Tip="{l:Tr 'Remove trick'}"
                                                     Command="{Binding $parent[UserControl].((vm:LevelsPageViewModel)DataContext).Track.RemoveTrickCommand, FallbackValue={x:Null}}"
                                                     CommandParameter="{Binding}"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
                                         </Grid>
@@ -156,25 +157,25 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <Button HorizontalAlignment="Left" Command="{Binding Track.AddTrickCommand, FallbackValue={x:Null}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="Add Trick…" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="{l:Tr 'Add Trick…'}" /></StackPanel>
                         </Button>
 
                         <Grid Classes="field" ColumnDefinitions="140,*" Margin="0,8,0,1">
-                            <TextBlock Text="Stars Template" />
+                            <TextBlock Text="{l:Tr 'Stars Template'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.StarsTemplates, FallbackValue={x:Null}}" SelectedItem="{Binding Track.StarsTemplate, FallbackValue={x:Null}}" />
                         </Grid>
                         <Grid Classes="field" ColumnDefinitions="140,*">
-                            <TextBlock Text="Reward Template" />
+                            <TextBlock Text="{l:Tr 'Reward Template'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.RewardTemplates, FallbackValue={x:Null}}" SelectedItem="{Binding Track.RewardTemplate, FallbackValue={x:Null}}" />
                         </Grid>
-                        <Button HorizontalAlignment="Right" Command="{Binding EditTemplatesCommand}" Content="Edit Templates…" />
+                        <Button HorizontalAlignment="Right" Command="{Binding EditTemplatesCommand}" Content="{l:Tr 'Edit Templates…'}" />
 
                         <Grid Classes="field" ColumnDefinitions="140,*" Margin="0,8,0,1">
-                            <TextBlock Text="Video Start" />
+                            <TextBlock Text="{l:Tr 'Video Start'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.Videos, FallbackValue={x:Null}}" SelectedItem="{Binding Track.VideoStart, FallbackValue={x:Null}}" />
                         </Grid>
                         <Grid Classes="field" ColumnDefinitions="140,*">
-                            <TextBlock Text="Video End" />
+                            <TextBlock Text="{l:Tr 'Video End'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Track.Videos, FallbackValue={x:Null}}" SelectedItem="{Binding Track.VideoEnd, FallbackValue={x:Null}}" />
                         </Grid>
                     </StackPanel>

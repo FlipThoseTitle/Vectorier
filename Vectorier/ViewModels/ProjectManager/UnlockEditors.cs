@@ -11,6 +11,7 @@ using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -146,8 +147,8 @@ public sealed partial class UnlockEditorViewModel : ObservableObject
         StarsHint = MaxStars == int.MaxValue ? string.Empty : Subject switch
         {
             SubjectType.Track => "0 to 3 stars for a track.",
-            SubjectType.Location => $"At most {MaxStars} (3 × the location's Story and Bonus levels).",
-            _ => $"At most {MaxStars} (3 × all Story and Bonus levels).",
+            SubjectType.Location => Loc.F("At most {0} (3 × the location's Story and Bonus levels).", MaxStars),
+            _ => Loc.F("At most {0} (3 × all Story and Bonus levels).", MaxStars),
         };
         if (StarsRequired > MaxStars)
             StarsRequired = MaxStars;
@@ -356,15 +357,15 @@ public sealed partial class TrickPickerDialogViewModel : DialogViewModel
 {
     public TrickPickerDialogViewModel(TrackEditorViewModel track)
     {
-        Title = "Select Tricks";
+        Title = Loc.T("Select Tricks");
         Choices = track.AvailableTricks.Select(t => new TrickChoiceViewModel(track, t)).ToList();
     }
 
     /// <summary>Single choice (an Area's trick): picking one replaces the previous one right away.</summary>
     public TrickPickerDialogViewModel(IEnumerable<TrickInfo> tricks, string? current, Action<string?> set)
     {
-        Title = "Select Trick";
-        Hint = "Click a trick to use it for this Area (only one). Changes apply right away.";
+        Title = Loc.T("Select Trick");
+        Hint = Loc.T("Click a trick to use it for this Area (only one). Changes apply right away.");
         var list = new List<TrickChoiceViewModel>();
         foreach (var info in tricks)
         {
@@ -378,7 +379,7 @@ public sealed partial class TrickPickerDialogViewModel : DialogViewModel
         Choices = list;
     }
 
-    public string Hint { get; } = "Click a trick to add it to the level or remove it. Changes apply right away.";
+    public string Hint { get; } = Loc.T("Click a trick to add it to the level or remove it. Changes apply right away.");
 
     public IReadOnlyList<TrickChoiceViewModel> Choices { get; }
     public bool IsEmpty => Choices.Count == 0;

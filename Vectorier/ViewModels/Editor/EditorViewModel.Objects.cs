@@ -10,6 +10,7 @@ using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.IO;
 using Vectorier.Services.Xml;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -39,7 +40,7 @@ public sealed partial class EditorViewModel
 
     public bool IsEditingObject => ObjectEdit != null;
     public bool IsEditingBuilding => ObjectEdit?.IsBuilding == true;
-    public string ObjectTabTitle => ObjectEdit == null ? "Object" : $"Object: {ObjectEdit.Name}";
+    public string ObjectTabTitle => ObjectEdit == null ? Loc.T("Object") : Loc.F("Object: {0}", ObjectEdit.Name);
 
     /// <summary>Asks the Scene to look at a level point (Edit Object centers on the origin).</summary>
     public event Action<Point>? CenterRequested;
@@ -104,7 +105,7 @@ public sealed partial class EditorViewModel
         MarkChanged();
         EndGesture();
         Select(released);
-        StatusText = $"Ungrouped {objects.Count} object(s) into {released.Count} element(s)";
+        StatusText = Loc.F("Ungrouped {0} object(s) into {1} element(s)", objects.Count, released.Count);
     }
 
     // ================= EDIT OBJECT ================= //
@@ -174,7 +175,7 @@ public sealed partial class EditorViewModel
         _switchingTab = false;
         RefreshElementBar();
         CenterRequested?.Invoke(new Point(0, 0));
-        StatusText = $"Editing object {definition.Name} ({definition.SourceFile}). Switch to the Scene tab to return to the level.";
+        StatusText = Loc.F("Editing object {0} ({1}). Switch to the Scene tab to return to the level.", definition.Name, definition.SourceFile);
     }
 
     /// <summary>Returns to the level, saving the object first. Returns false when saving failed and the user stayed.</summary>
@@ -233,7 +234,7 @@ public sealed partial class EditorViewModel
                 var writer = CreateWriter();
                 definition = writer.WriteDefinition(session.Name, content);
                 if (writer.Errors.Count > 0)
-                    await AppServices.Dialogs.ShowMessageAsync("Save Object", string.Join("\n", writer.Errors), MessageKind.Warning);
+                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save Object"), string.Join("\n", writer.Errors), MessageKind.Warning);
             }
             // Keep the definition's other attributes; In / Out / Box are recomputed for Buildings.
             if (old != null)
@@ -259,12 +260,12 @@ public sealed partial class EditorViewModel
             session.SavedFiles.Add(session.File);
             MarkSaved();
             await SaveSurfacesAsync();
-            StatusText = $"Saved object {session.Name} to {session.File}";
+            StatusText = Loc.F("Saved object {0} to {1}", session.Name, session.File);
             return true;
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Save Object", "The object could not be saved:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save Object"), Loc.T("The object could not be saved:\n") + ex.Message, MessageKind.Error);
             return false;
         }
     }
@@ -277,7 +278,7 @@ public sealed partial class EditorViewModel
             return false;
         if (def.Name == ObjectEdit.Name || ContainsDefinition(def, ObjectEdit.Name, 0))
         {
-            reason = $"'{def.Name}' cannot be placed inside the object being edited ({ObjectEdit.Name}).";
+            reason = Loc.F("'{0}' cannot be placed inside the object being edited ({1}).", def.Name, ObjectEdit.Name);
             return true;
         }
         return false;
@@ -295,7 +296,7 @@ public sealed partial class EditorViewModel
             return def;
         if (def.Name == ObjectEdit.Name || ContainsDefinition(def, ObjectEdit.Name, 0))
         {
-            StatusText = $"'{def.Name}' would contain '{ObjectEdit.Name}' inside itself: it is not linked (shown as MISSING).";
+            StatusText = Loc.F("'{0}' would contain '{1}' inside itself: it is not linked (shown as MISSING).", def.Name, ObjectEdit.Name);
             return null;
         }
         return def;

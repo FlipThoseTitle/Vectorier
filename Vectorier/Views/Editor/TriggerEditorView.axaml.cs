@@ -13,6 +13,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Vectorier.Services.Triggers;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.Editor;
 
@@ -23,7 +24,9 @@ namespace Vectorier.Views.Editor;
 /// </summary>
 public partial class TriggerEditorView : UserControl
 {
-    private const double LabelWidth = 110;
+    // Translations run longer than English, so the label and mode columns widen for other languages.
+    private static double LabelWidth => Loc.CurrentCode == "en" ? 110 : 130;
+    private static string ModeColumns => Loc.CurrentCode == "en" ? "96,*" : "118,*";
     private static readonly ParamDef CheckDef = new ParamDef("Value1", "Check").Queries();
     private static readonly ParamDef AgainstDef = new ParamDef("Value2", "Against").Queries();
     private static readonly ParamDef SelObjectDef = new("Object", "Put each into");
@@ -140,7 +143,7 @@ public partial class TriggerEditorView : UserControl
                 Width = 10,
                 Foreground = Brushes.SteelBlue,
             });
-            ToolTip.SetTip(row.Children[0], loop.kind == LoopKind.Custom ? null : "Built from a template");
+            ToolTip.SetTip(row.Children[0], loop.kind == LoopKind.Custom ? null : Loc.T("Built from a template"));
             row.Children.Add(new TextBlock { Text = loop.Display });
             return row;
         }).ToList();
@@ -179,10 +182,10 @@ public partial class TriggerEditorView : UserControl
 
     private static string LockedHint(string n) => n switch
     {
-        "$Active" => "Is the trigger switched on? Ticked = 1, unticked = 0.",
-        "$AI" => "Which AI this trigger reacts to. -1 any, 0 player, 1 hunter, 2 helper.",
-        "$Node" => "The model's node used to test entry, usually COM.",
-        "Flag1" => "General purpose flag used by several templates.",
+        "$Active" => Loc.T("Is the trigger switched on? Ticked = 1, unticked = 0."),
+        "$AI" => Loc.T("Which AI this trigger reacts to. -1 any, 0 player, 1 hunter, 2 helper."),
+        "$Node" => Loc.T("The model's node used to test entry, usually COM."),
+        "Flag1" => Loc.T("General purpose flag used by several templates."),
         _ => string.Empty,
     };
 
@@ -240,7 +243,7 @@ public partial class TriggerEditorView : UserControl
                 Grid.SetColumn(type, 2);
                 row.Children.Add(type);
 
-                var remove = IconButton("Icon.Minus", "Remove variable", () => _vm!.RemoveVariable(v));
+                var remove = IconButton("Icon.Minus", Loc.T("Remove variable"), () => _vm!.RemoveVariable(v));
                 Grid.SetColumn(remove, 3);
                 row.Children.Add(remove);
             }
@@ -259,7 +262,7 @@ public partial class TriggerEditorView : UserControl
         {
             MainPanel.Children.Add(new TextBlock
             {
-                Text = "Pick a Loop on the left, or press 'New Loop' to start editing the Trigger.",
+                Text = Loc.T("Pick a Loop on the left, or press 'New Loop' to start editing the Trigger."),
                 Classes = { "hint" },
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 30),
@@ -289,7 +292,7 @@ public partial class TriggerEditorView : UserControl
     private Control LoopHeader(TLoop L)
     {
         var row = new WrapPanel { ItemSpacing = 8, LineSpacing = 4, Margin = new Thickness(0, 0, 0, 8) };
-        row.Children.Add(new TextBlock { Text = "Loop Name", VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = Loc.T("Loop Name"), VerticalAlignment = VerticalAlignment.Center });
         var name = new TextBox { Text = L.name, Width = 200, IsEnabled = L.kind != LoopKind.FullTemplate };
         name.TextChanged += (_, _) =>
         {
@@ -305,14 +308,14 @@ public partial class TriggerEditorView : UserControl
         row.Children.Add(name);
         if (!L.HasName)
         {
-            var unnamed = new TextBlock { Text = "(unnamed)", Classes = { "hint" } };
-            ToolTip.SetTip(unnamed, "A loop called 'Loop' is written without a Name attribute.");
+            var unnamed = new TextBlock { Text = Loc.T("(unnamed)"), Classes = { "hint" } };
+            ToolTip.SetTip(unnamed, Loc.T("A loop called 'Loop' is written without a Name attribute."));
             row.Children.Add(unnamed);
         }
-        row.Children.Add(new TextBlock { Text = "Build From", Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = Loc.T("Build From"), Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         var kinds = new ComboBox
         {
-            ItemsSource = new[] { "Scratch", "Template Loop", "Whole Template" },
+            ItemsSource = Tr("Scratch", "Template Loop", "Whole Template"),
             SelectedIndex = L.kind == LoopKind.TemplateLoop ? 1 : L.kind == LoopKind.FullTemplate ? 2 : 0,
             Width = 140,
             IsEnabled = L.kind != LoopKind.Raw,
@@ -342,7 +345,7 @@ public partial class TriggerEditorView : UserControl
         var info = lib.FindTemplate(L.template);
         if (info == null) { NotFound(L.template); return; }
 
-        MainPanel.Children.Add(new TextBlock { Text = "What this template does", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+        MainPanel.Children.Add(new TextBlock { Text = Loc.T("What this template does"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
         MainPanel.Children.Add(Hint("Names in { } are variables."));
         foreach (var l in info.loops) MainPanel.Children.Add(LoopCard(l, true));
         MainPanel.Children.Add(Required(lib.CollectUses(info.loops, "")));
@@ -358,7 +361,7 @@ public partial class TriggerEditorView : UserControl
         var info = lib.Find(L.template);
         if (info == null) { NotFound(L.template); return; }
 
-        MainPanel.Children.Add(new TextBlock { Text = "What this loop does", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+        MainPanel.Children.Add(new TextBlock { Text = Loc.T("What this loop does"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
         MainPanel.Children.Add(Hint("Names in { } are variables."));
         MainPanel.Children.Add(LoopCard(info, false));
         MainPanel.Children.Add(Required(lib.CollectUses(new[] { info }, "")));
@@ -368,7 +371,7 @@ public partial class TriggerEditorView : UserControl
     {
         var stack = new StackPanel { Spacing = 2 };
         if (showName)
-            stack.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(l.name) ? "(unnamed loop)" : l.name, Classes = { "card-title" } });
+            stack.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(l.name) ? Loc.T("(unnamed loop)") : l.name, Classes = { "card-title" } });
         bool any = false;
         foreach (var (section, head) in new[] { (TriggerTemplateLibrary.Section.When, "When"), (TriggerTemplateLibrary.Section.OnlyIf, "Only If"), (TriggerTemplateLibrary.Section.Do, "Do") })
         {
@@ -384,12 +387,12 @@ public partial class TriggerEditorView : UserControl
 
     private static Control Summary(string head, List<string> lines)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("60,*") };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         for (int i = 0; i < lines.Count; i++)
         {
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             if (i == 0)
-                grid.Children.Add(new TextBlock { Text = head, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Top });
+                grid.Children.Add(new TextBlock { Text = Loc.T(head), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Top, MinWidth = 60, Margin = new Thickness(0, 0, 8, 0) });
             var line = new TextBlock { Text = lines[i], TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"), FontSize = 11 };
             Grid.SetRow(line, i);
             Grid.SetColumn(line, 1);
@@ -401,7 +404,7 @@ public partial class TriggerEditorView : UserControl
     private void NotFound(string template)
     {
         if (string.IsNullOrEmpty(template)) return;
-        MainPanel.Children.Add(Hint(_vm!.Library.LoadFailed ? "TriggerTemplates.xml couldn't be read." : $"'{template}' isn't in TriggerTemplates.xml."));
+        MainPanel.Children.Add(Hint(_vm!.Library.LoadFailed ? "TriggerTemplates.xml couldn't be read." : Loc.F("'{0}' isn't in TriggerTemplates.xml.", template)));
     }
 
     /// <summary>The template's &lt;Using&gt; variables, and a button to add the missing ones.</summary>
@@ -409,12 +412,12 @@ public partial class TriggerEditorView : UserControl
     {
         var stack = new StackPanel { Spacing = 2, Margin = new Thickness(0, 8, 0, 0) };
         if (uses.Count == 0) return stack;
-        stack.Children.Add(new TextBlock { Text = "Required Variables", FontWeight = FontWeight.SemiBold });
+        stack.Children.Add(new TextBlock { Text = Loc.T("Required Variables"), FontWeight = FontWeight.SemiBold });
         stack.Children.Add(Hint("The template reads these from the Variables panel. Add the missing ones, then set their values there."));
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("160,90,110,*") };
         void Cell(string text, int row, int col, bool bold = false, bool missing = false)
         {
-            var tb = new TextBlock { Text = text, FontSize = 11, FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, TextTrimming = TextTrimming.CharacterEllipsis };
+            var tb = new TextBlock { Text = bold ? Loc.T(text) : text, FontSize = 11, FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, TextTrimming = TextTrimming.CharacterEllipsis };
             if (missing) tb.Classes.Add("missing");
             Grid.SetRow(tb, row);
             Grid.SetColumn(tb, col);
@@ -427,15 +430,15 @@ public partial class TriggerEditorView : UserControl
         {
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             var have = Data.vars.Find(x => x.name == u.name);
-            string status = have == null ? "Missing" : have.type != u.vtype && !string.IsNullOrEmpty(u.type) ? $"Added (as {have.type})" : "Added";
+            string status = have == null ? Loc.T("Missing") : have.type != u.vtype && !string.IsNullOrEmpty(u.type) ? Loc.F("Added (as {0})", have.type) : Loc.T("Added");
             if (have == null) missingCount++;
-            Cell(u.name, r, 0); Cell(u.vtype.ToString(), r, 1); Cell(string.IsNullOrEmpty(u.def) ? "(empty)" : u.def, r, 2); Cell(status, r, 3, missing: have == null);
+            Cell(u.name, r, 0); Cell(u.vtype.ToString(), r, 1); Cell(string.IsNullOrEmpty(u.def) ? Loc.T("(empty)") : u.def, r, 2); Cell(status, r, 3, missing: have == null);
             r++;
         }
         stack.Children.Add(grid);
         if (missingCount > 0)
         {
-            var add = new Button { Content = $"Add Missing Variables ({missingCount})", Margin = new Thickness(0, 6, 0, 0) };
+            var add = new Button { Content = Loc.F("Add Missing Variables ({0})", missingCount), Margin = new Thickness(0, 6, 0, 0) };
             add.Click += (_, _) => _vm!.AddMissingVariables(uses);
             stack.Children.Add(add);
         }
@@ -454,7 +457,7 @@ public partial class TriggerEditorView : UserControl
         {
             var E = L.events[i];
             int idx = i;
-            string title = E.kind == EvKind.Block ? "Template   " + E.template : E.kind == EvKind.Raw ? "Kept as written" : TriggerCatalog.FindEvent(E.id)?.title ?? E.id;
+            string title = E.kind == EvKind.Block ? Loc.T("Template") + "   " + E.template : E.kind == EvKind.Raw ? Loc.T("Kept as written") : Loc.T(TriggerCatalog.FindEvent(E.id)?.title ?? E.id);
             var card = Card(title, CardButtons(L.events, idx));
             if (E.kind == EvKind.Event && TriggerCatalog.FindEvent(E.id) is { } def)
             {
@@ -477,7 +480,7 @@ public partial class TriggerEditorView : UserControl
         foreach (var def in TriggerCatalog.Events)
         {
             bool used = L.events.Exists(x => x.kind == EvKind.Event && x.id == def.id);
-            var item = new MenuItem { Header = def.menu, IsEnabled = !used };
+            var item = new MenuItem { Header = Loc.T(def.menu), IsEnabled = !used };
             var d = def;
             item.Click += (_, _) => { L.events.Add(TriggerEditorViewModel.NewEvent(d)); Changed(); };
             menu.Items.Add(item);
@@ -495,7 +498,7 @@ public partial class TriggerEditorView : UserControl
             body.Children.Add(Hint("Nothing. The loop runs every time the event happens."));
         if (L.conds.Count > 1)
         {
-            var match = new ComboBox { ItemsSource = new[] { "All of these", "Any of these" }, SelectedIndex = L.rootOp == "Or" ? 1 : 0, Width = 140 };
+            var match = new ComboBox { ItemsSource = Tr("All of these", "Any of these"), SelectedIndex = L.rootOp == "Or" ? 1 : 0, Width = 140 };
             match.SelectionChanged += (_, _) => { L.rootOp = match.SelectedIndex == 1 ? "Or" : "And"; Touch(); };
             body.Children.Add(LabeledRow("Match", match));
         }
@@ -515,9 +518,9 @@ public partial class TriggerEditorView : UserControl
             {
                 case CondKind.Compare:
                 {
-                    card = Card("Compare", CardButtons(list, idx));
+                    card = Card(Loc.T("Compare"), CardButtons(list, idx));
                     card.Children.Add(ParamRow(CheckDef, C.a, CheckDef.type));
-                    var cmp = new ComboBox { ItemsSource = CompareLabels, SelectedIndex = (int)C.cmp * 2 + (C.not ? 1 : 0), Width = 170 };
+                    var cmp = new ComboBox { ItemsSource = Tr(CompareLabels), SelectedIndex = (int)C.cmp * 2 + (C.not ? 1 : 0), Width = 170 };
                     cmp.SelectionChanged += (_, _) =>
                     {
                         if (cmp.SelectedIndex < 0) return;
@@ -531,19 +534,19 @@ public partial class TriggerEditorView : UserControl
                 }
                 case CondKind.Group:
                 {
-                    var op = new ComboBox { ItemsSource = new[] { "All of these", "Any of these" }, SelectedIndex = C.op == "Or" ? 1 : 0, Width = 140 };
+                    var op = new ComboBox { ItemsSource = Tr("All of these", "Any of these"), SelectedIndex = C.op == "Or" ? 1 : 0, Width = 140 };
                     op.SelectionChanged += (_, _) => { C.op = op.SelectedIndex == 1 ? "Or" : "And"; Touch(); };
-                    card = Card("Group", CardButtons(list, idx), op);
+                    card = Card(Loc.T("Group"), CardButtons(list, idx), op);
                     BuildCondList(card, C.children);
                     card.Children.Add(AddButton("Add To Group", CondMenu(C.children)));
                     break;
                 }
                 case CondKind.Select:
                 {
-                    card = Card("Look through a list", CardButtons(list, idx));
+                    card = Card(Loc.T("Look through a list"), CardButtons(list, idx));
                     card.Children.Add(ParamRow(SelObjectDef, C.selObject, SelObjectDef.type));
                     card.Children.Add(ParamRow(SelFromDef, C.selFrom, SelFromDef.type));
-                    var none = new CheckBox { Content = "None of them may match", IsChecked = C.not };
+                    var none = new CheckBox { Content = Loc.T("None of them may match"), IsChecked = C.not };
                     none.IsCheckedChanged += (_, _) => { C.not = none.IsChecked == true; Touch(); };
                     card.Children.Add(none);
                     BuildCondList(card, C.children);
@@ -551,11 +554,11 @@ public partial class TriggerEditorView : UserControl
                     break;
                 }
                 case CondKind.Block:
-                    card = Card("Template   " + C.template, CardButtons(list, idx));
+                    card = Card(Loc.T("Template") + "   " + C.template, CardButtons(list, idx));
                     card.Children.Add(BlockRef(C.template, C.prefix, s => C.template = s, s => C.prefix = s, TriggerTemplateLibrary.Section.OnlyIf));
                     break;
                 default:
-                    card = Card("Kept as written", CardButtons(list, idx));
+                    card = Card(Loc.T("Kept as written"), CardButtons(list, idx));
                     card.Children.Add(RawBox(C.raw, s => { C.raw = s; Touch(); }));
                     break;
             }
@@ -568,7 +571,7 @@ public partial class TriggerEditorView : UserControl
         var menu = new MenuFlyout();
         void Add(string header, Func<TCond> make)
         {
-            var item = new MenuItem { Header = header };
+            var item = new MenuItem { Header = Loc.T(header) };
             item.Click += (_, _) => { list.Add(make()); Changed(); };
             menu.Items.Add(item);
         }
@@ -577,10 +580,10 @@ public partial class TriggerEditorView : UserControl
         Add("Look through a list", () => new TCond { kind = CondKind.Select, selFrom = TValue.Literal("Equipped") });
         menu.Items.Add(new Separator());
 
-        var quick = new MenuItem { Header = "Quick" };
+        var quick = new MenuItem { Header = Loc.T("Quick") };
         void Quick(string header, string a, string b, bool not)
         {
-            var item = new MenuItem { Header = header };
+            var item = new MenuItem { Header = Loc.T(header) };
             item.Click += (_, _) => { list.Add(new TCond { kind = CondKind.Compare, not = not, a = TValue.Parse(a), b = TValue.Parse(b) }); Changed(); };
             quick.Items.Add(item);
         }
@@ -622,27 +625,27 @@ public partial class TriggerEditorView : UserControl
                 {
                     string[] labels = { "One after another", "All at the same time", "Pick at random" };
                     string[] values = { "Straight", "Sync", "Random" };
-                    var order = new ComboBox { ItemsSource = labels, SelectedIndex = Math.Max(0, Array.IndexOf(values, A.order)), Width = 170 };
+                    var order = new ComboBox { ItemsSource = Tr(labels), SelectedIndex = Math.Max(0, Array.IndexOf(values, A.order)), Width = 170 };
                     order.SelectionChanged += (_, _) => { A.order = values[Math.Max(0, order.SelectedIndex)]; Changed(); };
                     var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { order } };
                     if (A.order == "Random")
                     {
-                        header.Children.Add(new TextBlock { Text = "How many" });
+                        header.Children.Add(new TextBlock { Text = Loc.T("How many") });
                         var set = new NumericUpDown { Value = Math.Max(1, A.set), Minimum = 1, Increment = 1, FormatString = "0", Width = 90 };
                         set.ValueChanged += (_, _) => { A.set = Math.Max(1, (int)(set.Value ?? 1)); Touch(); };
                         header.Children.Add(set);
                     }
-                    card = Card("Run Order", CardButtons(list, idx), header);
+                    card = Card(Loc.T("Run Order"), CardButtons(list, idx), header);
                     BuildActList(card, A.children);
                     card.Children.Add(AddButton("Add To Group", ActMenu(A.children)));
                     break;
                 }
                 case ActKind.Block:
-                    card = Card("Template   " + A.template, CardButtons(list, idx));
+                    card = Card(Loc.T("Template") + "   " + A.template, CardButtons(list, idx));
                     card.Children.Add(BlockRef(A.template, A.prefix, s => A.template = s, s => A.prefix = s, TriggerTemplateLibrary.Section.Do));
                     break;
                 case ActKind.Raw:
-                    card = Card("Kept as written", CardButtons(list, idx));
+                    card = Card(Loc.T("Kept as written"), CardButtons(list, idx));
                     card.Children.Add(RawBox(A.raw, s => { A.raw = s; Touch(); }));
                     break;
                 default:
@@ -677,14 +680,14 @@ public partial class TriggerEditorView : UserControl
         foreach (var def in TriggerCatalog.Actions)
         {
             var parts = def.menu.Split('/');
-            var item = new MenuItem { Header = parts[^1] };
+            var item = new MenuItem { Header = Loc.T(parts[^1]) };
             var d = def;
             item.Click += (_, _) => { list.Add(TriggerEditorViewModel.NewAction(d)); Changed(); };
             if (parts.Length > 1)
             {
                 if (!groups.TryGetValue(parts[0], out var group))
                 {
-                    group = new MenuItem { Header = parts[0] };
+                    group = new MenuItem { Header = Loc.T(parts[0]) };
                     groups[parts[0]] = group;
                     menu.Items.Add(group);
                 }
@@ -696,7 +699,7 @@ public partial class TriggerEditorView : UserControl
             }
         }
         // Not in the catalog since it has children; added under Flow by hand.
-        var choose = new MenuItem { Header = "Run Order Group" };
+        var choose = new MenuItem { Header = Loc.T("Run Order Group") };
         choose.Click += (_, _) => { list.Add(new TAct { kind = ActKind.Choose, order = "Straight" }); Changed(); };
         if (groups.TryGetValue("Flow", out var flow)) flow.Items.Add(choose);
         else menu.Items.Add(choose);
@@ -708,11 +711,11 @@ public partial class TriggerEditorView : UserControl
 
     private MenuItem TemplateItems(string header, Func<TriggerTemplateLibrary.LoopInfo, bool> filter, Action<string> pick)
     {
-        var root = new MenuItem { Header = header };
+        var root = new MenuItem { Header = Loc.T(header) };
         var lib = _vm!.Library;
         if (!lib.Available)
         {
-            root.Items.Add(new MenuItem { Header = "TriggerTemplates.xml not found", IsEnabled = false });
+            root.Items.Add(new MenuItem { Header = Loc.T("TriggerTemplates.xml not found"), IsEnabled = false });
             return root;
         }
         foreach (var t in lib.Templates)
@@ -723,7 +726,7 @@ public partial class TriggerEditorView : UserControl
             foreach (var l in loops)
             {
                 string full = l.Full;
-                var item = new MenuItem { Header = string.IsNullOrEmpty(l.name) ? "(unnamed)" : l.name };
+                var item = new MenuItem { Header = string.IsNullOrEmpty(l.name) ? Loc.T("(unnamed)") : l.name };
                 item.Click += (_, _) => pick(full);
                 tm.Items.Add(item);
             }
@@ -738,12 +741,12 @@ public partial class TriggerEditorView : UserControl
         var lib = _vm!.Library;
         var stack = new StackPanel { Spacing = 4 };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},*,Auto,60") };
-        row.Children.Add(new TextBlock { Text = "Template" });
+        row.Children.Add(new TextBlock { Text = Loc.T("Template") });
         var tpl = TextWithPicker(template, lib.Templates.SelectMany(t => t.loops.Select(l => l.Full)).ToList(), s => { setTemplate(s); Changed(); }, rebuildOnType: true, groupByDot: true);
         Grid.SetColumn(tpl, 1);
         row.Children.Add(tpl);
-        var pl = new TextBlock { Text = "Prefix", Margin = new Thickness(8, 0, 4, 0) };
-        ToolTip.SetTip(pl, "Makes the template read 1Sound instead of Sound, for example.");
+        var pl = new TextBlock { Text = Loc.T("Prefix"), Margin = new Thickness(8, 0, 4, 0) };
+        ToolTip.SetTip(pl, Loc.T("Makes the template read 1Sound instead of Sound, for example."));
         Grid.SetColumn(pl, 2);
         row.Children.Add(pl);
         var pre = new TextBox { Text = prefix ?? string.Empty };
@@ -756,7 +759,7 @@ public partial class TriggerEditorView : UserControl
         if (info == null)
         {
             if (!string.IsNullOrEmpty(template))
-                stack.Children.Add(Hint(lib.LoadFailed ? "TriggerTemplates.xml couldn't be read." : $"'{template}' isn't in TriggerTemplates.xml."));
+                stack.Children.Add(Hint(lib.LoadFailed ? "TriggerTemplates.xml couldn't be read." : Loc.F("'{0}' isn't in TriggerTemplates.xml.", template)));
             return stack;
         }
         var lines = info.Lines(section);
@@ -771,8 +774,8 @@ public partial class TriggerEditorView : UserControl
     private Control ParamRow(ParamDef pd, TValue v, VType lit)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},*"), Margin = new Thickness(0, 2) };
-        var label = new TextBlock { Text = pd.label, TextTrimming = TextTrimming.CharacterEllipsis };
-        ToolTip.SetTip(label, string.IsNullOrEmpty(pd.hint) ? pd.label : pd.hint);
+        var label = new TextBlock { Text = Loc.T(pd.label), TextTrimming = TextTrimming.CharacterEllipsis };
+        ToolTip.SetTip(label, Loc.T(string.IsNullOrEmpty(pd.hint) ? pd.label : pd.hint));
         grid.Children.Add(label);
         var editor = ValueEditor(pd, v, lit);
         Grid.SetColumn(editor, 1);
@@ -782,10 +785,10 @@ public partial class TriggerEditorView : UserControl
 
     private static string ModeLabel(ValueMode m, VType lit) => m switch
     {
-        ValueMode.Variable => "Variable",
-        ValueMode.ModelProp => "Model",
-        ValueMode.NodePos => "Node",
-        _ => VTypes.SlotLabel(lit),
+        ValueMode.Variable => Loc.T("Variable"),
+        ValueMode.ModelProp => Loc.T("Model"),
+        ValueMode.NodePos => Loc.T("Node"),
+        _ => Loc.T(VTypes.SlotLabel(lit)),
     };
 
     /// <summary>Mode dropdown (literal / variable / model property / node position) plus the editor for that mode.</summary>
@@ -799,7 +802,7 @@ public partial class TriggerEditorView : UserControl
         if (pd.query) { modes.Add(ValueMode.ModelProp); modes.Add(ValueMode.NodePos); }
         if (!modes.Contains(v.mode)) modes.Add(v.mode); // a file may use a query where none is offered: keep it
 
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("96,*") };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(ModeColumns) };
         var mode = new ComboBox { ItemsSource = modes.Select(m => ModeLabel(m, lit)).ToList(), SelectedIndex = modes.IndexOf(v.mode), HorizontalAlignment = HorizontalAlignment.Stretch };
         mode.SelectionChanged += (_, _) =>
         {
@@ -942,10 +945,13 @@ public partial class TriggerEditorView : UserControl
 
     // ================= SMALL BUILDERS ================= //
 
-    private static TextBlock Hint(string text) => new() { Text = text, Classes = { "hint" } };
+    private static string[] Tr(params string[] items) => items.Select(Loc.T).ToArray();
+
+    private static TextBlock Hint(string text) => new() { Text = Loc.T(text), Classes = { "hint" } };
 
     private static Control BoolEditor(bool value, Action<bool> set, string onText, string offText)
     {
+        onText = Loc.T(onText); offText = Loc.T(offText);
         var box = new CheckBox { IsChecked = value, Content = value ? onText : offText };
         box.IsCheckedChanged += (_, _) =>
         {
@@ -981,7 +987,7 @@ public partial class TriggerEditorView : UserControl
         int index = shown.IndexOf(value);
         if (index < 0 && !string.IsNullOrEmpty(value))
         {
-            shown.Add(value + "  (not found)");
+            shown.Add(value + "  " + Loc.T("(not found)"));
             index = shown.Count - 1;
         }
         var combo = new ComboBox { ItemsSource = shown, SelectedIndex = index, HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -999,7 +1005,7 @@ public partial class TriggerEditorView : UserControl
         int matched = Array.FindIndex(values, x => integer ? x == value : VTypes.TryFloat(x, out var a) && VTypes.TryFloat(value, out var b) && Math.Abs(a - b) < 0.0001f);
         bool custom = getCustom() || matched < 0;
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(custom ? "Auto,*" : "*") };
-        var combo = new ComboBox { ItemsSource = labels, SelectedIndex = custom ? labels.Length - 1 : matched, HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 100 };
+        var combo = new ComboBox { ItemsSource = Tr(labels), SelectedIndex = custom ? labels.Length - 1 : matched, HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 100 };
         combo.SelectionChanged += (_, _) =>
         {
             if (combo.SelectedIndex < 0) return;
@@ -1048,7 +1054,7 @@ public partial class TriggerEditorView : UserControl
         var menu = new MenuFlyout();
         if (choices.Count == 0)
         {
-            menu.Items.Add(new MenuItem { Header = emptyText ?? "Nothing to pick", IsEnabled = false });
+            menu.Items.Add(new MenuItem { Header = emptyText ?? Loc.T("Nothing to pick"), IsEnabled = false });
         }
         else
         {
@@ -1062,7 +1068,7 @@ public partial class TriggerEditorView : UserControl
                 else if (choice.IndexOf('/') is int slash && slash > 0) { group = choice[..slash]; label = choice[(slash + 1)..]; }
                 else if (alphabet) group = char.IsLetter(choice[0]) ? char.ToUpperInvariant(choice[0]).ToString() : "#";
 
-                var item = new MenuItem { Header = string.IsNullOrEmpty(label) ? "(unnamed)" : label };
+                var item = new MenuItem { Header = string.IsNullOrEmpty(label) ? Loc.T("(unnamed)") : label };
                 string picked = choice.StartsWith("Other Types/", StringComparison.Ordinal) ? choice["Other Types/".Length..] : choice;
                 item.Click += (_, _) =>
                 {
@@ -1125,17 +1131,17 @@ public partial class TriggerEditorView : UserControl
             Changed();
         }
 
-        var play = IconButton("Icon.Play", "Preview this animation on the character", () => Preview(box.Text ?? string.Empty));
+        var play = IconButton("Icon.Play", Loc.T("Preview this animation on the character"), () => Preview(box.Text ?? string.Empty));
         play.Margin = new Thickness(2, 0, 0, 0);
         Grid.SetColumn(play, 1);
         grid.Children.Add(play);
 
         var button = new Button { Classes = { "tool" }, Padding = new Thickness(2), MinWidth = 22, Margin = new Thickness(2, 0, 0, 0), Content = new PathIcon { Data = IconGeometry("Icon.ChevronDown"), Width = 10, Height = 10 } };
-        ToolTip.SetTip(button, "Pick a move: it opens in the preview, Apply uses it");
+        ToolTip.SetTip(button, Loc.T("Pick a move: it opens in the preview, Apply uses it"));
         var menu = new MenuFlyout();
         var choices = _vm!.Animations;
         if (choices.Count == 0)
-            menu.Items.Add(new MenuItem { Header = "No moves found in the project's moves.xml", IsEnabled = false });
+            menu.Items.Add(new MenuItem { Header = Loc.T("No moves found in the project's moves.xml"), IsEnabled = false });
         var groups = new Dictionary<string, MenuItem>();
         foreach (var choice in choices)
         {
@@ -1174,7 +1180,7 @@ public partial class TriggerEditorView : UserControl
         var menu = new MenuFlyout();
         var choices = _vm!.Sounds;
         if (choices.Count == 0)
-            menu.Items.Add(new MenuItem { Header = "No sounds found in the project's sounds folder", IsEnabled = false });
+            menu.Items.Add(new MenuItem { Header = Loc.T("No sounds found in the project's sounds folder"), IsEnabled = false });
         var groups = new Dictionary<string, MenuItem>();
         foreach (var choice in choices)
         {
@@ -1186,7 +1192,7 @@ public partial class TriggerEditorView : UserControl
                 Height = 18,
                 Child = new PathIcon { Data = IconGeometry("Icon.Play"), Width = 11, Height = 11, Foreground = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)) },
             };
-            ToolTip.SetTip(playIcon, "Play");
+            ToolTip.SetTip(playIcon, Loc.T("Play"));
             // The play button plays without picking (the menu stays open).
             playIcon.AddHandler(InputElement.PointerPressedEvent, async (_, e) =>
             {
@@ -1240,7 +1246,7 @@ public partial class TriggerEditorView : UserControl
     private static Grid LabeledRow(string label, Control editor)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},*"), Margin = new Thickness(0, 2) };
-        grid.Children.Add(new TextBlock { Text = label });
+        grid.Children.Add(new TextBlock { Text = Loc.T(label) });
         Grid.SetColumn(editor, 1);
         grid.Children.Add(editor);
         return grid;
@@ -1250,8 +1256,8 @@ public partial class TriggerEditorView : UserControl
     private static StackPanel Block(string title, string description)
     {
         var body = new StackPanel { Spacing = 4 };
-        body.Children.Add(new TextBlock { Text = title, Classes = { "block-title" } });
-        body.Children.Add(new TextBlock { Text = description, Classes = { "hint" } });
+        body.Children.Add(new TextBlock { Text = Loc.T(title), Classes = { "block-title" } });
+        body.Children.Add(new TextBlock { Text = Loc.T(description), Classes = { "hint" } });
         _ = new Border { Classes = { "block" }, Child = body };
         return body;
     }
@@ -1263,7 +1269,7 @@ public partial class TriggerEditorView : UserControl
         DockPanel.SetDock(buttons, Dock.Right);
         header.Children.Add(buttons);
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        titleRow.Children.Add(new TextBlock { Text = title, Classes = { "card-title" } });
+        titleRow.Children.Add(new TextBlock { Text = Loc.T(title), Classes = { "card-title" } });
         if (extra != null) titleRow.Children.Add(extra);
         header.Children.Add(titleRow);
         card.Children.Add(header);
@@ -1276,11 +1282,11 @@ public partial class TriggerEditorView : UserControl
     private Control CardButtons<T>(List<T> list, int index)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 0 };
-        var up = IconButton("Icon.ArrowUp", "Move up", () => { var t = list[index]; list.RemoveAt(index); list.Insert(index - 1, t); Changed(); });
+        var up = IconButton("Icon.ArrowUp", Loc.T("Move up"), () => { var t = list[index]; list.RemoveAt(index); list.Insert(index - 1, t); Changed(); });
         up.IsEnabled = index > 0;
-        var down = IconButton("Icon.ArrowDown", "Move down", () => { var t = list[index]; list.RemoveAt(index); list.Insert(index + 1, t); Changed(); });
+        var down = IconButton("Icon.ArrowDown", Loc.T("Move down"), () => { var t = list[index]; list.RemoveAt(index); list.Insert(index + 1, t); Changed(); });
         down.IsEnabled = index < list.Count - 1;
-        var remove = IconButton("Icon.Close", "Remove", () => { list.RemoveAt(index); Changed(); });
+        var remove = IconButton("Icon.Close", Loc.T("Remove"), () => { list.RemoveAt(index); Changed(); });
         row.Children.Add(up);
         row.Children.Add(down);
         row.Children.Add(remove);
@@ -1297,7 +1303,7 @@ public partial class TriggerEditorView : UserControl
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 4,
-                Children = { new PathIcon { Data = IconGeometry("Icon.Plus"), Width = 12, Height = 12 }, new TextBlock { Text = text } },
+                Children = { new PathIcon { Data = IconGeometry("Icon.Plus"), Width = 12, Height = 12 }, new TextBlock { Text = Loc.T(text) } },
             },
         };
         return button;

@@ -16,6 +16,7 @@ using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.ViewModels.Dialogs;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -83,7 +84,7 @@ public sealed partial class PaintViewModel : ObservableObject
     {
         double step = Size < 10 ? 1 : Size < 50 ? 5 : Size < 200 ? 10 : 50;
         Size = Math.Clamp(Size + direction * step, MinSize, MaxSize);
-        _editor.StatusText = $"Brush size: {Size:0.#}";
+        _editor.StatusText = Loc.F("Brush size: {0:0.#}", Size);
     }
 
     public BrushSettings Settings => new(Kind, Size, Opacity / 100.0, Color, Erase ? PaintBlendMode.Erase : Blend);
@@ -106,10 +107,13 @@ public sealed partial class PaintViewModel : ObservableObject
     public bool IsMerge => Targets.Count > 1;
     public bool CanClip => IsActive && !IsNew;
 
+    /// <summary>Size of what Apply will save (follows painting and undo).</summary>
+    private string PaintedSize => Canvas?.PaintedBounds is { } b ? $"{b.Width}×{b.Height}" : "empty";
+
     public string SessionTitle => Canvas == null ? string.Empty
-        : IsNew ? $"New image '{NewName}' ({Canvas.Width}×{Canvas.Height})"
-        : IsMerge ? $"Merging {Targets.Count} images ({Canvas.Width}×{Canvas.Height})"
-        : $"Editing '{Targets[0].ClassName}' ({Canvas.Width}×{Canvas.Height})";
+        : IsNew ? Loc.F("New image '{0}' ({1})", NewName, PaintedSize)
+        : IsMerge ? Loc.F("Merging {0} images ({1})", Targets.Count, PaintedSize)
+        : Loc.F("Editing '{0}' ({1})", Targets[0].ClassName, PaintedSize);
 
     public bool IsHidden(SceneElement element) => _hidden.Count > 0 && _hidden.Contains(element);
 
@@ -147,7 +151,7 @@ public sealed partial class PaintViewModel : ObservableObject
         if (!IsActive)
             return true;
         string what = IsNew ? $"the new image '{NewName}'" : "the changes to the image";
-        bool discard = await AppServices.Dialogs.ConfirmAsync("Brush", $"Discard {what}?", "Discard", "Keep Editing", MessageKind.Warning);
+        bool discard = await AppServices.Dialogs.ConfirmAsync(Loc.T("Brush"), Loc.F("Discard {0}?", what), Loc.T("Discard"), Loc.T("Keep Editing"), MessageKind.Warning);
         if (discard)
             Discard();
         return discard;
@@ -160,7 +164,7 @@ public sealed partial class PaintViewModel : ObservableObject
             return;
         bool wasNew = IsNew;
         Reset();
-        _editor.StatusText = wasNew ? "New image discarded." : "Painting discarded.";
+        _editor.StatusText = wasNew ? Loc.T("New image discarded.") : Loc.T("Painting discarded.");
     }
 
     // ================= START ================= //
@@ -169,11 +173,11 @@ public sealed partial class PaintViewModel : ObservableObject
     {
         name = name.Trim();
         if (name.Length == 0)
-            return "Enter a name.";
+            return Loc.T("Enter a name.");
         if (!ValidName.IsMatch(name))
-            return "Use letters, digits, '_' and '-' only.";
+            return Loc.T("Use letters, digits, '_' and '-' only.");
         if (_editor.Context.Textures.Find(name) != null)
-            return $"A texture named '{name}' already exists.";
+            return Loc.F("A texture named '{0}' already exists.", name);
         return null;
     }
 
@@ -182,8 +186,8 @@ public sealed partial class PaintViewModel : ObservableObject
     {
         if (!_editor.Context.Textures.IsIndexed)
             await _editor.Context.Textures.RefreshIndexAsync();
-        string? name = await AppServices.Dialogs.PromptAsync("New Image", "Name of the new image (PNG in the project's textures):",
-            NextFreeName("paint"), ValidateName, "Start Painting");
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("New Image"), Loc.T("Name of the new image (PNG in the project's textures):"),
+            NextFreeName("paint"), ValidateName, Loc.T("Start Painting"));
         if (string.IsNullOrWhiteSpace(name))
             return false;
         name = name.Trim();
@@ -192,7 +196,7 @@ public sealed partial class PaintViewModel : ObservableObject
         var canvas = new PaintCanvas(start, start, Matrix.CreateTranslation(origin.X, origin.Y), canGrow: true);
         // New images go to the gameplay layer.
         SetSession(canvas, Array.Empty<ImageElement>(), Layers.GetFactor(Layers.Default), name);
-        _editor.StatusText = $"Painting '{name}': paint anywhere, then press Apply.";
+        _editor.StatusText = Loc.F("Painting '{0}': paint anywhere, then press Apply.", name);
         return true;
     }
 
@@ -215,7 +219,7 @@ public sealed partial class PaintViewModel : ObservableObject
             images = _editor.Selection.OfType<ImageElement>().ToList();
         if (images.Count == 0)
         {
-            _editor.StatusText = "Select one or more images to edit.";
+            _editor.StatusText = Loc.T("Select one or more images to edit.");
             return;
         }
         if (IsActive && !await ConfirmDiscardAsync())
@@ -232,12 +236,12 @@ public sealed partial class PaintViewModel : ObservableObject
             var asset = await textures.GetAsync(image.ClassName);
             if (asset == null)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Edit Image", $"The texture '{image.ClassName}' could not be loaded.", MessageKind.Warning);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Image"), Loc.F("The texture '{0}' could not be loaded.", image.ClassName), MessageKind.Warning);
                 return false;
             }
             if (asset.IsAnimated)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Edit Image", $"'{image.ClassName}' is a sprite sheet (animated texture); only still images can be painted.", MessageKind.Warning);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Image"), Loc.F("'{0}' is a sprite sheet (animated texture); only still images can be painted.", image.ClassName), MessageKind.Warning);
                 return false;
             }
             assets.Add((image, asset));
@@ -251,7 +255,7 @@ public sealed partial class PaintViewModel : ObservableObject
         double factor = Layers.GetFactor(primary.EffectiveLayer);
         if (assets.Any(a => Math.Abs(Layers.GetFactor(a.Image.EffectiveLayer) - factor) > 1e-9))
         {
-            await AppServices.Dialogs.ShowMessageAsync("Edit Image", "The images to merge must be in the same layer.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Image"), Loc.T("The images to merge must be in the same layer."), MessageKind.Warning);
             return false;
         }
 
@@ -262,7 +266,7 @@ public sealed partial class PaintViewModel : ObservableObject
             int w = asset.Width, h = asset.Height;
             if (w > PaintCanvas.MaxSize || h > PaintCanvas.MaxSize)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Edit Image", $"'{image.ClassName}' is {w}×{h}; the Brush edits images up to {PaintCanvas.MaxSize}×{PaintCanvas.MaxSize}.", MessageKind.Warning);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Image"), Loc.F("'{0}' is {1}×{2}; the Brush edits images up to {3}×{4}.", image.ClassName, w, h, PaintCanvas.MaxSize, PaintCanvas.MaxSize), MessageKind.Warning);
                 return false;
             }
             var (a, b, c, d) = image.GetBasis();
@@ -288,7 +292,7 @@ public sealed partial class PaintViewModel : ObservableObject
             int w = Math.Max(1, (int)Math.Ceiling(maxX - minX)), h = Math.Max(1, (int)Math.Ceiling(maxY - minY));
             if (w > PaintCanvas.MaxSize || h > PaintCanvas.MaxSize)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Edit Image", $"Merged, these images cover {w}×{h}; the Brush makes images up to {PaintCanvas.MaxSize}×{PaintCanvas.MaxSize}.", MessageKind.Warning);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Image"), Loc.F("Merged, these images cover {0}×{1}; the Brush makes images up to {2}×{3}.", w, h, PaintCanvas.MaxSize, PaintCanvas.MaxSize), MessageKind.Warning);
                 return false;
             }
             canvas = new PaintCanvas(w, h, Matrix.CreateTranslation(minX, minY), canGrow: true);
@@ -316,8 +320,8 @@ public sealed partial class PaintViewModel : ObservableObject
         if (_editor.ActiveTool != EditorTool.Brush)
             _editor.ActiveTool = EditorTool.Brush;
         _editor.StatusText = IsMerge
-            ? $"Merged {targets.Count} images: paint, then press Apply."
-            : $"Editing '{primary.ClassName}': paint, then press Apply.";
+            ? Loc.F("Merged {0} images: paint, then press Apply.", targets.Count)
+            : Loc.F("Editing '{0}': paint, then press Apply.", primary.ClassName);
         return true;
     }
 
@@ -385,12 +389,13 @@ public sealed partial class PaintViewModel : ObservableObject
             return false;
         if (Canvas.Undo())
         {
+            OnPropertyChanged(nameof(SessionTitle));
             _editor.InvalidateScene();
-            _editor.StatusText = "Stroke undone";
+            _editor.StatusText = Loc.T("Stroke undone");
         }
         else
         {
-            _editor.StatusText = "Nothing to undo in this painting";
+            _editor.StatusText = Loc.T("Nothing to undo in this painting");
         }
         return true;
     }
@@ -416,7 +421,7 @@ public sealed partial class PaintViewModel : ObservableObject
         {
             if (content is not { } c)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Brush", "Nothing has been painted yet.", MessageKind.Info);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Brush"), Loc.T("Nothing has been painted yet."), MessageKind.Info);
                 return;
             }
             crop = c;
@@ -433,8 +438,8 @@ public sealed partial class PaintViewModel : ObservableObject
         }
         else if (choice == ApplyChoice.Duplicate)
         {
-            var newName = await AppServices.Dialogs.PromptAsync("Save as Duplicate", "Name of the new image:",
-                NextFreeName(Targets[0].ClassName), ValidateName, "Save");
+            var newName = await AppServices.Dialogs.PromptAsync(Loc.T("Save as Duplicate"), Loc.T("Name of the new image:"),
+                NextFreeName(Targets[0].ClassName), ValidateName, Loc.T("Save"));
             if (string.IsNullOrWhiteSpace(newName))
                 return;
             name = newName.Trim();
@@ -460,7 +465,7 @@ public sealed partial class PaintViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Brush", $"Could not save '{name}.png': {ex.Message}", MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Brush"), Loc.F("Could not save '{0}.png': {1}", name, ex.Message), MessageKind.Error);
             return;
         }
 
@@ -537,21 +542,21 @@ public sealed partial class PaintViewModel : ObservableObject
                 await _editor.ProjectWindow.RevealNewAsync(new[] { added.FileName });
         }
         _editor.SelectTool(EditorTool.Move);
-        _editor.StatusText = merged ? $"Merged into '{name}.png'." : $"Saved '{name}.png'.";
+        _editor.StatusText = merged ? Loc.F("Merged into '{0}.png'.", name) : Loc.F("Saved '{0}.png'.", name);
     }
 
     private async Task<ApplyChoice> AskApplyAsync()
     {
         string message = IsNew
-            ? $"Save the painting as '{NewName}.png' and place it in the level?"
+            ? Loc.F("Save the painting as '{0}.png' and place it in the level?", NewName)
             : IsMerge
-                ? $"Apply writes the merged image into '{Targets[0].ClassName}.png' (every level using it changes) and removes the other {Targets.Count - 1} image(s). Save as Duplicate writes a new PNG instead."
-                : $"Apply writes the changes into '{Targets[0].ClassName}.png' (every level using it changes). Save as Duplicate writes a new PNG and points this image at it.";
-        var dialog = new MessageDialogViewModel("Apply Painting", message, MessageKind.Question);
-        dialog.Buttons.Add(new DialogButton("Cancel", ApplyChoice.Cancel, isCancel: true));
-        dialog.Buttons.Add(new DialogButton("Apply", ApplyChoice.Apply, isDefault: true));
+                ? Loc.F("Apply writes the merged image into '{0}.png' (every level using it changes) and removes the other {1} image(s). Save as Duplicate writes a new PNG instead.", Targets[0].ClassName, Targets.Count - 1)
+                : Loc.F("Apply writes the changes into '{0}.png' (every level using it changes). Save as Duplicate writes a new PNG and points this image at it.", Targets[0].ClassName);
+        var dialog = new MessageDialogViewModel(Loc.T("Apply Painting"), message, MessageKind.Question);
+        dialog.Buttons.Add(new DialogButton(Loc.T("Cancel"), ApplyChoice.Cancel, isCancel: true));
+        dialog.Buttons.Add(new DialogButton(Loc.T("Apply"), ApplyChoice.Apply, isDefault: true));
         if (!IsNew)
-            dialog.Buttons.Add(new DialogButton("Save as Duplicate", ApplyChoice.Duplicate));
+            dialog.Buttons.Add(new DialogButton(Loc.T("Save as Duplicate"), ApplyChoice.Duplicate));
         return await AppServices.Dialogs.ShowAsync(dialog) is ApplyChoice choice ? choice : ApplyChoice.Cancel;
     }
 }

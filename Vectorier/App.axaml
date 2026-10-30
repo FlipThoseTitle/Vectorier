@@ -1,12 +1,18 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:Vectorier"
+             xmlns:sys="using:System"
+             xmlns:l="using:Vectorier.Services.Localization"
              x:Class="Vectorier.App"
              Name="Vectorier"
              RequestedThemeVariant="Light">
 
     <Application.DataTemplates>
         <local:ViewLocator />
+        <!-- Enum values in lists and drop-downs: shown in the current language -->
+        <DataTemplate DataType="sys:Enum">
+            <l:EnumLabel />
+        </DataTemplate>
     </Application.DataTemplates>
 
     <Application.Resources>

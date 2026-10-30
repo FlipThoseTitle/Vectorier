@@ -79,67 +79,78 @@
         },
         {
             "label": "Publish Windows (win-x64)",
-            "detail": "Self-contained release in publish/win-x64",
+            "detail": "Self-contained release in publish/win-x64 (asks for the version)",
             "type": "process",
             "command": "dotnet",
             "args": [
                 "publish",
                 "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
-                "-p:PublishProfile=win-x64"
+                "-p:PublishProfile=win-x64",
+                "-p:Version=${input:version}"
             ],
             "group": "build",
             "problemMatcher": "$msCompile"
         },
         {
             "label": "Publish Linux (linux-x64)",
-            "detail": "Self-contained release in publish/linux-x64",
+            "detail": "Self-contained release in publish/linux-x64 (asks for the version)",
             "type": "process",
             "command": "dotnet",
             "args": [
                 "publish",
                 "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
-                "-p:PublishProfile=linux-x64"
+                "-p:PublishProfile=linux-x64",
+                "-p:Version=${input:version}"
             ],
             "group": "build",
             "problemMatcher": "$msCompile"
         },
         {
             "label": "Publish macOS Intel (osx-x64)",
-            "detail": "Self-contained release in publish/osx-x64",
+            "detail": "Self-contained release in publish/osx-x64 (asks for the version)",
             "type": "process",
             "command": "dotnet",
             "args": [
                 "publish",
                 "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
-                "-p:PublishProfile=osx-x64"
+                "-p:PublishProfile=osx-x64",
+                "-p:Version=${input:version}"
             ],
             "group": "build",
             "problemMatcher": "$msCompile"
         },
         {
             "label": "Publish macOS Apple Silicon (osx-arm64)",
-            "detail": "Self-contained release in publish/osx-arm64",
+            "detail": "Self-contained release in publish/osx-arm64 (asks for the version)",
             "type": "process",
             "command": "dotnet",
             "args": [
                 "publish",
                 "${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj",
-                "-p:PublishProfile=osx-arm64"
+                "-p:PublishProfile=osx-arm64",
+                "-p:Version=${input:version}"
             ],
             "group": "build",
             "problemMatcher": "$msCompile"
         },
         {
             "label": "Publish All",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "Publish Windows (win-x64)",
-                "Publish Linux (linux-x64)",
-                "Publish macOS Intel (osx-x64)",
-                "Publish macOS Apple Silicon (osx-arm64)"
-            ],
+            "detail": "Asks for the version once, then publishes Windows, Linux and both macOS builds (zips named with it)",
+            "type": "shell",
+            "command": "dotnet publish \"${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj\" -p:PublishProfile=win-x64 -p:Version=${input:version} && dotnet publish \"${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj\" -p:PublishProfile=linux-x64 -p:Version=${input:version} && dotnet publish \"${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj\" -p:PublishProfile=osx-x64 -p:Version=${input:version} && dotnet publish \"${workspaceFolder}/Vectorier.Desktop/Vectorier.Desktop.csproj\" -p:PublishProfile=osx-arm64 -p:Version=${input:version}",
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "cmd.exe",
+                        "args": [
+                            "/d",
+                            "/c"
+                        ]
+                    }
+                }
+            },
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": "$msCompile"
         },
         {
             "label": "Publish Browser",
@@ -155,6 +166,36 @@
             ],
             "group": "build",
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Check Localization File",
+            "detail": "Asks for a language code (e.g. ru), checks Vectorier/Assets/Localization/<code>.json and writes Vectorier.External/Localization/Reports/localization-<code>.md",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "run",
+                "${workspaceFolder}/Vectorier.External/Localization/CheckLocalization.cs",
+                "--",
+                "${input:languageCode}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "version",
+            "type": "promptString",
+            "description": "Version of this release (numbers only, e.g. 1.5.1)",
+            "default": "1.5.1"
+        },
+        {
+            "id": "languageCode",
+            "type": "promptString",
+            "description": "Language file to check, without .json (e.g. ru, en)",
+            "default": "ru"
         }
     ]
 }

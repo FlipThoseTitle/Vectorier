@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Vectorier.Models.Scene;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -110,7 +111,7 @@ public sealed partial class HierarchyViewModel : ObservableObject
 
     public void RebuildNow()
     {
-        string levelName = _editor.ObjectEdit is { } edit ? $"Object: {edit.Name}" : _editor.Document.LevelName;
+        string levelName = _editor.ObjectEdit is { } edit ? Loc.F("Object: {0}", edit.Name) : _editor.Document.LevelName;
         if (_rootRow == null || _rootRow.RootName != levelName)
             _rootRow = new HierarchyRow(null, 0, levelName);
         var rows = new List<HierarchyRow> { _rootRow };

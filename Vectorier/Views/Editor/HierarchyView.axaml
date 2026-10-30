@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Editor"
              x:Class="Vectorier.Views.Editor.HierarchyView"
@@ -57,16 +58,16 @@
             <Border DockPanel.Dock="Top" Classes="panel-header">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="20" MinHeight="18" Click="OnToggleAllVisibility"
-                            ToolTip.Tip="Show everything if something is hidden, otherwise hide everything">
+                            ToolTip.Tip="{l:Tr 'Show everything if something is hidden, otherwise hide everything'}">
                         <PathIcon Name="AllEyeIcon" Data="{StaticResource Icon.Eye}" Width="13" Height="13" />
                     </Button>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource Icon.Layers}" />
-                        <TextBlock Classes="header" Text="Hierarchy" />
+                        <TextBlock Classes="header" Text="{l:Tr 'Hierarchy'}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <TextBox DockPanel.Dock="Top" Margin="4" PlaceholderText="Search…" Text="{Binding Hierarchy.FilterText}" />
+            <TextBox DockPanel.Dock="Top" Margin="4" PlaceholderText="{l:Tr 'Search…'}" Text="{Binding Hierarchy.FilterText}" />
             <Panel>
                 <ListBox Name="RowList" Classes="rows" ItemsSource="{Binding Hierarchy.Rows}" Background="Transparent" BorderThickness="0"
                          SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto">
@@ -76,7 +77,7 @@
                                 <DockPanel>
                                 <!-- Eye: hides the element in the Scene (editor only) -->
                                 <Border DockPanel.Dock="Left" Classes="row-eye" Classes.hidden="{Binding Element.IsHidden, FallbackValue=False}"
-                                        Width="18" Background="Transparent" IsVisible="{Binding !IsRoot}" ToolTip.Tip="Show / hide in the Scene">
+                                        Width="18" Background="Transparent" IsVisible="{Binding !IsRoot}" ToolTip.Tip="{l:Tr 'Show / hide in the Scene'}">
                                     <Panel>
                                         <PathIcon Data="{StaticResource Icon.Eye}" Width="12" Height="12" IsVisible="{Binding !Element.IsHidden, FallbackValue=True}" />
                                         <PathIcon Data="{StaticResource Icon.EyeOff}" Width="12" Height="12" IsVisible="{Binding Element.IsHidden, FallbackValue=False}" />
@@ -92,7 +93,7 @@
                                     <TextBlock Text="{Binding RootName}" FontWeight="SemiBold" IsVisible="{Binding IsRoot}" />
                                     <TextBlock Text="{Binding Element.DisplayName, FallbackValue=''}" IsVisible="{Binding !IsRoot}" />
                                     <PathIcon Data="{StaticResource Icon.Link}" Width="11" Height="11" IsVisible="{Binding IsReference}"
-                                              ToolTip.Tip="Content from the level's Sets" Opacity="0.7" />
+                                              ToolTip.Tip="{l:Tr 'Content from the level\'s Sets'}" Opacity="0.7" />
                                 </StackPanel>
                                 </DockPanel>
                             </Border>

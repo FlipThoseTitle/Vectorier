@@ -12,6 +12,7 @@ using Vectorier.Services.IO;
 using Vectorier.Services.Assets;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.ProjectManager;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels;
 
@@ -45,7 +46,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         _ = RefreshAsync();
     }
 
-    public string Title => "Project Selection";
+    public string Title => Loc.T("Project Selection");
     public Size PreferredSize => new(1060, 680);
     public bool StartMaximized => false;
 
@@ -155,11 +156,11 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         string? error = ProjectService.ValidateName(newName);
         var existing = ProjectList.FirstOrDefault(p => !ReferenceEquals(p, item) && string.Equals(p.Name, newName, StringComparison.OrdinalIgnoreCase));
         if (error == null && existing != null)
-            error = $"A project named '{newName}' already exists.";
+            error = Loc.F("A project named '{0}' already exists.", newName);
 
         if (error != null)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename Project", error, MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename Project"), error, MessageKind.Warning);
             EditName = item.Name;
             NameError = null;
             return;
@@ -174,7 +175,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Rename Project", "The project could not be renamed:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Rename Project"), Loc.T("The project could not be renamed:\n") + ex.Message, MessageKind.Error);
             EditName = item.Name;
         }
     }
@@ -204,7 +205,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Project", "The project details could not be saved:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Project"), Loc.T("The project details could not be saved:\n") + ex.Message, MessageKind.Error);
         }
     }
 
@@ -225,9 +226,9 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Project Thumbnail (960 × 540 recommended)",
+            Title = Loc.T("Select Project Thumbnail (960 × 540 recommended)"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Images")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg" } } },
         });
         if (files.Count == 0)
             return;
@@ -240,7 +241,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Thumbnail", "The thumbnail could not be replaced:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Thumbnail"), Loc.T("The thumbnail could not be replaced:\n") + ex.Message, MessageKind.Error);
         }
     }
 
@@ -251,22 +252,22 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
     {
         if (!await Projects.TemplateExistsAsync())
         {
-            await AppServices.Dialogs.ShowMessageAsync("Create Project",
-                $"The project template was not found in Projects/{ProjectService.TemplateName}.", MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Create Project"),
+                Loc.F("The project template was not found in Projects/{0}.", ProjectService.TemplateName), MessageKind.Error);
             return;
         }
 
-        string? name = await AppServices.Dialogs.PromptAsync("Create New Project", "Enter a name for the new project:", "New Project",
-            ProjectService.ValidateName, "Create");
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Create New Project"), Loc.T("Enter a name for the new project:"), "New Project",
+            ProjectService.ValidateName, Loc.T("Create"));
         if (name == null)
             return;
 
-        await RunBusyAsync("Creating project…", async progress =>
+        await RunBusyAsync(Loc.T("Creating project…"), async progress =>
         {
             var project = await Projects.CreateAsync(name, progress);
             await RefreshAsync();
             SelectedProject = ProjectList.FirstOrDefault(p => p.Name == project.Name);
-        }, "The project could not be created");
+        }, Loc.T("The project could not be created"));
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -276,18 +277,18 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         if (item == null)
             return;
 
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete Project",
-                $"Are you sure you want to delete '{item.Name}'?\nThis cannot be undone.", "Delete", "Cancel", MessageKind.Warning))
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete Project"),
+                Loc.F("Are you sure you want to delete '{0}'?\nThis cannot be undone.", item.Name), Loc.T("Delete"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunBusyAsync("Deleting project…", async _ =>
+        await RunBusyAsync(Loc.T("Deleting project…"), async _ =>
         {
             _loadingDetails = true;
             SelectedProject = null;
             _loadingDetails = false;
             await Projects.DeleteAsync(item.Project);
             await RefreshAsync();
-        }, "The project could not be deleted");
+        }, Loc.T("The project could not be deleted"));
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -297,13 +298,13 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         if (item == null)
             return;
 
-        await RunBusyAsync("Duplicating project…", async progress =>
+        await RunBusyAsync(Loc.T("Duplicating project…"), async progress =>
         {
             await CommitMetadataAsync(item.Project);
             var copy = await Projects.DuplicateAsync(item.Project, progress);
             await RefreshAsync();
             SelectedProject = ProjectList.FirstOrDefault(p => p.Name == copy.Name);
-        }, "The project could not be duplicated");
+        }, Loc.T("The project could not be duplicated"));
     }
 
     [RelayCommand]
@@ -315,18 +316,18 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
 
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select a project folder to import",
+            Title = Loc.T("Select a project folder to import"),
             AllowMultiple = false,
         });
         if (folders.Count == 0)
             return;
 
-        await RunBusyAsync("Importing project…", async progress =>
+        await RunBusyAsync(Loc.T("Importing project…"), async progress =>
         {
             var project = await Projects.ImportAsync(folders[0], progress);
             await RefreshAsync();
             SelectedProject = ProjectList.FirstOrDefault(p => p.Name == project.Name);
-        }, "The project could not be imported");
+        }, Loc.T("The project could not be imported"));
     }
 
     /// <summary>Copies the selected project into a picked folder, leaving out the editor's .vectorier cache.</summary>
@@ -340,7 +341,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
 
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = $"Publish '{item.Name}' to…",
+            Title = Loc.F("Publish '{0}' to…", item.Name),
             AllowMultiple = false,
         });
         if (folders.Count == 0)
@@ -349,17 +350,17 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
 
         string? local = destination.TryGetLocalPath();
         if (local != null && System.IO.Directory.Exists(System.IO.Path.Combine(local, item.Name)) &&
-            !await AppServices.Dialogs.ConfirmAsync("Publish Project",
-                $"'{item.Name}' already exists in the selected folder.\nIts files will be overwritten.", "Publish", "Cancel", MessageKind.Warning))
+            !await AppServices.Dialogs.ConfirmAsync(Loc.T("Publish Project"),
+                Loc.F("'{0}' already exists in the selected folder.\nIts files will be overwritten.", item.Name), Loc.T("Publish"), Loc.T("Cancel"), MessageKind.Warning))
             return;
 
-        await RunBusyAsync("Publishing project…", async progress =>
+        await RunBusyAsync(Loc.T("Publishing project…"), async progress =>
         {
             await CommitMetadataAsync(item.Project);
             await Projects.PublishAsync(item.Project, destination, progress);
             BusyText = null;
-            await AppServices.Dialogs.ShowMessageAsync("Publish Project", $"'{item.Name}' was published to:\n{local ?? destination.Name}");
-        }, "The project could not be published");
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Publish Project"), Loc.F("'{0}' was published to:\n{1}", item.Name, local ?? destination.Name));
+        }, Loc.T("The project could not be published"));
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -392,7 +393,7 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Vectorier", $"{errorTitle}:\n{ex.Message}", MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Vectorier"), Loc.F("{0}:\n{1}", errorTitle, ex.Message), MessageKind.Error);
         }
         finally
         {

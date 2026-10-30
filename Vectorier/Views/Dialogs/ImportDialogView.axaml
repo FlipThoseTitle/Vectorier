@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Dialogs"
              x:Class="Vectorier.Views.Dialogs.ImportDialogView"
@@ -8,16 +9,16 @@
         <Border DockPanel.Dock="Top" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-                    <Button Command="{Binding AddFilesCommand}" ToolTip.Tip="Pick files">
+                    <Button Command="{Binding AddFilesCommand}" ToolTip.Tip="{l:Tr 'Pick files'}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.File}" Width="13" Height="13" />
-                            <TextBlock Text="Add Files..." />
+                            <TextBlock Text="{l:Tr 'Add Files...'}" />
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding AddFoldersCommand}" IsVisible="{Binding CanPickFolders}" ToolTip.Tip="Pick folders (imported recursively)">
+                    <Button Command="{Binding AddFoldersCommand}" IsVisible="{Binding CanPickFolders}" ToolTip.Tip="{l:Tr 'Pick folders (imported recursively)'}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.Folder}" Width="13" Height="13" />
-                            <TextBlock Text="Add Folders..." />
+                            <TextBlock Text="{l:Tr 'Add Folders...'}" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -27,18 +28,18 @@
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-                    <Button Content="Cancel" MinWidth="80" Command="{Binding CancelDialogCommand}" IsCancel="True" />
-                    <Button Classes="accent" Content="Import" MinWidth="80" Command="{Binding ImportCommand}" IsDefault="True" />
+                    <Button Content="{l:Tr 'Cancel'}" MinWidth="80" Command="{Binding CancelDialogCommand}" IsCancel="True" />
+                    <Button Classes="accent" Content="{l:Tr 'Import'}" MinWidth="80" Command="{Binding ImportCommand}" IsDefault="True" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock Classes="dim" Text="{Binding Summary}" />
-                    <Button Classes="tool" Content="Clear" Command="{Binding ClearCommand}" IsVisible="{Binding HasEntries}" Padding="2,0" />
+                    <Button Classes="tool" Content="{l:Tr 'Clear'}" Command="{Binding ClearCommand}" IsVisible="{Binding HasEntries}" Padding="2,0" />
                 </StackPanel>
             </DockPanel>
         </Border>
         <Panel Name="DropZone" Background="Transparent" DragDrop.AllowDrop="True">
             <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="24"
-                       Text="Add files and folders with the buttons above, or drop them here. Files and folders can be imported together."
+                       Text="{l:Tr 'Add files and folders with the buttons above, or drop them here. Files and folders can be imported together.'}"
                        IsVisible="{Binding !HasEntries}" />
             <ScrollViewer Margin="6">
                 <ItemsControl ItemsSource="{Binding Entries}">
@@ -46,7 +47,7 @@
                         <DataTemplate x:DataType="vm:ImportEntry">
                             <Border Padding="6,3" CornerRadius="3" Classes="import-row">
                                 <DockPanel>
-                                    <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="20" MinHeight="20" ToolTip.Tip="Remove"
+                                    <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="20" MinHeight="20" ToolTip.Tip="{l:Tr 'Remove'}"
                                             Command="{Binding $parent[UserControl].((vm:ImportDialogViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}">
                                         <PathIcon Data="{StaticResource Icon.Close}" Width="10" Height="10" />
                                     </Button>

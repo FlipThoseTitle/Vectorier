@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using Vectorier.Controls;
 using Vectorier.Models.Scene;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.Editor;
 
@@ -305,7 +306,7 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         var vm = _vm;
         vm.Hierarchy.ContextElement = element;
 
-        var create = new MenuItem { Header = "Create New", Icon = Icon("Icon.Plus") };
+        var create = new MenuItem { Header = Loc.T("Create New"), Icon = Icon("Icon.Plus") };
         foreach (var type in ElementTypeInfo.MenuOrder)
         {
             var item = new MenuItem { Header = type.ToString(), Icon = new PathIcon { Data = ElementTypeInfo.GetIcon(type) } };
@@ -331,39 +332,39 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         if (element != null)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Command("Cut", "Icon.Cut", "Ctrl+X", () => vm.CutCommand.Execute(null)));
-            menu.Items.Add(Command("Copy", "Icon.Copy", "Ctrl+C", () => vm.CopyCommand.Execute(null)));
-            var paste = Command("Paste", "Icon.Paste", "Ctrl+V", () => vm.PasteAt(element));
+            menu.Items.Add(Command(Loc.T("Cut"), "Icon.Cut", "Ctrl+X", () => vm.CutCommand.Execute(null)));
+            menu.Items.Add(Command(Loc.T("Copy"), "Icon.Copy", "Ctrl+C", () => vm.CopyCommand.Execute(null)));
+            var paste = Command(Loc.T("Paste"), "Icon.Paste", "Ctrl+V", () => vm.PasteAt(element));
             paste.IsEnabled = vm.HasClipboard;
             menu.Items.Add(paste);
-            var pasteInto = Command("Paste Into", null, "Ctrl+Shift+V", () =>
+            var pasteInto = Command(Loc.T("Paste Into"), null, "Ctrl+Shift+V", () =>
             {
                 if (element is ObjectElement obj)
                     vm.PasteInto(obj, -1);
             });
             pasteInto.IsEnabled = vm.HasClipboard && element is ObjectElement;
             menu.Items.Add(pasteInto);
-            menu.Items.Add(Command("Delete", "Icon.Delete", "Delete", () => vm.DeleteCommand.Execute(null)));
+            menu.Items.Add(Command(Loc.T("Delete"), "Icon.Delete", "Delete", () => vm.DeleteCommand.Execute(null)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Command("Group", "Icon.Group", "Ctrl+G", () => vm.GroupCommand.Execute(null)));
+            menu.Items.Add(Command(Loc.T("Group"), "Icon.Group", "Ctrl+G", () => vm.GroupCommand.Execute(null)));
             if (element is ObjectElement)
             {
                 if (!element.IsSelected)
                     vm.Select(element);
-                menu.Items.Add(Command("Ungroup", null, "Ctrl+Shift+G", () => vm.Ungroup()));
+                menu.Items.Add(Command(Loc.T("Ungroup"), null, "Ctrl+Shift+G", () => vm.Ungroup()));
             }
             if (element is ImageElement)
             {
                 if (!element.IsSelected)
                     vm.Select(element);
                 int images = vm.Selection.Count(x => x is ImageElement);
-                menu.Items.Add(Command(images > 1 ? $"Merge & Edit {images} Images" : "Edit Image", "Icon.Brush", "",
+                menu.Items.Add(Command(images > 1 ? Loc.F("Merge & Edit {0} Images", images) : Loc.T("Edit Image"), "Icon.Brush", "",
                     () => _ = vm.Paint.EditSelectionAsync()));
             }
             if (element is ObjectElement { Reference: not null } defined)
-                menu.Items.Add(Command("Edit Object", "Icon.Object", "", () => _ = vm.EditObjectAsync(defined)));
+                menu.Items.Add(Command(Loc.T("Edit Object"), "Icon.Object", "", () => _ = vm.EditObjectAsync(defined)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Command("Frame in Scene", "Icon.Crosshair", "F", () => vm.RequestFrame(element)));
+            menu.Items.Add(Command(Loc.T("Frame in Scene"), "Icon.Crosshair", "F", () => vm.RequestFrame(element)));
         }
 
         menu.Open(target);

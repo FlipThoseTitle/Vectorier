@@ -27,6 +27,9 @@ public partial class App : Application
         Controls.NumberDrag.Install();
         Controls.EnterCommit.Install();
         AppServices.Dialogs = new DialogService();
+        // First launch flag, then the language (the computer's on first launch, the saved one afterwards).
+        AppState.Initialize();
+        Services.Localization.Loc.Initialize();
         ApplyTheme(AppServices.Platform?.Settings.Get(ThemeSettingKey));
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

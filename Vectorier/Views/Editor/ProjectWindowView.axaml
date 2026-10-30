@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Editor"
              xmlns:c="using:Vectorier.Controls"
@@ -56,16 +57,16 @@
             <Border DockPanel.Dock="Top" Classes="panel-header">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="22" MinHeight="22" Command="{Binding CreateFolderCommand}"
-                            ToolTip.Tip="New folder (Objects: new XML file)">
+                            ToolTip.Tip="{l:Tr 'New folder (Objects: new XML file)'}">
                         <PathIcon Data="{StaticResource Icon.FolderPlus}" Width="13" Height="13" />
                     </Button>
-                    <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="22" MinHeight="22" Command="{Binding ReloadCommand}" ToolTip.Tip="Reload">
+                    <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="22" MinHeight="22" Command="{Binding ReloadCommand}" ToolTip.Tip="{l:Tr 'Reload'}">
                         <PathIcon Data="{StaticResource Icon.Refresh}" Width="13" Height="13" />
                     </Button>
                     <TextBlock Classes="header" Text="{Binding Header}" />
                 </DockPanel>
             </Border>
-            <TextBox DockPanel.Dock="Top" Height="22" MinHeight="22" Padding="6,2" Margin="4,3" PlaceholderText="Search…"
+            <TextBox DockPanel.Dock="Top" Height="22" MinHeight="22" Padding="6,2" Margin="4,3" PlaceholderText="{l:Tr 'Search…'}"
                      Text="{Binding FolderSearchText}" VerticalContentAlignment="Center" />
             <Panel>
             <ScrollViewer Name="FolderScroll" Background="Transparent">
@@ -77,7 +78,7 @@
                                     <!-- Object XML type (like the "Anim" badge of animated textures) -->
                                     <Border DockPanel.Dock="Right" IsVisible="{Binding HasTypeBadge}" CornerRadius="3" Padding="4,0" Margin="4,0,2,0"
                                             VerticalAlignment="Center" Background="{DynamicResource AppAccent}" Opacity="0.85"
-                                            ToolTip.Tip="Object XML type (right click › Type to change)">
+                                            ToolTip.Tip="{l:Tr 'Object XML type (right click › Type to change)'}">
                                         <TextBlock Text="{Binding TypeBadge}" FontSize="9" FontWeight="SemiBold" Foreground="White" />
                                     </Border>
                                     <!-- A Grid (not a StackPanel) so the name is trimmed before the badge instead of running under it. -->
@@ -86,7 +87,7 @@
                                             <PathIcon Data="{StaticResource Icon.FileXml}" IsVisible="{Binding IsFile}" Width="13" Height="13" />
                                             <PathIcon Data="{StaticResource Icon.Folder}" IsVisible="{Binding !IsFile}" Width="13" Height="13" />
                                         </Panel>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayName}" />
                                     </Grid>
                                 </DockPanel>
                             </Border>
@@ -123,10 +124,10 @@
                             IsVisible="{Binding CanImport}" ToolTip.Tip="{Binding ImportLabel}">
                         <PathIcon Data="{StaticResource Icon.Import}" Width="13" Height="13" />
                     </Button>
-                    <TextBox Grid.Column="2" MaxWidth="180" MinWidth="40" HorizontalAlignment="Right" Height="22" MinHeight="22" Padding="6,2" Margin="0,2,8,2" PlaceholderText="Search…"
+                    <TextBox Grid.Column="2" MaxWidth="180" MinWidth="40" HorizontalAlignment="Right" Height="22" MinHeight="22" Padding="6,2" Margin="0,2,8,2" PlaceholderText="{l:Tr 'Search…'}"
                              Text="{Binding SearchText}" IsVisible="{Binding ShowsItems}" VerticalContentAlignment="Center" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding ShowsItems}"
-                                ToolTip.Tip="Tile size">
+                                ToolTip.Tip="{l:Tr 'Tile size'}">
                         <PathIcon Data="{StaticResource Icon.Minus}" Width="9" Height="9" Opacity="0.6" />
                         <Slider Width="90" Minimum="48" Maximum="200" SmallChange="4" LargeChange="16" Margin="0,-10"
                                 Value="{Binding TileSize}" VerticalAlignment="Center" />

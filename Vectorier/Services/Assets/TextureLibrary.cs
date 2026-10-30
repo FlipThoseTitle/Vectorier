@@ -9,6 +9,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Assets;
 
@@ -386,7 +387,7 @@ public sealed class TextureLibrary
         string folder = VPath.GetDirectory(entry.Path);
         string target = VPath.Combine(folder, newName + entry.Extension);
         if (await _fs.FileExistsAsync(target))
-            throw new InvalidOperationException($"'{newName}{entry.Extension}' already exists.");
+            throw new InvalidOperationException(Loc.F("'{0}{1}' already exists.", newName, entry.Extension));
         await _fs.MoveFileAsync(entry.Path, target);
         if (entry.AtlasPath != null)
             await _fs.MoveFileAsync(entry.AtlasPath, VPath.Combine(folder, newName + VPath.GetExtension(entry.AtlasPath)));

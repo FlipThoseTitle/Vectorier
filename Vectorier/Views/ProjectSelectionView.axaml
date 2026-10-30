@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels"
              x:Class="Vectorier.Views.ProjectSelectionView"
@@ -11,7 +12,7 @@
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Image Source="avares://Vectorier.Core/Assets/vectorier.png" Width="40" Height="40" />
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Classes="title" Text="Vectorier" />
+                    <TextBlock Classes="title" Text="{l:Tr 'Vectorier'}" />
                     <TextBlock Classes="dim" Text="{Binding RootDisplay}" FontSize="11" />
                 </StackPanel>
             </StackPanel>
@@ -24,21 +25,21 @@
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Classes="toolbar">
                         <DockPanel>
-                            <TextBlock Text="Projects" FontWeight="SemiBold" Margin="4,0,0,0" />
+                            <TextBlock Text="{l:Tr 'Projects'}" FontWeight="SemiBold" Margin="4,0,0,0" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2">
-                                <Button Classes="tool" ToolTip.Tip="Add Project" Command="{Binding AddProjectCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Add Project'}" Command="{Binding AddProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.Plus}" />
                                 </Button>
-                                <Button Classes="tool" ToolTip.Tip="Delete Project" Command="{Binding DeleteProjectCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Delete Project'}" Command="{Binding DeleteProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.Delete}" />
                                 </Button>
-                                <Button Classes="tool" ToolTip.Tip="Duplicate Project" Command="{Binding DuplicateProjectCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Duplicate Project'}" Command="{Binding DuplicateProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.Duplicate}" />
                                 </Button>
-                                <Button Classes="tool" ToolTip.Tip="Open Folder (import an existing project)" Command="{Binding ImportProjectCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Open Folder (import an existing project)'}" Command="{Binding ImportProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.FolderImport}" />
                                 </Button>
-                                <Button Classes="tool" ToolTip.Tip="Refresh" Command="{Binding RefreshCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Refresh'}" Command="{Binding RefreshCommand}">
                                     <PathIcon Data="{StaticResource Icon.Refresh}" />
                                 </Button>
                             </StackPanel>
@@ -60,7 +61,7 @@
                         </ListBox>
                         <TextBlock Classes="dim" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="20"
                                    IsVisible="{Binding IsEmpty}"
-                                   Text="No projects yet.&#x0a;Click '+' to create a new project, or use Open Folder to import one." />
+                                   Text="{l:Tr 'No projects yet.&#x0a;Click \'+\' to create a new project, or use Open Folder to import one.'}" />
                     </Panel>
                 </DockPanel>
             </Border>
@@ -68,12 +69,12 @@
             <!-- Right panel: selected project -->
             <Border Grid.Column="2" Classes="panel" x:Name="DetailsPanel">
                 <Panel>
-                    <TextBlock Classes="dim" HorizontalAlignment="Center" Text="Select a project from the list to view its details."
+                    <TextBlock Classes="dim" HorizontalAlignment="Center" Text="{l:Tr 'Select a project from the list to view its details.'}"
                                IsVisible="{Binding !HasSelection}" />
                     <ScrollViewer IsVisible="{Binding HasSelection}">
                         <StackPanel Margin="16" Spacing="4" MaxWidth="640">
                             <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
-                                    Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="Click to choose a new thumbnail (960 × 540 recommended)">
+                                    Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Click to choose a new thumbnail (960 × 540 recommended)'}">
                                 <Border Classes="thumbnail">
                                     <Viewbox Stretch="Uniform">
                                         <Panel Width="960" Height="540">
@@ -81,22 +82,22 @@
                                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
                                                         IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNull}}">
                                                 <PathIcon Data="{StaticResource Icon.Image}" Width="96" Height="96" Foreground="{DynamicResource AppForegroundDim}" />
-                                                <TextBlock Classes="dim" FontSize="32" Text="Click to set a thumbnail" />
+                                                <TextBlock Classes="dim" FontSize="32" Text="{l:Tr 'Click to set a thumbnail'}" />
                                             </StackPanel>
                                         </Panel>
                                     </Viewbox>
                                 </Border>
                             </Button>
-                            <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="Thumbnail (click to change)" Margin="0,2,0,8" />
+                            <TextBlock Classes="dim" FontSize="11" HorizontalAlignment="Center" Text="{l:Tr 'Thumbnail (click to change)'}" Margin="0,2,0,8" />
 
-                            <TextBlock Classes="label" Text="Project Name" />
+                            <TextBlock Classes="label" Text="{l:Tr 'Project Name'}" />
                             <TextBox x:Name="NameBox" Text="{Binding EditName}" />
                             <TextBlock Classes="error" Text="{Binding NameError}" IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                            <TextBlock Classes="label" Text="Author" Margin="0,8,0,2" />
+                            <TextBlock Classes="label" Text="{l:Tr 'Author'}" Margin="0,8,0,2" />
                             <TextBox x:Name="AuthorBox" Text="{Binding Author}" />
 
-                            <TextBlock Classes="label" Text="Description" Margin="0,8,0,2" />
+                            <TextBlock Classes="label" Text="{l:Tr 'Description'}" Margin="0,8,0,2" />
                             <TextBox x:Name="DescriptionBox" Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="110" />
                         </StackPanel>
                     </ScrollViewer>
@@ -111,19 +112,19 @@
                     <Button Command="{Binding ShowInExplorerCommand}" IsVisible="{Binding CanShowInExplorer}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.FolderSearch}" />
-                            <TextBlock Text="Show in Explorer" />
+                            <TextBlock Text="{l:Tr 'Show in Explorer'}" />
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding PublishProjectCommand}" ToolTip.Tip="Copy the selected project to a folder (without the editor's .vectorier cache)">
+                    <Button Command="{Binding PublishProjectCommand}" ToolTip.Tip="{l:Tr 'Copy the selected project to a folder (without the editor\'s .vectorier cache)'}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.Export}" />
-                            <TextBlock Text="Publish Project" />
+                            <TextBlock Text="{l:Tr 'Publish Project'}" />
                         </StackPanel>
                     </Button>
                     <Button Classes="accent" Command="{Binding OpenProjectCommand}" MinWidth="170">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.OpenInApp}" Foreground="White" />
-                            <TextBlock Text="Open Selected Project" />
+                            <TextBlock Text="{l:Tr 'Open Selected Project'}" />
                         </StackPanel>
                     </Button>
                 </StackPanel>

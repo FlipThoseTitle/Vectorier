@@ -15,6 +15,7 @@ using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.Services.Xml;
 using Vectorier.ViewModels.ProjectManager;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -117,7 +118,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     // ================= SCREEN ================= //
 
     public string Title => ObjectEdit is { } edit
-        ? $"Vectorier - {Project.Name} - Editing object {edit.Name} ({edit.File}){(IsDirty ? " *" : string.Empty)}"
+        ? Loc.F("Vectorier - {0} - Editing object {1} ({2}){3}", Project.Name, edit.Name, edit.File, (IsDirty ? " *" : string.Empty))
         : $"Vectorier - {Project.Name} - {Document.LevelName}.xml{(IsDirty ? " *" : string.Empty)}";
     public Size PreferredSize => new(1600, 900);
     public bool StartMaximized => true;
@@ -127,7 +128,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     private bool _isDirty;
 
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private string _statusText = "Ready";
+    [ObservableProperty] private string _statusText = Loc.T("Ready");
     [ObservableProperty] private EditorTool _activeTool = EditorTool.Move;
     [ObservableProperty] private ElementTypeInfo? _activeElementType;
 
@@ -191,7 +192,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
     public bool IsPlacing => PlacementType != null;
 
-    public string PlacementHint => PlacementType is { } t ? $"Click in the Scene to place {t}" + (t is ElementType.Platform or ElementType.Trigger or ElementType.Area or ElementType.Comment ? " (drag to size)" : string.Empty) + " · Esc to stop" : string.Empty;
+    public string PlacementHint => PlacementType is { } t ? Loc.F("Click in the Scene to place {0}", t) + (t is ElementType.Platform or ElementType.Trigger or ElementType.Area or ElementType.Comment ? Loc.T(" (drag to size)") : string.Empty) + Loc.T(" · Esc to stop") : string.Empty;
 
     /// <summary>Raised whenever the Scene must be redrawn.</summary>
     public event Action? SceneInvalidated;
@@ -294,7 +295,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         EndGesture();
         // Drawing order depends on it: the Scene sorts again.
         RaiseStructureChanged();
-        StatusText = Selection.Count == 1 ? $"Order in Layer: {Selection[0].Order}" : $"Order in Layer {(delta > 0 ? "+" : "")}{delta} ({Selection.Count} elements)";
+        StatusText = Selection.Count == 1 ? Loc.F("Order in Layer: {0}", Selection[0].Order) : Loc.F("Order in Layer {0}{1} ({2} elements)", (delta > 0 ? "+" : ""), delta, Selection.Count);
     }
 
     partial void OnPlacementTypeChanged(ElementType? value) => SceneInvalidated?.Invoke();
@@ -353,7 +354,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Open Level", "The level could not be opened:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Open Level"), Loc.T("The level could not be opened:\n") + ex.Message, MessageKind.Error);
         }
         finally
         {
@@ -371,7 +372,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
     private async Task<SceneDocument> LoadDocumentAsync(byte[] data, string levelName)
     {
-        StatusText = $"Opening {levelName}...";
+        StatusText = Loc.F("Opening {0}...", levelName);
         var xml = await Task.Run(() => XmlHelpers.ParseDocument(data));
         var (city, ground) = SceneXmlReader.ReadSets(xml);
         Definitions = await ResolveAllSetsAsync(ground, city);
@@ -383,8 +384,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
         var warnings = reader.Warnings.ToList();
         if (Definitions.MissingFiles.Count > 0)
-            warnings.Insert(0, "Missing set files: " + string.Join(", ", Definitions.MissingFiles));
-        StatusText = warnings.Count > 0 ? warnings[0] : $"Opened {levelName}.xml";
+            warnings.Insert(0, Loc.T("Missing set files: ") + string.Join(", ", Definitions.MissingFiles));
+        StatusText = warnings.Count > 0 ? warnings[0] : Loc.F("Opened {0}.xml", levelName);
         return doc;
     }
 
@@ -583,7 +584,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         var doc = new SceneDocument { LevelName = NewLevelName };
         await ResolveDefinitionsAsync(doc.Settings);
         SetDocument(doc, null);
-        StatusText = "New level";
+        StatusText = Loc.T("New level");
     }
 
     [RelayCommand]
@@ -598,10 +599,10 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         var start = await AppServices.FileSystem.GetStorageFolderAsync(Project.LevelsFolder, topLevel.StorageProvider);
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open Level",
+            Title = Loc.T("Open Level"),
             AllowMultiple = false,
             SuggestedStartLocation = start,
-            FileTypeFilter = new[] { new FilePickerFileType("Vector Level XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Vector Level XML")) { Patterns = new[] { "*.xml" } } },
         });
         var file = files.FirstOrDefault();
         if (file == null)
@@ -632,7 +633,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Open Level", "The level could not be opened:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Open Level"), Loc.T("The level could not be opened:\n") + ex.Message, MessageKind.Error);
         }
         finally
         {
@@ -679,12 +680,12 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         var start = await AppServices.FileSystem.GetStorageFolderAsync(Project.LevelsFolder, topLevel.StorageProvider);
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save Level As",
+            Title = Loc.T("Save Level As"),
             SuggestedFileName = suggested,
             SuggestedStartLocation = start,
             DefaultExtension = "xml",
             ShowOverwritePrompt = true,
-            FileTypeChoices = new[] { new FilePickerFileType("Vector Level XML") { Patterns = new[] { "*.xml" } } },
+            FileTypeChoices = new[] { new FilePickerFileType(Loc.T("Vector Level XML")) { Patterns = new[] { "*.xml" } } },
         });
         if (file == null)
             return false;
@@ -701,7 +702,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
             {
                 try { await file.DeleteAsync(); } catch { /* the picker may have created an empty file */ }
                 if (normalized != chosen)
-                    StatusText = $"Saved as {normalized}.xml (level names use upper case and underscores)";
+                    StatusText = Loc.F("Saved as {0}.xml (level names use upper case and underscores)", normalized);
             }
             Document.FilePath = target;
             Document.ExternalFile = null;
@@ -762,14 +763,14 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
             MarkSaved();
             await SaveTriggerTypesAsync();
             await SaveSurfacesAsync();
-            StatusText = $"Saved {Document.LevelName}.xml";
+            StatusText = Loc.F("Saved {0}.xml", Document.LevelName);
             if (errors.Count > 0)
-                await AppServices.Dialogs.ShowMessageAsync("Save", string.Join("\n", errors), MessageKind.Warning);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save"), string.Join("\n", errors), MessageKind.Warning);
             return true;
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Save", "The level could not be saved:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save"), Loc.T("The level could not be saved:\n") + ex.Message, MessageKind.Error);
             return false;
         }
     }
@@ -795,13 +796,13 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
             string? error = AppServices.Platform.LaunchGame(AppServices.FileSystem, Project.Name, levelName, hunter);
             if (error != null)
-                await AppServices.Dialogs.ShowMessageAsync("Play Level", error, MessageKind.Error);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), error, MessageKind.Error);
             else
-                StatusText = hunter ? $"Playing {levelName} in Hunter Mode" : $"Playing {levelName}";
+                StatusText = hunter ? Loc.F("Playing {0} in Hunter Mode", levelName) : Loc.F("Playing {0}", levelName);
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync("Play Level", ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), ex.Message, MessageKind.Error);
         }
     }
 

@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.Editor;
 
@@ -120,7 +121,7 @@ public partial class EditorView : UserControl
     {
         if (Scene.Renderer is { } renderer)
         {
-            ZoomText.Text = $"{Scene.Zoom * 100:0.#}%";
+            ZoomText.Text = Loc.F("{0:0.#}%", Scene.Zoom * 100);
         }
         // Toggle buttons uncheck themselves on click; keep them in sync with the active tool.
         UpdateToolButtons();
@@ -383,7 +384,7 @@ public partial class EditorView : UserControl
             {
                 if (e.Key == Key.Z) _vm.UsePivot = !_vm.UsePivot;
                 else _vm.IsLocalMode = !_vm.IsLocalMode;
-                _vm.StatusText = e.Key == Key.Z ? (_vm.UsePivot ? "Pivot" : "Center") : (_vm.IsLocalMode ? "Local" : "Global");
+                _vm.StatusText = e.Key == Key.Z ? (_vm.UsePivot ? Loc.T("Pivot") : Loc.T("Center")) : (_vm.IsLocalMode ? Loc.T("Local") : Loc.T("Global"));
                 Scene.InvalidateVisual();
             }
             e.Handled = true;
@@ -460,11 +461,11 @@ public partial class EditorView : UserControl
     private const string GitHubUrl = "https://github.com/FlipThoseTitle/Vectorier";
 
     private async void OnHelpTutorial(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        => await Services.AppServices.Dialogs.ShowMessageAsync("Tutorial", "Coming Soon!", Services.MessageKind.Info);
+        => await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Tutorial"), Loc.T("Coming Soon!"), Services.MessageKind.Info);
 
     private async void OnHelpGitHub(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (!await Services.AppServices.Dialogs.ConfirmAsync("GitHub", $"Open the Vectorier GitHub page in your browser?\n\n{GitHubUrl}", "Open", "Cancel"))
+        if (!await Services.AppServices.Dialogs.ConfirmAsync(Loc.T("GitHub"), Loc.F("Open the Vectorier GitHub page in your browser?\n\n{0}", GitHubUrl), Loc.T("Open"), Loc.T("Cancel")))
             return;
         var launcher = TopLevel.GetTopLevel(this)?.Launcher;
         if (launcher != null)
@@ -473,11 +474,8 @@ public partial class EditorView : UserControl
 
     private async void OnHelpCredits(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        const string text =
-            "This project was made possible through the collaboration and support of the following contributors. " +
-            "Each person has invested their time, knowledge, and effort to improve, refine, and expand this project. " +
-            "From identifying bugs and implementing new features, their involvement has been invaluable. " +
-            "The project stands as a result of shared effort and collective dedication.\n\n" +
+        string text =
+            Loc.T("This project was made possible through the collaboration and support of the following contributors. Each person has invested their time, knowledge, and effort to improve, refine, and expand this project. From identifying bugs and implementing new features, their involvement has been invaluable. The project stands as a result of shared effort and collective dedication.") + "\n\n" +
             "• DoritoTheChips\n" +
             "• Supergoldapfel (sol)\n" +
             "• somemelguy (Mel)\n" +
@@ -489,7 +487,7 @@ public partial class EditorView : UserControl
             "• domnulinginer (domnul)\n" +
             "• enderdude290 (Ghosted)\n" +
             "• zayden1325682 (Zayden)\n\n" +
-            "Vector and its original assets belong to Nekki Limited. Vectorier is a fan-made editor, not affiliated with or endorsed by Nekki.";
-        await Services.AppServices.Dialogs.ShowMessageAsync("Credits", text, Services.MessageKind.Info);
+            Loc.T("Vector and its original assets belong to Nekki Limited. Vectorier is a fan-made editor, not affiliated with or endorsed by Nekki.");
+        await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Credits"), text, Services.MessageKind.Info);
     }
 }

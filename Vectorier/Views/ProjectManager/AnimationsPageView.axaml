@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
              x:Class="Vectorier.Views.ProjectManager.AnimationsPageView"
@@ -6,10 +7,10 @@
     <DockPanel>
         <Border DockPanel.Dock="Top" Classes="panel" Padding="10,8" Margin="0,0,0,8">
             <Grid ColumnDefinitions="140,*,Auto">
-                <TextBlock Text="Moves XML" FontWeight="SemiBold" />
+                <TextBlock Text="{l:Tr 'Moves XML'}" FontWeight="SemiBold" />
                 <TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding MovesFile}" />
-                <Button Grid.Column="2" Margin="6,0,0,0" Command="{Binding ChooseMovesCommand}" ToolTip.Tip="Choose a moves XML (saved as animations/moves.xml)">
-                    <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.FolderOpen}" /><TextBlock Text="Browse…" /></StackPanel>
+                <Button Grid.Column="2" Margin="6,0,0,0" Command="{Binding ChooseMovesCommand}" ToolTip.Tip="{l:Tr 'Choose a moves XML (saved as animations/moves.xml)'}">
+                    <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.FolderOpen}" /><TextBlock Text="{l:Tr 'Browse…'}" /></StackPanel>
                 </Button>
             </Grid>
         </Border>
@@ -18,14 +19,14 @@
                 <Border DockPanel.Dock="Top" Classes="toolbar">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" Spacing="1">
-                            <Button Classes="tool" ToolTip.Tip="Import Animations…" Command="{Binding ImportCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Delete Selected" Command="{Binding DeleteSelectedCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
-                            <Button Classes="tool" ToolTip.Tip="Reload" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Import Animations…'}" Command="{Binding ImportCommand}"><PathIcon Data="{StaticResource Icon.Import}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Delete Selected'}" Command="{Binding DeleteSelectedCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
+                            <Button Classes="tool" ToolTip.Tip="{l:Tr 'Reload'}" Command="{Binding ReloadCommand}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
                             <Button Command="{Binding PreviewCommand}" IsVisible="{Binding CanPreview}"
-                                    ToolTip.Tip="Play the selected animation on models/0.xml + 1.xml">
-                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" /><TextBlock Text="Preview" /></StackPanel>
+                                    ToolTip.Tip="{l:Tr 'Play the selected animation on models/0.xml + 1.xml'}">
+                                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" /><TextBlock Text="{l:Tr 'Preview'}" /></StackPanel>
                             </Button>
                             <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding CountText}" />
                         </StackPanel>

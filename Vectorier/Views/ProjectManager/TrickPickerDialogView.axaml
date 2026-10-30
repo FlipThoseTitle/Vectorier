@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.ProjectManager"
              x:Class="Vectorier.Views.ProjectManager.TrickPickerDialogView"
@@ -6,13 +7,13 @@
     <DockPanel>
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Classes="accent" Content="Done" MinWidth="80" Command="{Binding DoneCommand}" IsDefault="True" />
+                <Button DockPanel.Dock="Right" Classes="accent" Content="{l:Tr 'Done'}" MinWidth="80" Command="{Binding DoneCommand}" IsDefault="True" />
                 <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding Hint}" />
             </DockPanel>
         </Border>
         <Panel>
             <TextBlock Classes="dim" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}"
-                       Text="This project has no tricks yet. Add them in the Tricks category." />
+                       Text="{l:Tr 'This project has no tricks yet. Add them in the Tricks category.'}" />
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="8">
                 <ItemsControl ItemsSource="{Binding Choices}">
                     <ItemsControl.ItemsPanel>
@@ -25,7 +26,7 @@
                                 <Grid RowDefinitions="*,Auto">
                                     <Panel>
                                         <Image Source="{Binding Info.Image}" Stretch="Uniform" Width="117" Height="117" />
-                                        <TextBlock Classes="dim" FontSize="11" Text="No Image" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        <TextBlock Classes="dim" FontSize="11" Text="{l:Tr 'No Image'}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                    IsVisible="{Binding Info.Image, Converter={x:Static ObjectConverters.IsNull}}" />
                                         <Border Classes="pick-check" IsVisible="{Binding IsSelected}">
                                             <PathIcon Data="{StaticResource Icon.Check}" Width="12" Height="12" Foreground="White" />

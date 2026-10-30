@@ -9,6 +9,7 @@ using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.ProjectManager;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -86,7 +87,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         get
         {
             int count = _editor.Selection.Count(e => e is ImageElement);
-            return count > 1 ? $"Merge & Edit {count} Images" : "Edit Image";
+            return count > 1 ? Loc.F("Merge & Edit {0} Images", count) : Loc.T("Edit Image");
         }
     }
 
@@ -147,13 +148,13 @@ public sealed partial class InspectorViewModel : ObservableObject
             return;
         if (!_moveFiles.TryGetValue(move, out var file))
         {
-            await AppServices.Dialogs.ShowMessageAsync("Spawn Animation", $"'{move}' has no FileName in moves.xml.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Spawn Animation"), Loc.F("'{0}' has no FileName in moves.xml.", move), MessageKind.Warning);
             return;
         }
         var project = _editor.Project;
-        var result = await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(project, $"Preview - {move} ({file})",
+        var result = await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(project, Loc.F("Preview - {0} ({1})", move, file),
             new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(project, file),
-            ViewModels.Preview.PreviewCamera.FollowCameraNode, spawn.StartFrame, showApply: true, applyText: "Set Start Frame");
+            ViewModels.Preview.PreviewCamera.FollowCameraNode, spawn.StartFrame, showApply: true, applyText: Loc.T("Set Start Frame"));
         if (result != null && ReferenceEquals(_target, spawn))
             spawn.StartFrame = result.StartFrame;
     }
@@ -296,21 +297,21 @@ public sealed partial class InspectorViewModel : ObservableObject
     public string Header => _target switch
     {
         null => string.Empty,
-        BuildingMarkerElement marker => marker.IsIn ? "Building In" : "Building Out",
+        BuildingMarkerElement marker => marker.IsIn ? Loc.T("Building In") : Loc.T("Building Out"),
         { Type: ElementType.Unknown } => $"<{_target.Name}>",
         _ => _target.Type.ToString(),
     };
 
     public StreamGeometry? Icon => _target == null ? null : ElementTypeInfo.GetIcon(_target.Type);
 
-    public string SelectionNote => _editor.Selection.Count > 1 ? $"{_editor.Selection.Count} elements selected; showing the last one." : string.Empty;
+    public string SelectionNote => _editor.Selection.Count > 1 ? Loc.F("{0} elements selected; showing the last one.", _editor.Selection.Count) : string.Empty;
 
     public bool NameEditable => _target?.NameEditable == true;
 
     public string NameTip => _target switch
     {
-        AreaElement { IsTrick: true } => "A Trick Area is named after its trick's TriggerName in moves.xml (set automatically from the trick).",
-        _ => "Image, Animation and Particle names are their texture: rename them in the Project Window.",
+        AreaElement { IsTrick: true } => Loc.T("A Trick Area is named after its trick's TriggerName in moves.xml (set automatically from the trick)."),
+        _ => Loc.T("Image, Animation and Particle names are their texture: rename them in the Project Window."),
     };
 
     public string Name
@@ -323,7 +324,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             if (_target is ObjectElement { Children.Count: > 0 } && _editor.ResolveDefinitionName(value) != null)
             {
                 // Objects with a definition cannot have children: a group keeps its name.
-                _editor.StatusText = $"'{value}' is an object definition; an Object with children cannot use its name.";
+                _editor.StatusText = Loc.F("'{0}' is an object definition; an Object with children cannot use its name.", value);
                 OnPropertyChanged();
                 return;
             }
@@ -458,7 +459,7 @@ public sealed partial class InspectorViewModel : ObservableObject
                 return;
             if (_target is CameraElement camera && _editor.ValidateCameraSelection(camera, value) is { } error)
             {
-                _ = AppServices.Dialogs.ShowMessageAsync("Camera", error, MessageKind.Warning);
+                _ = AppServices.Dialogs.ShowMessageAsync(Loc.T("Camera"), error, MessageKind.Warning);
                 OnPropertyChanged();
                 return;
             }
@@ -480,8 +481,8 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public string ReferenceText => _target is ObjectElement obj
         ? obj.Reference != null
-            ? $"Content from {obj.Reference.SourceFile}"
-            : string.IsNullOrEmpty(obj.Name) ? "Group (no definition)" : "No definition with this name in the level's Sets"
+            ? Loc.F("Content from {0}", obj.Reference.SourceFile)
+            : string.IsNullOrEmpty(obj.Name) ? Loc.T("Group (no definition)") : Loc.T("No definition with this name in the level's Sets")
         : string.Empty;
 
     public int ChildCount => _target is ObjectElement obj ? obj.Children.Count : 0;
@@ -573,7 +574,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     /// <summary>The target's &lt;Transformation&gt;s, each with a Preview button.</summary>
     public IReadOnlyList<DynamicEntry> DynamicEntries => _target is { SupportsDynamics: true } t
-        ? t.Dynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name, $"{d.TotalFrames} frames")).ToList()
+        ? t.Dynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name, Loc.F("{0} frames", d.TotalFrames))).ToList()
         : Array.Empty<DynamicEntry>();
 
     /// <summary>The Dynamic section is only shown when the element has transformations.</summary>
@@ -617,5 +618,5 @@ public sealed record DynamicEntry(string Name, string Summary);
 
 public sealed record TrickAreaEntry(string Name, string? Trick, MoveVisualizerViewModel.AreaTarget Target)
 {
-    public string TrickText => string.IsNullOrEmpty(Trick) ? "(no trick)" : Trick!;
+    public string TrickText => string.IsNullOrEmpty(Trick) ? Loc.T("(no trick)") : Trick!;
 }

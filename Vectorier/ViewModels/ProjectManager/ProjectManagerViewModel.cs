@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -65,7 +66,7 @@ public abstract partial class PmPageViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            await AppServices.Dialogs.ShowMessageAsync(Title, "Failed to load:\n" + ex.Message, MessageKind.Error);
+            await AppServices.Dialogs.ShowMessageAsync(Title, Loc.T("Failed to load:\n") + ex.Message, MessageKind.Error);
         }
         finally
         {
@@ -108,13 +109,13 @@ public sealed partial class ProjectManagerViewModel : ViewModelBase, IScreen
         Pages.Add(FileListPageViewModel.XmlFiles(this));
 
         _pendingLevelSelection = selectLevel;
-        SelectedPage = Pages.FirstOrDefault(p => p.Title == initialPage) ?? Levels;
+        SelectedPage = Pages.FirstOrDefault(p => p.IconKey == initialPage) ?? Levels;
     }
 
     private string? _pendingLevelSelection;
 
     public ProjectInfo Project { get; }
-    public string Title => $"Project Manager - {Project.Name}";
+    public string Title => Loc.F("Project Manager - {0}", Project.Name);
     public Size PreferredSize => new(1280, 800);
     public bool StartMaximized => false;
 

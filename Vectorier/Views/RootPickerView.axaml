@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels"
              x:Class="Vectorier.Views.RootPickerView"
@@ -8,13 +9,13 @@
         <StackPanel Spacing="14">
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Image Source="avares://Vectorier.Core/Assets/vectorier.png" Width="48" Height="48" />
-                <TextBlock Classes="title" Text="Welcome to Vectorier" />
+                <TextBlock Classes="title" Text="{l:Tr 'Welcome to Vectorier'}" />
             </StackPanel>
             <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
             <Button Classes="accent" HorizontalAlignment="Left" Command="{Binding PickFolderCommand}" IsEnabled="{Binding !IsBusy}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.FolderOpen}" Foreground="White" />
-                    <TextBlock Text="Select Vectorier Folder…" />
+                    <TextBlock Text="{l:Tr 'Select Vectorier Folder…'}" />
                 </StackPanel>
             </Button>
             <TextBlock Classes="error" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />

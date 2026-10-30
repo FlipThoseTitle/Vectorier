@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Vectorier.Models.Scene;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls.Scene;
 
@@ -67,7 +68,7 @@ public sealed partial class SceneView
         context.FillRectangle(LetterboxBrush, new Rect(frame.Right, frame.Top, Math.Max(0, size.Width - frame.Right), frame.Height));
         context.DrawRectangle(null, CameraFramePen, frame);
 
-        string label = camera == null ? "No Camera in this level: showing the Scene's center" : "Game View (read-only)";
+        string label = camera == null ? Loc.T("No Camera in this level: showing the Scene's center") : Loc.T("Game View (read-only)");
         var text = new FormattedText(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, 11, Brushes.White);
         context.DrawRectangle(new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0)), null, new Rect(6, 6, text.Width + 12, text.Height + 6), 3, 3);
         context.DrawText(text, new Point(12, 9));

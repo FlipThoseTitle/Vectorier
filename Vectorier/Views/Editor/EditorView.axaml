@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Editor"
              xmlns:scene="using:Vectorier.Controls.Scene"
@@ -30,111 +31,111 @@
     <DockPanel>
         <!-- ===== Menu ===== -->
         <Menu DockPanel.Dock="Top" Background="{DynamicResource AppToolbarBackground}">
-            <MenuItem Header="_File">
-                <MenuItem Header="_New Level" Command="{Binding NewLevelCommand}" InputGesture="Ctrl+N" />
-                <MenuItem Header="_Open..." Command="{Binding OpenCommand}" InputGesture="Ctrl+O">
+            <MenuItem Header="{l:Tr '_File'}">
+                <MenuItem Header="{l:Tr '_New Level'}" Command="{Binding NewLevelCommand}" InputGesture="Ctrl+N" />
+                <MenuItem Header="{l:Tr '_Open...'}" Command="{Binding OpenCommand}" InputGesture="Ctrl+O">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.FolderOpen}" /></MenuItem.Icon>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="_Save" Command="{Binding SaveCommand}" InputGesture="Ctrl+S">
+                <MenuItem Header="{l:Tr '_Save'}" Command="{Binding SaveCommand}" InputGesture="Ctrl+S">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Save}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Save _As..." Command="{Binding SaveAsCommand}" InputGesture="Ctrl+Shift+S" />
+                <MenuItem Header="{l:Tr 'Save _As...'}" Command="{Binding SaveAsCommand}" InputGesture="Ctrl+Shift+S" />
                 <Separator />
-                <MenuItem Header="_Play Level" Command="{Binding PlayLevelCommand}" InputGesture="F5">
+                <MenuItem Header="{l:Tr '_Play Level'}" Command="{Binding PlayLevelCommand}" InputGesture="F5">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Play}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Play Level in _Hunter Mode" Command="{Binding PlayLevelHunterCommand}" InputGesture="Shift+F5">
+                <MenuItem Header="{l:Tr 'Play Level in _Hunter Mode'}" Command="{Binding PlayLevelHunterCommand}" InputGesture="Shift+F5">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Hunter}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Level Settings..." Command="{Binding OpenLevelSettingsCommand}">
+                <MenuItem Header="{l:Tr '_Level Settings...'}" Command="{Binding OpenLevelSettingsCommand}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Tune}" /></MenuItem.Icon>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="_Quit" Command="{Binding QuitCommand}" />
+                <MenuItem Header="{l:Tr '_Quit'}" Command="{Binding QuitCommand}" />
             </MenuItem>
-            <MenuItem Header="_Edit">
-                <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}">
+            <MenuItem Header="{l:Tr '_Edit'}">
+                <MenuItem Header="{l:Tr '_Undo'}" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Undo}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}">
+                <MenuItem Header="{l:Tr '_Redo'}" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Redo}" /></MenuItem.Icon>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Cu_t" Command="{Binding CutCommand}" InputGesture="Ctrl+X">
+                <MenuItem Header="{l:Tr 'Cu_t'}" Command="{Binding CutCommand}" InputGesture="Ctrl+X">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Cut}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Copy" Command="{Binding CopyCommand}" InputGesture="Ctrl+C">
+                <MenuItem Header="{l:Tr '_Copy'}" Command="{Binding CopyCommand}" InputGesture="Ctrl+C">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Copy}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Paste" Command="{Binding PasteCommand}" InputGesture="Ctrl+V">
+                <MenuItem Header="{l:Tr '_Paste'}" Command="{Binding PasteCommand}" InputGesture="Ctrl+V">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Paste}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Paste _Into" Command="{Binding PasteIntoCommand}" InputGesture="Ctrl+Shift+V" />
-                <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" InputGesture="Delete">
+                <MenuItem Header="{l:Tr 'Paste _Into'}" Command="{Binding PasteIntoCommand}" InputGesture="Ctrl+Shift+V" />
+                <MenuItem Header="{l:Tr '_Delete'}" Command="{Binding DeleteCommand}" InputGesture="Delete">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Du_plicate" Command="{Binding DuplicateCommand}" InputGesture="Ctrl+D">
+                <MenuItem Header="{l:Tr 'Du_plicate'}" Command="{Binding DuplicateCommand}" InputGesture="Ctrl+D">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Duplicate}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Select _All" Command="{Binding SelectAllCommand}" InputGesture="Ctrl+A" />
-                <MenuItem Header="_Group" Command="{Binding GroupCommand}" InputGesture="Ctrl+G">
+                <MenuItem Header="{l:Tr 'Select _All'}" Command="{Binding SelectAllCommand}" InputGesture="Ctrl+A" />
+                <MenuItem Header="{l:Tr '_Group'}" Command="{Binding GroupCommand}" InputGesture="Ctrl+G">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Group}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Ungroup" Command="{Binding UngroupCommand}" InputGesture="Ctrl+Shift+G"
-                          ToolTip.Tip="Objects without a definition release their children; objects with one become editable copies of their content" />
+                <MenuItem Header="{l:Tr '_Ungroup'}" Command="{Binding UngroupCommand}" InputGesture="Ctrl+Shift+G"
+                          ToolTip.Tip="{l:Tr 'Objects without a definition release their children; objects with one become editable copies of their content'}" />
                 <Separator />
-                <MenuItem Header="Pr_eferences..." Command="{Binding OpenPreferencesCommand}">
+                <MenuItem Header="{l:Tr 'Pr_eferences...'}" Command="{Binding OpenPreferencesCommand}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Cog}" /></MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
-            <MenuItem Header="E_lement">
-                <MenuItem Header="Object" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Object}">
+            <MenuItem Header="{l:Tr 'E_lement'}">
+                <MenuItem Header="{l:Tr 'Object'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Object}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Object}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Image" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Image}">
+                <MenuItem Header="{l:Tr 'Image'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Image}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Image}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Trigger" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trigger}">
+                <MenuItem Header="{l:Tr 'Trigger'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trigger}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Trigger}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Area" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Area}">
+                <MenuItem Header="{l:Tr 'Area'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Area}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Area}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Platform" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Platform}">
+                <MenuItem Header="{l:Tr 'Platform'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Platform}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Platform}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Trapezoid" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trapezoid}">
+                <MenuItem Header="{l:Tr 'Trapezoid'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Trapezoid}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Trapezoid}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Camera" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Camera}">
+                <MenuItem Header="{l:Tr 'Camera'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Camera}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Camera}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Spawn" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Spawn}">
+                <MenuItem Header="{l:Tr 'Spawn'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Spawn}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Spawn}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Model" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Model}">
+                <MenuItem Header="{l:Tr 'Model'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Model}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Model}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Item">
+                <MenuItem Header="{l:Tr 'Item'}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Item}" /></MenuItem.Icon>
-                    <MenuItem Header="Bonus" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Bonus}" />
-                    <MenuItem Header="Coin" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Coin}" />
+                    <MenuItem Header="{l:Tr 'Bonus'}" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Bonus}" />
+                    <MenuItem Header="{l:Tr 'Coin'}" Command="{Binding CreateItemCommand}" CommandParameter="{x:Static models:ItemType.Coin}" />
                 </MenuItem>
-                <MenuItem Header="Animation" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Animation}">
+                <MenuItem Header="{l:Tr 'Animation'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Animation}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Animation}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Particle" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Particle}">
+                <MenuItem Header="{l:Tr 'Particle'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Particle}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Particle}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Comment" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Comment}">
+                <MenuItem Header="{l:Tr 'Comment'}" Command="{Binding CreateFromMenuCommand}" CommandParameter="{x:Static models:ElementType.Comment}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Comment}" /></MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="_Tutorial" Click="OnHelpTutorial" />
-                <MenuItem Header="_GitHub" Click="OnHelpGitHub" />
-                <MenuItem Header="_Credits" Click="OnHelpCredits" />
+            <MenuItem Header="{l:Tr '_Help'}">
+                <MenuItem Header="{l:Tr '_Tutorial'}" Click="OnHelpTutorial" />
+                <MenuItem Header="{l:Tr '_GitHub'}" Click="OnHelpGitHub" />
+                <MenuItem Header="{l:Tr '_Credits'}" Click="OnHelpCredits" />
                 <Separator />
                 <!-- Version (from the Publish task's version), shown as plain text -->
                 <MenuItem Header="{Binding AppVersion}" IsEnabled="False" />
@@ -146,80 +147,80 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="6" Margin="6,0,0,0">
                     <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Paint.IsActive}">
-                        <Button Classes="tool" Command="{Binding Paint.DiscardCommand}" ToolTip.Tip="Throw the painting away">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Discard" /></StackPanel>
+                        <Button Classes="tool" Command="{Binding Paint.DiscardCommand}" ToolTip.Tip="{l:Tr 'Throw the painting away'}">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="{l:Tr 'Discard'}" /></StackPanel>
                         </Button>
-                        <Button Classes="accent" Command="{Binding Paint.ApplyCommand}" ToolTip.Tip="{Binding Paint.SessionTitle, StringFormat='{}{0}: save it into the PNG (or as a duplicate)'}">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Apply" /></StackPanel>
+                        <Button Classes="accent" Command="{Binding Paint.ApplyCommand}" ToolTip.Tip="{Binding Paint.SessionTitle, Converter={x:Static l:FormatTrConverter.Instance}, ConverterParameter='{}{0}: save it into the PNG (or as a duplicate)'}">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="{l:Tr 'Apply'}" /></StackPanel>
                         </Button>
                         <Rectangle Width="1" Margin="2,3" Fill="{DynamicResource AppBorder}" />
                     </StackPanel>
                     <TextBlock Classes="dim" Text="{Binding Project.Name}" />
-                    <Button Classes="tool" ToolTip.Tip="Back to the Project Manager" Command="{Binding QuitCommand}">
+                    <Button Classes="tool" ToolTip.Tip="{l:Tr 'Back to the Project Manager'}" Command="{Binding QuitCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource Icon.ArrowLeft}" />
-                            <TextBlock Text="Project Manager" />
+                            <TextBlock Text="{l:Tr 'Project Manager'}" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
                 <!-- Wraps onto a second line when the window is narrow (display scaling above 100%) instead of overlapping. -->
                 <WrapPanel ItemSpacing="1" LineSpacing="2">
-                    <ToggleButton Classes="tool" ToolTip.Tip="Move (Q) · drag the arrows to move along one axis. Right mouse button pans the Scene." Name="MoveTool"
+                    <ToggleButton Classes="tool" ToolTip.Tip="{l:Tr 'Move (Q) · drag the arrows to move along one axis. Right mouse button pans the Scene.'}" Name="MoveTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Move}">
                         <PathIcon Data="{StaticResource Icon.Move}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" ToolTip.Tip="Rotate (W) · drag the ring" Name="RotateTool"
+                    <ToggleButton Classes="tool" ToolTip.Tip="{l:Tr 'Rotate (W) · drag the ring'}" Name="RotateTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Rotate}">
                         <PathIcon Data="{StaticResource Icon.Rotate}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" ToolTip.Tip="Scale (E) · drag an axis handle, or the center for uniform scale" Name="ScaleTool"
+                    <ToggleButton Classes="tool" ToolTip.Tip="{l:Tr 'Scale (E) · drag an axis handle, or the center for uniform scale'}" Name="ScaleTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Scale}">
                         <PathIcon Data="{StaticResource Icon.Scale}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" ToolTip.Tip="Rect (T): drag inside to move, the corner handles or edges to resize, just outside a corner to rotate" Name="RectTool"
+                    <ToggleButton Classes="tool" ToolTip.Tip="{l:Tr 'Rect (T): drag inside to move, the corner handles or edges to resize, just outside a corner to rotate'}" Name="RectTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Rect}">
                         <PathIcon Data="{StaticResource Icon.Rect}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" ToolTip.Tip="Brush (B): click the Scene to paint a new image, or Edit Image on selected images. [ / ] change the brush size." Name="BrushTool"
+                    <ToggleButton Classes="tool" ToolTip.Tip="{l:Tr 'Brush (B): click the Scene to paint a new image, or Edit Image on selected images. [ / ] change the brush size.'}" Name="BrushTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Brush}">
                         <PathIcon Data="{StaticResource Icon.Brush}" />
                     </ToggleButton>
                     <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
                     <Button Classes="tool" Command="{Binding TogglePivotCommand}" MinWidth="72"
-                            ToolTip.Tip="Gizmo position: the selection's Center, or the element's Pivot (its position). Display only: the data always keeps the top-left position.">
+                            ToolTip.Tip="{l:Tr 'Gizmo position: the selection\'s Center, or the element\'s Pivot (its position). Display only: the data always keeps the top-left position.'}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource Icon.Crosshair}" />
                             <Panel>
-                                <TextBlock Text="Center" IsVisible="{Binding !UsePivot}" />
-                                <TextBlock Text="Pivot" IsVisible="{Binding UsePivot}" />
+                                <TextBlock Text="{l:Tr 'Center'}" IsVisible="{Binding !UsePivot}" />
+                                <TextBlock Text="{l:Tr 'Pivot'}" IsVisible="{Binding UsePivot}" />
                             </Panel>
                         </StackPanel>
                     </Button>
                     <Button Classes="tool" Command="{Binding ToggleLocalModeCommand}" MinWidth="72"
-                            ToolTip.Tip="Gizmo axes: Global (the Scene's axes) or Local (the element's rotation)">
+                            ToolTip.Tip="{l:Tr 'Gizmo axes: Global (the Scene\'s axes) or Local (the element\'s rotation)'}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource Icon.Layers}" />
                             <Panel>
-                                <TextBlock Text="Global" IsVisible="{Binding !IsLocalMode}" />
-                                <TextBlock Text="Local" IsVisible="{Binding IsLocalMode}" />
+                                <TextBlock Text="{l:Tr 'Global'}" IsVisible="{Binding !IsLocalMode}" />
+                                <TextBlock Text="{l:Tr 'Local'}" IsVisible="{Binding IsLocalMode}" />
                             </Panel>
                         </StackPanel>
                     </Button>
                     <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
-                    <Button Classes="tool" ToolTip.Tip="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}">
+                    <Button Classes="tool" ToolTip.Tip="{l:Tr 'Undo (Ctrl+Z)'}" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}">
                         <PathIcon Data="{StaticResource Icon.Undo}" />
                     </Button>
-                    <Button Classes="tool" ToolTip.Tip="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}">
+                    <Button Classes="tool" ToolTip.Tip="{l:Tr 'Redo (Ctrl+Y)'}" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}">
                         <PathIcon Data="{StaticResource Icon.Redo}" />
                     </Button>
-                    <Button Classes="tool" ToolTip.Tip="Save (Ctrl+S)" Command="{Binding SaveCommand}">
+                    <Button Classes="tool" ToolTip.Tip="{l:Tr 'Save (Ctrl+S)'}" Command="{Binding SaveCommand}">
                         <PathIcon Data="{StaticResource Icon.Save}" />
                     </Button>
                     <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
-                    <Button Classes="tool" ToolTip.Tip="Level Settings" Command="{Binding OpenLevelSettingsCommand}">
+                    <Button Classes="tool" ToolTip.Tip="{l:Tr 'Level Settings'}" Command="{Binding OpenLevelSettingsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource Icon.Tune}" />
-                            <TextBlock Text="Level Settings" />
+                            <TextBlock Text="{l:Tr 'Level Settings'}" />
                         </StackPanel>
                     </Button>
 
@@ -227,20 +228,20 @@
                     <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsBrushTool}" Margin="6,0,0,0">
                         <Rectangle Width="1" Margin="0,3" Fill="{DynamicResource AppBorder}" />
                         <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BrushKinds}" SelectedItem="{Binding Paint.Kind}" Width="96"
-                                  ToolTip.Tip="Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held · Blur: softens what is painted (Opacity = strength, Size = how wide)" />
-                        <TextBlock Text="Size" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                  ToolTip.Tip="{l:Tr 'Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held · Blur: softens what is painted (Opacity = strength, Size = how wide)'}" />
+                        <TextBlock Text="{l:Tr 'Size'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
-                                       FormatString="0.#" Width="64" ShowButtonSpinner="False" ToolTip.Tip="Brush diameter in level pixels ([ / ])" />
-                        <TextBlock Text="Opacity" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                       FormatString="0.#" Width="64" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Brush diameter in level pixels ([ / ])'}" />
+                        <TextBlock Text="{l:Tr 'Opacity'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Opacity, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="0" Maximum="100"
                                        FormatString="0'%'" Width="58" ShowButtonSpinner="False" />
-                        <ColorPicker Color="{Binding Paint.Color}" IsAlphaEnabled="False" VerticalAlignment="Center" ToolTip.Tip="Brush color" />
+                        <ColorPicker Color="{Binding Paint.Color}" IsAlphaEnabled="False" VerticalAlignment="Center" ToolTip.Tip="{l:Tr 'Brush color'}" />
                         <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BlendModes}" SelectedItem="{Binding Paint.Blend}" Width="100"
-                                  ToolTip.Tip="Blending mode" IsEnabled="{Binding !Paint.Erase}" />
-                        <CheckBox Content="Erase" IsChecked="{Binding Paint.Erase}" Margin="4,0,0,0"
-                                  ToolTip.Tip="The brush removes paint instead of adding color" />
-                        <CheckBox Content="Clip to Image" IsChecked="{Binding Paint.ClipToBounds}" Margin="4,0,0,0" IsEnabled="{Binding !Paint.IsNew}"
-                                  ToolTip.Tip="On: paint only lands on the edited image's visible pixels (its transparent areas stay empty). Off: paint freely, the image grows (up to 4096 × 4096)." />
+                                  ToolTip.Tip="{l:Tr 'Blending mode'}" IsEnabled="{Binding !Paint.Erase}" />
+                        <CheckBox Content="{l:Tr 'Erase'}" IsChecked="{Binding Paint.Erase}" Margin="4,0,0,0"
+                                  ToolTip.Tip="{l:Tr 'The brush removes paint instead of adding color'}" />
+                        <CheckBox Content="{l:Tr 'Clip to Image'}" IsChecked="{Binding Paint.ClipToBounds}" Margin="4,0,0,0" IsEnabled="{Binding !Paint.IsNew}"
+                                  ToolTip.Tip="{l:Tr 'On: paint only lands on the edited image\'s visible pixels (its transparent areas stay empty). Off: paint freely, the image grows (up to 4096 × 4096).'}" />
                     </StackPanel>
                 </WrapPanel>
             </DockPanel>
@@ -264,7 +265,7 @@
                                 <Grid ColumnDefinitions="Auto,*" Margin="0,1">
                                     <!-- Eye: shows / hides this element type in the Scene. Drag across several eyes to set them all. -->
                                     <Border Classes="eye" Tag="{Binding}" Width="20" Background="Transparent" VerticalAlignment="Stretch" Margin="0,0,1,0"
-                                            ToolTip.Tip="Show / hide in the Scene (drag across to change several)">
+                                            ToolTip.Tip="{l:Tr 'Show / hide in the Scene (drag across to change several)'}">
                                         <Panel VerticalAlignment="Center" HorizontalAlignment="Center">
                                             <PathIcon Data="{StaticResource Icon.Eye}" Width="14" Height="14" IsVisible="{Binding IsVisible}" />
                                             <PathIcon Data="{StaticResource Icon.EyeOff}" Width="14" Height="14" IsVisible="{Binding !IsVisible}" Opacity="0.55" />
@@ -297,21 +298,21 @@
                         <Border DockPanel.Dock="Top" Classes="panel-header">
                             <Grid ColumnDefinitions="*,Auto,*" Name="SceneHeaderGrid">
                                 <StackPanel Orientation="Horizontal" Spacing="2" Margin="-4,-3,0,-3" Name="SceneTabsPanel">
-                                    <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsSceneViewTab}" ToolTip.Tip="Edit the level">
+                                    <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsSceneViewTab}" ToolTip.Tip="{l:Tr 'Edit the level'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Layers}" />
-                                            <TextBlock Text="Scene" />
+                                            <TextBlock Text="{l:Tr 'Scene'}" />
                                         </StackPanel>
                                     </RadioButton>
                                     <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsGameViewTab}"
-                                                 ToolTip.Tip="What the Camera sees (read-only). Select a Camera to look through it.">
+                                                 ToolTip.Tip="{l:Tr 'What the Camera sees (read-only). Select a Camera to look through it.'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Play}" />
-                                            <TextBlock Text="Game" />
+                                            <TextBlock Text="{l:Tr 'Game'}" />
                                         </StackPanel>
                                     </RadioButton>
                                     <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsObjectTab}" IsVisible="{Binding IsEditingObject}"
-                                                 ToolTip.Tip="Editing an object definition. Switch to Scene to save it and return to the level.">
+                                                 ToolTip.Tip="{l:Tr 'Editing an object definition. Switch to Scene to save it and return to the level.'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Object}" Foreground="#E65100" />
                                             <TextBlock Text="{Binding ObjectTabTitle}" />
@@ -320,16 +321,16 @@
                                 </StackPanel>
                                 <!-- Play buttons at the top center of the Scene -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" ToolTip.Tip="Play Level (F5)">
+                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" ToolTip.Tip="{l:Tr 'Play Level (F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Play}" Foreground="#2E7D32" />
-                                            <TextBlock Text="Play" />
+                                            <TextBlock Text="{l:Tr 'Play'}" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" ToolTip.Tip="Play Level in Hunter Mode (Shift+F5)">
+                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" ToolTip.Tip="{l:Tr 'Play Level in Hunter Mode (Shift+F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Hunter}" Foreground="#C62828" />
-                                            <TextBlock Text="Hunter Mode" />
+                                            <TextBlock Text="{l:Tr 'Hunter Mode'}" />
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -354,13 +355,13 @@
                         <RadioButton Classes="tab" GroupName="BottomTabs" IsChecked="{Binding IsProjectTab}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
                                 <PathIcon Data="{StaticResource Icon.Folder}" Width="12" Height="12" />
-                                <TextBlock Text="Project" />
+                                <TextBlock Text="{l:Tr 'Project'}" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Classes="tab" GroupName="BottomTabs" IsChecked="{Binding IsDynamicEditorTab}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
                                 <PathIcon Data="{StaticResource Icon.Timeline}" Width="12" Height="12" />
-                                <TextBlock Text="Dynamic Editor" />
+                                <TextBlock Text="{l:Tr 'Dynamic Editor'}" />
                             </StackPanel>
                         </RadioButton>
                     </StackPanel>
@@ -383,13 +384,13 @@
                     <RadioButton Classes="tab" GroupName="RightTabs" IsChecked="{Binding IsInspectorTab}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <PathIcon Data="{StaticResource Icon.Info}" Width="12" Height="12" />
-                            <TextBlock Text="Inspector" />
+                            <TextBlock Text="{l:Tr 'Inspector'}" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Classes="tab" GroupName="RightTabs" IsChecked="{Binding IsMoveVisualizerTab}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <PathIcon Data="{StaticResource Icon.RunFast}" Width="12" Height="12" />
-                            <TextBlock Text="Move Visualizer" />
+                            <TextBlock Text="{l:Tr 'Move Visualizer'}" />
                         </StackPanel>
                     </RadioButton>
                 </StackPanel>

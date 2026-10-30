@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using Vectorier.Controls;
 using Vectorier.Services.Assets;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.Editor;
 
@@ -285,10 +286,10 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         bool multiple = _vm.HasMultipleItems;
         if (!multiple && item.Definition != null && item.PlatformSurface == null)
         {
-            var edit = new MenuItem { Header = "Edit Object" };
+            var edit = new MenuItem { Header = Loc.T("Edit Object") };
             edit.Click += async (_, _) => await _vm.EditObjectAsync(item);
             menu.Items.Add(edit);
-            var renameObject = new MenuItem { Header = "Rename..." };
+            var renameObject = new MenuItem { Header = Loc.T("Rename...") };
             renameObject.Click += async (_, _) => await _vm.RenameDefinitionAsync(item);
             menu.Items.Add(renameObject);
         }
@@ -296,23 +297,23 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         bool canDelete = _vm.CanDelete(item);
         if (canRename)
         {
-            var rename = new MenuItem { Header = "Rename..." };
+            var rename = new MenuItem { Header = Loc.T("Rename...") };
             rename.Click += (_, _) => _vm.RenameItemCommand.Execute(item);
             menu.Items.Add(rename);
         }
         if (canDelete)
         {
-            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedItems.Count} Items" : "Delete", InputGesture = new KeyGesture(Key.Delete) };
+            var delete = new MenuItem { Header = multiple ? Loc.F("Delete {0} Items", _vm.SelectedItems.Count) : Loc.T("Delete"), InputGesture = new KeyGesture(Key.Delete) };
             delete.Click += (_, _) => _vm.DeleteItemCommand.Execute(item);
             menu.Items.Add(delete);
         }
         if (_vm.ShowsFolders && _vm.Context != PwContext.Objects)
         {
-            var move = new MenuItem { Header = "Move to Folder" };
+            var move = new MenuItem { Header = Loc.T("Move to Folder") };
             var moving = multiple ? _vm.SelectedItems.ToList() : new List<PwItem> { item };
             foreach (var folder in _vm.AllFolders)
             {
-                var target = new MenuItem { Header = folder.IsUnorganized ? "Unorganized" : folder.Name };
+                var target = new MenuItem { Header = folder.IsUnorganized ? Loc.T("Unorganized") : folder.Name };
                 var f = folder;
                 target.Click += async (_, _) => await _vm.AssignItemsAsync(moving, f);
                 move.Items.Add(target);
@@ -386,7 +387,7 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         if (_vm == null)
             return;
         var menu = new ContextMenu();
-        var create = new MenuItem { Header = _vm.IsObjectContext ? "New Objects File..." : "New Folder..." };
+        var create = new MenuItem { Header = _vm.IsObjectContext ? Loc.T("New Objects File...") : Loc.T("New Folder...") };
         create.Click += (_, _) => _vm.CreateFolderCommand.Execute(null);
         menu.Items.Add(create);
         bool multiple = folder != null && _vm.HasMultipleFolders && _vm.SelectedFolders.Contains(folder);
@@ -394,17 +395,17 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         {
             if (!multiple)
             {
-                var rename = new MenuItem { Header = "Rename..." };
+                var rename = new MenuItem { Header = Loc.T("Rename...") };
                 rename.Click += (_, _) => _vm.RenameFolderCommand.Execute(folder);
                 menu.Items.Add(rename);
             }
-            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedFolders.Count} Folders" : "Delete Folder", InputGesture = new KeyGesture(Key.Delete) };
+            var delete = new MenuItem { Header = multiple ? Loc.F("Delete {0} Folders", _vm.SelectedFolders.Count) : Loc.T("Delete Folder"), InputGesture = new KeyGesture(Key.Delete) };
             delete.Click += (_, _) => _vm.DeleteFolderCommand.Execute(folder);
             menu.Items.Add(delete);
         }
         if (_vm.IsObjectContext && folder is { IsFile: true })
         {
-            var delete = new MenuItem { Header = multiple ? $"Delete {_vm.SelectedFolders.Count} Files..." : "Delete File...", InputGesture = new KeyGesture(Key.Delete) };
+            var delete = new MenuItem { Header = multiple ? Loc.F("Delete {0} Files...", _vm.SelectedFolders.Count) : Loc.T("Delete File..."), InputGesture = new KeyGesture(Key.Delete) };
             delete.Click += (_, _) => _vm.DeleteFolderCommand.Execute(folder);
             menu.Items.Add(delete);
         }
@@ -412,12 +413,12 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         {
             // Object XML type: Object (X / Y) or Building (In / Out / Box attributes).
             menu.Items.Add(new Separator());
-            var type = new MenuItem { Header = "Type" };
+            var type = new MenuItem { Header = Loc.T("Type") };
             foreach (bool building in new[] { false, true })
             {
                 var option = new MenuItem
                 {
-                    Header = building ? "Building" : "Object",
+                    Header = building ? Loc.T("Building") : Loc.T("Object"),
                     ToggleType = MenuItemToggleType.Radio,
                     IsChecked = (file.IsBuilding == true) == building,
                 };

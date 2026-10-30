@@ -11,6 +11,7 @@ using Vectorier.Services;
 using Vectorier.Services.IO;
 using Vectorier.Services.Triggers;
 using Vectorier.Services.Xml;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -44,7 +45,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     public TriggerData Data { get; private set; }
     public TriggerTemplateLibrary Library { get; private set; }
 
-    public string Title => string.IsNullOrEmpty(Trigger.Name) ? "Trigger" : Trigger.Name;
+    public string Title => string.IsNullOrEmpty(Trigger.Name) ? Loc.T("Trigger") : Trigger.Name;
 
     [ObservableProperty] private bool _isDirty;
     [ObservableProperty] private bool _showXml;
@@ -91,12 +92,12 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     {
         if (!MoveFiles.TryGetValue(move, out var file))
         {
-            await AppServices.Dialogs.ShowMessageAsync("Preview Animation", $"'{move}' has no FileName in moves.xml.", MessageKind.Warning);
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Preview Animation"), Loc.F("'{0}' has no FileName in moves.xml.", move), MessageKind.Warning);
             return null;
         }
-        return await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(_editor.Project, $"Preview - {move} ({file})",
+        return await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(_editor.Project, Loc.F("Preview - {0} ({1})", move, file),
             new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(_editor.Project, file),
-            ViewModels.Preview.PreviewCamera.FollowCameraNode, startFrame, showApply: true, applyText: $"Apply {move}");
+            ViewModels.Preview.PreviewCamera.FollowCameraNode, startFrame, showApply: true, applyText: Loc.F("Apply {0}", move));
     }
 
     public IList<string> ModelChoices => Models.Count > 0 ? Models : new[] { VTypes.NoModel };
@@ -275,7 +276,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
         Trigger.ContentXml = Data.ToXml();
         Trigger.VariableTypes = WriteTypes(Data);
         IsDirty = false;
-        _editor.StatusText = $"Applied trigger '{Title}'";
+        _editor.StatusText = Loc.F("Applied trigger '{0}'", Title);
         _ = _editor.CacheTriggerTypesAsync(Trigger);
     }
 
@@ -308,7 +309,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     {
         if (SelectedLoop < 0 || SelectedLoop >= Data.loops.Count) return;
         var loop = Data.loops[SelectedLoop];
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete loop", $"Delete '{loop.Display}'?", "Delete")) return;
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete loop"), Loc.F("Delete '{0}'?", loop.Display), Loc.T("Delete"))) return;
         Data.loops.RemoveAt(SelectedLoop);
         SelectedLoop = Math.Clamp(SelectedLoop, -1, Data.loops.Count - 1);
         Changed();
@@ -436,7 +437,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     public async Task LoadPresetAsync(int index)
     {
         if (index == PresetIndex && index != 0) return;
-        if (IsDirty && !await AppServices.Dialogs.ConfirmAsync("Unapplied changes", "Loading a preset replaces everything on screen. Continue?", "Load"))
+        if (IsDirty && !await AppServices.Dialogs.ConfirmAsync(Loc.T("Unapplied changes"), Loc.T("Loading a preset replaces everything on screen. Continue?"), Loc.T("Load")))
         {
             OnPropertyChanged(nameof(PresetIndex));
             return;
@@ -463,7 +464,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                await AppServices.Dialogs.ShowMessageAsync("Preset", "The preset could not be read:\n" + ex.Message, MessageKind.Error);
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Preset"), Loc.T("The preset could not be read:\n") + ex.Message, MessageKind.Error);
                 return;
             }
         }
@@ -489,17 +490,17 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
 
     private static string? ValidatePresetName(string text, IEnumerable<string> existing)
     {
-        if (string.IsNullOrWhiteSpace(text)) return "Enter a name.";
-        if (text.Trim().Equals("Default", StringComparison.OrdinalIgnoreCase)) return "'Default' is reserved.";
-        if (text.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || text.Contains('/')) return "The name contains invalid characters.";
-        if (existing.Any(e => e.Equals(text.Trim(), StringComparison.OrdinalIgnoreCase))) return "A preset with this name already exists.";
+        if (string.IsNullOrWhiteSpace(text)) return Loc.T("Enter a name.");
+        if (text.Trim().Equals("Default", StringComparison.OrdinalIgnoreCase)) return Loc.T("'Default' is reserved.");
+        if (text.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || text.Contains('/')) return Loc.T("The name contains invalid characters.");
+        if (existing.Any(e => e.Equals(text.Trim(), StringComparison.OrdinalIgnoreCase))) return Loc.T("A preset with this name already exists.");
         return null;
     }
 
     [RelayCommand]
     private async Task NewPreset()
     {
-        string? name = await AppServices.Dialogs.PromptAsync("New Preset", "Save the current trigger as a preset named:", "NewPreset",
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("New Preset"), Loc.T("Save the current trigger as a preset named:"), "NewPreset",
             t => ValidatePresetName(t, Presets));
         if (name == null) return;
         await WritePresetAsync(name);
@@ -512,7 +513,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     {
         if (PresetIndex <= 0) return;
         await WritePresetAsync(Presets[PresetIndex]);
-        _editor.StatusText = $"Saved preset '{Presets[PresetIndex]}'";
+        _editor.StatusText = Loc.F("Saved preset '{0}'", Presets[PresetIndex]);
     }
 
     [RelayCommand]
@@ -520,7 +521,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     {
         if (PresetIndex <= 0) return;
         string name = Presets[PresetIndex];
-        if (!await AppServices.Dialogs.ConfirmAsync("Delete preset", $"Delete the preset '{name}'?", "Delete", kind: MessageKind.Warning)) return;
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Delete preset"), Loc.F("Delete the preset '{0}'?", name), Loc.T("Delete"), kind: MessageKind.Warning)) return;
         await AppServices.FileSystem.DeleteFileAsync(PresetPath(name));
         PresetIndex = 0;
         await RefreshPresetsAsync();
@@ -532,7 +533,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
     {
         if (PresetIndex <= 0) return;
         string old = Presets[PresetIndex];
-        string? name = await AppServices.Dialogs.PromptAsync("Rename Preset", "Name:", old, t => t.Trim() == old ? null : ValidatePresetName(t, Presets));
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Preset"), Loc.T("Name:"), old, t => t.Trim() == old ? null : ValidatePresetName(t, Presets));
         if (name == null || name == old) return;
         await AppServices.FileSystem.MoveFileAsync(PresetPath(old), PresetPath(name));
         await RefreshPresetsAsync();

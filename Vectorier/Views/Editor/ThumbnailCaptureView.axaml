@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Vectorier.ViewModels.Editor"
              xmlns:scene="using:Vectorier.Controls.Scene"
@@ -8,13 +9,13 @@
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                    <Button Content="Reset Zoom" Command="{Binding ResetZoomCommand}" ToolTip.Tip="Show the Camera's view height" />
-                    <Button Classes="accent" Content="Apply" MinWidth="80" Command="{Binding ApplyCommand}" IsDefault="True"
-                            IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Render the frame to a 512 × 340 PNG" />
-                    <Button Content="Cancel" MinWidth="80" Command="{Binding CancelCaptureCommand}" IsCancel="True" />
+                    <Button Content="{l:Tr 'Reset Zoom'}" Command="{Binding ResetZoomCommand}" ToolTip.Tip="{l:Tr 'Show the Camera\'s view height'}" />
+                    <Button Classes="accent" Content="{l:Tr 'Apply'}" MinWidth="80" Command="{Binding ApplyCommand}" IsDefault="True"
+                            IsEnabled="{Binding !IsBusy}" ToolTip.Tip="{l:Tr 'Render the frame to a 512 × 340 PNG'}" />
+                    <Button Content="{l:Tr 'Cancel'}" MinWidth="80" Command="{Binding CancelCaptureCommand}" IsCancel="True" />
                 </StackPanel>
                 <TextBlock Classes="dim" VerticalAlignment="Center" TextWrapping="Wrap"
-                           Text="Drag with the left or right mouse button to move the frame, scroll to zoom. Only Objects, Images and Models are drawn." />
+                           Text="{l:Tr 'Drag with the left or right mouse button to move the frame, scroll to zoom. Only Objects, Images and Models are drawn.'}" />
             </DockPanel>
         </Border>
         <scene:ThumbnailCaptureView Capture="{Binding}" />

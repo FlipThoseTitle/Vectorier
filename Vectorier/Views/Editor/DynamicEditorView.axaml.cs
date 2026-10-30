@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Vectorier.Services;
 using Vectorier.ViewModels.Editor;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.Editor;
 
@@ -53,8 +54,8 @@ public partial class DynamicEditorView : UserControl
     {
         if (Vm == null || TrackOf(sender) is not { } track)
             return;
-        string? name = await AppServices.Dialogs.PromptAsync("Rename Transformation", "Name:", track.TransformationName,
-            text => string.IsNullOrWhiteSpace(text) ? "Enter a name." : null);
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Rename Transformation"), Loc.T("Name:"), track.TransformationName,
+            text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.") : null);
         if (name != null)
             Vm.RenameTransformation(track, name);
     }

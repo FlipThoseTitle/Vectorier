@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -219,7 +220,7 @@ public sealed partial class EditorViewModel
         _undo.RemoveAt(_undo.Count - 1);
         _redo.Add(_baseline);
         RestoreEntry(entry);
-        StatusText = "Undo";
+        StatusText = Loc.T("Undo");
     }
 
     [RelayCommand]
@@ -234,7 +235,7 @@ public sealed partial class EditorViewModel
         _redo.RemoveAt(_redo.Count - 1);
         _undo.Add(_baseline);
         RestoreEntry(entry);
-        StatusText = "Redo";
+        StatusText = Loc.T("Redo");
     }
 
     private async void RestoreEntry(HistoryEntry entry, bool full = false)

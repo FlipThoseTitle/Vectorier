@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Vectorier.ViewModels.ProjectManager;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Views.ProjectManager;
 
@@ -55,7 +56,7 @@ public partial class LocationsPageView : UserControl
         var flyout = new MenuFlyout();
         foreach (var entry in Vm.GetAddEntries(location, group))
         {
-            var item = new MenuItem { Header = entry.Level == null ? "New Level" : "Move here: " + entry.Header };
+            var item = new MenuItem { Header = entry.Level == null ? Loc.T("New Level") : Loc.F("Move here: {0}", entry.Header) };
             item.Click += async (_, _) => await Vm.AddToGroupAsync(location, group, entry);
             flyout.Items.Add(item);
             if (entry.Level == null && flyout.Items.Count == 1)
