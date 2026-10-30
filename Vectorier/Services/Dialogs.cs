@@ -154,3 +154,29 @@ public sealed class DialogWindow : Window
         _dialog.Cancel();
     }
 }
+
+
+/// <summary>
+/// "Already exists. Replace it?" for a batch of files: the question has an "Apply to all files" check box, and
+/// once it is ticked the same answer is used for the rest of the batch without asking again.
+/// </summary>
+public sealed class ReplaceAsker
+{
+    private readonly string _title;
+    private bool? _forAll;
+
+    public ReplaceAsker(string title) => _title = title;
+
+    public async System.Threading.Tasks.Task<bool> AskAsync(string message)
+    {
+        if (_forAll is bool remembered)
+            return remembered;
+        var dialog = new ViewModels.Dialogs.MessageDialogViewModel(_title, message, MessageKind.Warning) { CheckBoxText = "Apply to all files" };
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Replace", true, isDefault: true));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton("Skip", false, isCancel: true));
+        bool replace = await AppServices.Dialogs.ShowAsync(dialog) is true;
+        if (dialog.IsChecked)
+            _forAll = replace;
+        return replace;
+    }
+}

@@ -661,6 +661,10 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                         reader.BuildDefinition(def);
                         items.Add(new PwItem(def.Name, def.Name) { Definition = def });
                     }
+                    // Objects that contain themselves are loaded without the self-reference (see SceneXmlReader).
+                    var cyclic = items.Where(i => SceneXmlReader.CyclicReferences.ContainsKey(i.Label)).Select(i => i.Label).ToList();
+                    if (cyclic.Count > 0)
+                        _editor.StatusText = $"Skipped a reference to itself inside: {string.Join(", ", cyclic)} (it would nest forever).";
                     break;
                 }
                 case PwContext.Textures:
@@ -1279,11 +1283,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             string root = _editor.Project.ModelsFolder;
             await AppServices.FileSystem.CreateDirectoryAsync(root);
             var imported = new List<string>();
+            var replace = new ReplaceAsker("Import Models");
             foreach (var file in xmls)
             {
                 string target = VPath.Combine(root, file.Name);
                 if (await AppServices.FileSystem.FileExistsAsync(target) &&
-                    !await AppServices.Dialogs.ConfirmAsync("Import Models", $"{file.Name} already exists. Replace it?", "Replace", "Skip", MessageKind.Warning))
+                    !await replace.AskAsync($"{file.Name} already exists. Replace it?"))
                     continue;
                 await StorageImport.CopyFileAsync(AppServices.FileSystem, file, target);
                 imported.Add(VPath.GetFileNameWithoutExtension(file.Name));
@@ -1294,7 +1299,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 string target = VPath.Combine(root, folder.Name);
                 if (await AppServices.FileSystem.DirectoryExistsAsync(target))
                 {
-                    if (!await AppServices.Dialogs.ConfirmAsync("Import Models", $"The folder {folder.Name} already exists in models. Replace it?", "Replace", "Skip", MessageKind.Warning))
+                    if (!await replace.AskAsync($"The folder {folder.Name} already exists in models. Replace it?"))
                         continue;
                     await AppServices.FileSystem.DeleteDirectoryAsync(target);
                 }
@@ -1337,9 +1342,10 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             if (files.Count == 0)
                 return;
 
+            var replaceTexture = new ReplaceAsker("Import");
             var imported = await Textures.ImportAsync(
                 files.Select(f => (f.File.Name, (Func<Task<byte[]>>)(() => StorageImport.ReadAllBytesAsync(f.File)))).ToList(),
-                name => AppServices.Dialogs.ConfirmAsync("Import", $"{name} already exists. Replace it?", "Replace", "Skip"));
+                name => replaceTexture.AskAsync($"{name} already exists. Replace it?"));
 
             // Dropped folders become virtual folders (recursively, "Name (1)" when the name is taken).
             var folderNames = new Dictionary<string, string>(StringComparer.Ordinal);

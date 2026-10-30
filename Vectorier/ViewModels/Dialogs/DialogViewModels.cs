@@ -74,6 +74,11 @@ public sealed partial class MessageDialogViewModel : DialogViewModel
 
     public bool ShowInput { get; init; }
 
+    /// <summary>Optional check box under the message (e.g. "Apply to all files").</summary>
+    public string? CheckBoxText { get; init; }
+    public bool ShowCheckBox => !string.IsNullOrEmpty(CheckBoxText);
+    [ObservableProperty] private bool _isChecked;
+
     public Func<string, string?>? Validator { get; init; }
 
     [ObservableProperty] private string _inputText = string.Empty;

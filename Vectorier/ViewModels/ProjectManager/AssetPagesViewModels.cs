@@ -161,8 +161,9 @@ public sealed partial class TexturesPageViewModel : PmPageViewModel
         try
         {
             var files = await TextureImport.CollectAsync(items);
+            var replace = new ReplaceAsker("Import Textures");
             await Library.ImportAsync(files.Select(f => (f.File.Name, (Func<Task<byte[]>>)(() => StorageImport.ReadAllBytesAsync(f.File)))).ToList(),
-                name => AppServices.Dialogs.ConfirmAsync("Import Textures", $"'{name}' already exists. Replace it?", "Replace", "Skip", MessageKind.Warning));
+                name => replace.AskAsync($"'{name}' already exists. Replace it?"));
             await LoadAsync();
         }
         catch (Exception ex)
@@ -322,6 +323,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
     {
         try
         {
+            var replace = new ReplaceAsker("Import");
             foreach (var (file, _) in await TextureImport.CollectAsync(items))
             {
                 if (VPath.HasExtension(file.Name, ".bin", ".bytes"))
@@ -473,13 +475,14 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
     {
         try
         {
+            var replace = new ReplaceAsker("Import");
             foreach (var (file, _) in await TextureImport.CollectAsync(items))
             {
                 if (!VPath.HasExtension(file.Name, _extensions))
                     continue;
                 string target = VPath.Combine(FolderPath, file.Name);
                 bool exists = await AppServices.FileSystem.FileExistsAsync(target);
-                if (exists && !await AppServices.Dialogs.ConfirmAsync("Import", $"'{file.Name}' already exists. Replace it?", "Replace", "Skip", MessageKind.Warning))
+                if (exists && !await replace.AskAsync($"'{file.Name}' already exists. Replace it?"))
                     continue;
                 await StorageImport.CopyFileAsync(AppServices.FileSystem, file, target);
             }
