@@ -131,6 +131,14 @@
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Comment}" /></MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_Tutorial" Click="OnHelpTutorial" />
+                <MenuItem Header="_GitHub" Click="OnHelpGitHub" />
+                <MenuItem Header="_Credits" Click="OnHelpCredits" />
+                <Separator />
+                <!-- Version (from the Publish task's version), shown as plain text -->
+                <MenuItem Header="{Binding AppVersion}" IsEnabled="False" />
+            </MenuItem>
         </Menu>
 
         <!-- ===== Toolbar ===== -->

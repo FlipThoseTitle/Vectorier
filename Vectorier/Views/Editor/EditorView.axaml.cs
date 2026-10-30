@@ -454,4 +454,42 @@ public partial class EditorView : UserControl
                 e.Handled = true;
         }
     }
+
+    // ================= HELP MENU ================= //
+
+    private const string GitHubUrl = "https://github.com/FlipThoseTitle/Vectorier";
+
+    private async void OnHelpTutorial(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        => await Services.AppServices.Dialogs.ShowMessageAsync("Tutorial", "Coming Soon!", Services.MessageKind.Info);
+
+    private async void OnHelpGitHub(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (!await Services.AppServices.Dialogs.ConfirmAsync("GitHub", $"Open the Vectorier GitHub page in your browser?\n\n{GitHubUrl}", "Open", "Cancel"))
+            return;
+        var launcher = TopLevel.GetTopLevel(this)?.Launcher;
+        if (launcher != null)
+            await launcher.LaunchUriAsync(new Uri(GitHubUrl));
+    }
+
+    private async void OnHelpCredits(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        const string text =
+            "This project was made possible through the collaboration and support of the following contributors. " +
+            "Each person has invested their time, knowledge, and effort to improve, refine, and expand this project. " +
+            "From identifying bugs and implementing new features, their involvement has been invaluable. " +
+            "The project stands as a result of shared effort and collective dedication.\n\n" +
+            "• DoritoTheChips\n" +
+            "• Supergoldapfel (sol)\n" +
+            "• somemelguy (Mel)\n" +
+            "• kubinka0505\n" +
+            "• sonamenil (Vision)\n" +
+            "• FlipThoseTitle\n" +
+            "• mirrorsedgegamer\n" +
+            "• FloofIsFalaful (Floof)\n" +
+            "• domnulinginer (domnul)\n" +
+            "• enderdude290 (Ghosted)\n" +
+            "• zayden1325682 (Zayden)\n\n" +
+            "Vector and its original assets belong to Nekki Limited. Vectorier is a fan-made editor, not affiliated with or endorsed by Nekki.";
+        await Services.AppServices.Dialogs.ShowMessageAsync("Credits", text, Services.MessageKind.Info);
+    }
 }

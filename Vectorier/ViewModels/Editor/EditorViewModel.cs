@@ -89,6 +89,20 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     public PaintViewModel Paint { get; }
 
     public bool IsBrushTool => ActiveTool == EditorTool.Brush;
+
+    /// <summary>"v1.5.1": the version the app was published with (Publish task), from the app's own assembly.</summary>
+    public static string AppVersion { get; } = ReadVersion();
+
+    private static string ReadVersion()
+    {
+        var assembly = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(EditorViewModel).Assembly;
+        string? version = System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(assembly)?.InformationalVersion;
+        if (string.IsNullOrEmpty(version))
+            version = assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        int plus = version.IndexOf('+');
+        return "v" + (plus >= 0 ? version[..plus] : version);
+    }
     public MoveVisualizerViewModel MoveVisualizer { get; }
 
     public ObservableCollection<ElementTypeInfo> ElementTypes { get; } = new();
