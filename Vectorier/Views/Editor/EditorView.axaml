@@ -136,7 +136,26 @@
         <!-- ===== Toolbar ===== -->
         <Border DockPanel.Dock="Top" Classes="toolbar">
             <DockPanel>
-                <StackPanel Orientation="Horizontal" Spacing="1">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="6" Margin="6,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Paint.IsActive}">
+                        <Button Classes="tool" Command="{Binding Paint.DiscardCommand}" ToolTip.Tip="Throw the painting away">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Discard" /></StackPanel>
+                        </Button>
+                        <Button Classes="accent" Command="{Binding Paint.ApplyCommand}" ToolTip.Tip="{Binding Paint.SessionTitle, StringFormat='{}{0}: save it into the PNG (or as a duplicate)'}">
+                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Apply" /></StackPanel>
+                        </Button>
+                        <Rectangle Width="1" Margin="2,3" Fill="{DynamicResource AppBorder}" />
+                    </StackPanel>
+                    <TextBlock Classes="dim" Text="{Binding Project.Name}" />
+                    <Button Classes="tool" ToolTip.Tip="Back to the Project Manager" Command="{Binding QuitCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource Icon.ArrowLeft}" />
+                            <TextBlock Text="Project Manager" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <!-- Wraps onto a second line when the window is narrow (display scaling above 100%) instead of overlapping. -->
+                <WrapPanel ItemSpacing="1" LineSpacing="2">
                     <ToggleButton Classes="tool" ToolTip.Tip="Move (Q) · drag the arrows to move along one axis. Right mouse button pans the Scene." Name="MoveTool"
                                   Command="{Binding SetToolCommand}" CommandParameter="{x:Static vm:EditorTool.Move}">
                         <PathIcon Data="{StaticResource Icon.Move}" />
@@ -200,7 +219,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsBrushTool}" Margin="6,0,0,0">
                         <Rectangle Width="1" Margin="0,3" Fill="{DynamicResource AppBorder}" />
                         <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BrushKinds}" SelectedItem="{Binding Paint.Kind}" Width="96"
-                                  ToolTip.Tip="Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held" />
+                                  ToolTip.Tip="Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held · Blur: softens what is painted (Opacity = strength, Size = how wide)" />
                         <TextBlock Text="Size" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
                                        FormatString="0.#" Width="64" ShowButtonSpinner="False" ToolTip.Tip="Brush diameter in level pixels ([ / ])" />
@@ -215,25 +234,7 @@
                         <CheckBox Content="Clip to Image" IsChecked="{Binding Paint.ClipToBounds}" Margin="4,0,0,0" IsEnabled="{Binding !Paint.IsNew}"
                                   ToolTip.Tip="On: paint only lands on the edited image's visible pixels (its transparent areas stay empty). Off: paint freely, the image grows (up to 4096 × 4096)." />
                     </StackPanel>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Paint.IsActive}">
-                        <Button Classes="tool" Command="{Binding Paint.DiscardCommand}" ToolTip.Tip="Throw the painting away">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Discard" /></StackPanel>
-                        </Button>
-                        <Button Classes="accent" Command="{Binding Paint.ApplyCommand}" ToolTip.Tip="{Binding Paint.SessionTitle, StringFormat='{}{0}: save it into the PNG (or as a duplicate)'}">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Apply" /></StackPanel>
-                        </Button>
-                        <Rectangle Width="1" Margin="2,3" Fill="{DynamicResource AppBorder}" />
-                    </StackPanel>
-                    <TextBlock Classes="dim" Text="{Binding Project.Name}" />
-                    <Button Classes="tool" ToolTip.Tip="Back to the Project Manager" Command="{Binding QuitCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <PathIcon Data="{StaticResource Icon.ArrowLeft}" />
-                            <TextBlock Text="Project Manager" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                </WrapPanel>
             </DockPanel>
         </Border>
 
@@ -286,8 +287,8 @@
                 <Border Grid.Row="0" Classes="panel" BorderThickness="1,0,1,1">
                     <DockPanel>
                         <Border DockPanel.Dock="Top" Classes="panel-header">
-                            <Grid ColumnDefinitions="*,Auto,*">
-                                <StackPanel Orientation="Horizontal" Spacing="2" Margin="-4,-3,0,-3">
+                            <Grid ColumnDefinitions="*,Auto,*" Name="SceneHeaderGrid">
+                                <StackPanel Orientation="Horizontal" Spacing="2" Margin="-4,-3,0,-3" Name="SceneTabsPanel">
                                     <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsSceneViewTab}" ToolTip.Tip="Edit the level">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Layers}" />
@@ -324,7 +325,7 @@
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" Classes="dim" FontSize="11" Name="ZoomText" />
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" Classes="dim" FontSize="11" Name="ZoomText" Margin="6,0,0,0" />
                             </Grid>
                         </Border>
                         <Panel>

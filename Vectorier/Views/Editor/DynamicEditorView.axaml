@@ -34,7 +34,8 @@
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="Exit" /></StackPanel>
                     </Button>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="2">
+                <!-- Wraps onto a second line when the window is narrow (display scaling above 100%) instead of overlapping. -->
+                <WrapPanel ItemSpacing="2" LineSpacing="2">
                     <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-5" ToolTip.Tip="Back 5 frames"><PathIcon Data="{StaticResource Icon.SkipStart}" /></Button>
                     <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-1" ToolTip.Tip="Previous frame"><PathIcon Data="{StaticResource Icon.StepBackward}" /></Button>
                     <TextBlock Text="Frame" Classes="dim" Margin="4,0" />
@@ -69,7 +70,7 @@
                             <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="Y (up is positive), relative to the previous key" />
                         </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                </WrapPanel>
             </DockPanel>
         </Border>
 
@@ -105,17 +106,18 @@
                         <Border Classes="track" Classes.active="{Binding IsActive}">
                             <StackPanel Spacing="4">
                                 <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
-                                        <TextBlock Text="End" Classes="dim" />
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="6,0,0,0">
+                                        <TextBlock Text="End" Classes="dim" VerticalAlignment="Center" />
                                         <NumericUpDown Value="{Binding TotalFrames, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1"
                                                        Width="80" ShowButtonSpinner="False" Tag="{Binding}" ValueChanged="OnEndChanged" />
                                         <Button Content="Add Key" Tag="{Binding}" Click="OnAddKey" ToolTip.Tip="Key the element's current pose at the playhead" />
                                         <Button Content="Delete Key" Tag="{Binding}" Click="OnDeleteKey" ToolTip.Tip="Delete the selected keys (or the key at the playhead)" />
                                         <Button Content="Clear" Tag="{Binding}" Click="OnClear" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" />
-                                        <TextBlock Text="Transformation" Classes="dim" Margin="12,0,0,0" />
+                                    <!-- Wraps when the panel is narrow (display scaling above 100%). -->
+                                    <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <TextBlock Text="Transformation" Classes="dim" Margin="12,0,0,0" VerticalAlignment="Center" />
                                         <ComboBox ItemsSource="{Binding TransformationNames}" SelectedItem="{Binding TransformationName, Mode=OneWay}"
                                                   Width="150" Tag="{Binding}" SelectionChanged="OnTransformationPicked" PlaceholderText="(new)" />
                                         <Button Classes="tool" Tag="{Binding}" Click="OnRename" ToolTip.Tip="Rename"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
@@ -124,8 +126,8 @@
                                         <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="Bake the keys into the transformation">
                                             <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="Save" /></StackPanel>
                                         </Button>
-                                        <TextBlock Classes="dim" Text="{Binding TransformationName}" />
-                                    </StackPanel>
+                                        <TextBlock Classes="dim" Text="{Binding TransformationName}" VerticalAlignment="Center" />
+                                    </WrapPanel>
                                 </DockPanel>
                                 <c:DynamicTimeline Track="{Binding}" Editor="{Binding $parent[UserControl].((vm:DynamicEditorViewModel)DataContext)}" Height="64" />
                             </StackPanel>

@@ -13,6 +13,8 @@ public enum BrushKind
     Hard,
     Soft,
     Airbrush,
+    /// <summary>Softens what is already painted (soft edge); color, blending and Erase do not apply.</summary>
+    Blur,
 }
 
 public enum PaintBlendMode
@@ -46,6 +48,10 @@ public sealed class PaintCanvas
     private byte[] _pixels;      // current pixels (premultiplied BGRA)
     private byte[] _base;        // pixels when the stroke began
     private float[] _mask;       // stroke coverage 0..1
+    private byte[]? _blurred;    // Blur brush: the stroke's starting pixels, blurred (tile by tile, on demand)
+    private bool[]? _blurTiles;
+    private int _blurTilesX, _blurRadius;
+    private const int BlurTile = 128;
     private byte[]? _clipAlpha;  // alpha of the starting image (Clip to Image follows it)
     private bool _inStroke;
     private PixelRect _strokeRect; // area touched by the stroke (canvas pixels)
@@ -160,6 +166,20 @@ public sealed class PaintCanvas
         _strokeRect = default;
         _lastDab = null;
         Buffer.BlockCopy(_pixels, 0, _base, 0, _pixels.Length);
+        // Blur: a blurred copy of the canvas, faded in where the brush passes (strength = opacity).
+        // Computed tile by tile where the brush goes, so a big canvas does not wait for a full blur.
+        if (brush.Kind == BrushKind.Blur)
+        {
+            _blurred = new byte[_base.Length];
+            _blurRadius = BlurRadius(brush);
+            _blurTilesX = (Width + BlurTile - 1) / BlurTile;
+            _blurTiles = new bool[_blurTilesX * ((Height + BlurTile - 1) / BlurTile)];
+        }
+        else
+        {
+            _blurred = null;
+            _blurTiles = null;
+        }
         Array.Clear(_mask);
         StrokeTo(canvasPoint);
     }
@@ -205,6 +225,8 @@ public sealed class PaintCanvas
         if (!_inStroke)
             return;
         _inStroke = false;
+        _blurred = null;
+        _blurTiles = null;
         if (_strokeRect.Width <= 0 || _strokeRect.Height <= 0)
             return;
         // Undo keeps the pixels of the touched area from before the stroke.
@@ -268,6 +290,7 @@ public sealed class PaintCanvas
         }
         _pixels = Cut(_pixels, 4);
         _base = Cut(_base, 4);
+        _blurred = null; // only used during a Blur stroke, which never resizes the canvas
         _mask = Cut(_mask, 1);
         if (_clipAlpha != null)
             _clipAlpha = Cut(_clipAlpha, 1);
@@ -346,7 +369,13 @@ public sealed class PaintCanvas
                 if (next <= m)
                     continue;
                 _mask[i] = next;
-                Composite(i * 4, next, sr, sg, sb, blend);
+                if (_blurred != null)
+                {
+                    EnsureBlurred(x, y);
+                    Mix(i * 4, next);
+                }
+                else
+                    Composite(i * 4, next, sr, sg, sb, blend);
             }
         }
 
@@ -354,6 +383,80 @@ public sealed class PaintCanvas
         _strokeRect = _strokeRect.Width <= 0 ? dab : _strokeRect.Union(dab);
         MarkBitmapDirty(dab);
         return shift;
+    }
+
+    /// <summary>Blur: the starting pixel faded towards its blurred value (premultiplied, so edges stay clean).</summary>
+    private void Mix(int o, float m)
+    {
+        var blurred = _blurred!;
+        for (int c = 0; c < 4; c++)
+            _pixels[o + c] = (byte)Math.Clamp((int)(_base[o + c] + (blurred[o + c] - _base[o + c]) * m + 0.5f), 0, 255);
+    }
+
+    /// <summary>Blurs the tile holding (x, y) if it is not done yet (from the pixels the stroke started with).</summary>
+    private void EnsureBlurred(int x, int y)
+    {
+        int tx = x / BlurTile, ty = y / BlurTile, index = ty * _blurTilesX + tx;
+        if (_blurTiles![index])
+            return;
+        _blurTiles[index] = true;
+        // The tile plus a margin covering how far the two box passes reach.
+        int margin = _blurRadius * 2 + 1;
+        int x0 = Math.Max(0, tx * BlurTile - margin), y0 = Math.Max(0, ty * BlurTile - margin);
+        int x1 = Math.Min(Width, (tx + 1) * BlurTile + margin), y1 = Math.Min(Height, (ty + 1) * BlurTile + margin);
+        int w = x1 - x0, h = y1 - y0;
+        var region = new byte[w * h * 4];
+        for (int row = 0; row < h; row++)
+            Buffer.BlockCopy(_base, ((y0 + row) * Width + x0) * 4, region, row * w * 4, w * 4);
+        var blurred = BlurCopy(region, w, h, _blurRadius);
+        int cx0 = tx * BlurTile, cy0 = ty * BlurTile;
+        int cx1 = Math.Min(Width, cx0 + BlurTile), cy1 = Math.Min(Height, cy0 + BlurTile);
+        for (int row = cy0; row < cy1; row++)
+            Buffer.BlockCopy(blurred, ((row - y0) * w + (cx0 - x0)) * 4, _blurred!, (row * Width + cx0) * 4, (cx1 - cx0) * 4);
+    }
+
+    /// <summary>Blur radius in canvas pixels: a third of the brush radius (1 – 32).</summary>
+    private double BlurRadiusFor(BrushSettings brush) => brush.Diameter / 2 / Math.Max(1e-6, PixelScale) / 3;
+
+    private int BlurRadius(BrushSettings brush) => Math.Clamp((int)Math.Round(BlurRadiusFor(brush)), 1, 32);
+
+    /// <summary>Two box blurs in each direction (close to a Gaussian), rows and columns in parallel.</summary>
+    private static byte[] BlurCopy(byte[] source, int width, int height, int radius)
+    {
+        var a = (byte[])source.Clone();
+        var b = new byte[source.Length];
+        for (int pass = 0; pass < 2; pass++)
+        {
+            BoxBlur(a, b, width, height, radius, horizontal: true);
+            BoxBlur(b, a, width, height, radius, horizontal: false);
+        }
+        return a;
+    }
+
+    private static void BoxBlur(byte[] src, byte[] dst, int width, int height, int r, bool horizontal)
+    {
+        int lines = horizontal ? height : width;
+        int length = horizontal ? width : height;
+        int step = horizontal ? 4 : width * 4;
+        System.Threading.Tasks.Parallel.For(0, lines, line =>
+        {
+            int start = horizontal ? line * width * 4 : line * 4;
+            float scale = 1f / (2 * r + 1);
+            for (int c = 0; c < 4; c++)
+            {
+                // Running sum over the window, edges clamped.
+                int sum = 0;
+                for (int k = -r; k <= r; k++)
+                    sum += src[start + Math.Clamp(k, 0, length - 1) * step + c];
+                for (int i = 0; i < length; i++)
+                {
+                    dst[start + i * step + c] = (byte)(sum * scale + 0.5f);
+                    int outIndex = Math.Clamp(i - r, 0, length - 1);
+                    int inIndex = Math.Clamp(i + r + 1, 0, length - 1);
+                    sum += src[start + inIndex * step + c] - src[start + outIndex * step + c];
+                }
+            }
+        });
     }
 
     /// <summary>Base pixel (from before the stroke) covered by the stroke mask <paramref name="m"/>.</summary>
@@ -402,7 +505,7 @@ public sealed class PaintCanvas
     /// <summary>Grows the canvas so a dab at <paramref name="c"/> fits (free painting). Returns the content shift.</summary>
     private Vector EnsureRoom(Point c, double r)
     {
-        if (!CanGrow || ClipToOriginal)
+        if (!CanGrow || ClipToOriginal || _brush.Kind == BrushKind.Blur) // nothing to blur outside
             return default;
         int needLeft = (int)Math.Ceiling(r + 1 - c.X);
         int needTop = (int)Math.Ceiling(r + 1 - c.Y);

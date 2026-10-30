@@ -20,6 +20,10 @@ public partial class EditorView : UserControl
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        // Scene header: Play / Hunter Mode stay centered, but never on top of the tabs or the zoom when the panel
+        // is narrow (display scaling above 100%): the side columns keep at least their content's width.
+        SceneTabsPanel.SizeChanged += (_, _) => KeepSceneHeaderClear();
+        ZoomText.SizeChanged += (_, _) => KeepSceneHeaderClear();
         // A click on an empty panel area focuses the Editor itself rather than the window root, so its
         // shortcuts keep working (keys only reach this handler when the focus is inside the Editor).
         Focusable = true;
@@ -63,6 +67,14 @@ public partial class EditorView : UserControl
     {
         if (e.PropertyName == nameof(EditorViewModel.ActiveTool))
             UpdateToolButtons();
+    }
+
+    private void KeepSceneHeaderClear()
+    {
+        var columns = SceneHeaderGrid.ColumnDefinitions;
+        // Margins of the tabs (-4 left) are part of their width in the column.
+        columns[0].MinWidth = Math.Max(0, SceneTabsPanel.Bounds.Width - 4);
+        columns[2].MinWidth = ZoomText.Bounds.Width + 6;
     }
 
     private void UpdateToolButtons()
