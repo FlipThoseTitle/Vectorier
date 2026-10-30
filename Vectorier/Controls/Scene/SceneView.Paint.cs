@@ -82,8 +82,10 @@ public partial class SceneView
         using (context.PushTransform(toScreen))
             context.DrawImage(bitmap, new Rect(0, 0, canvas.Width, canvas.Height), new Rect(0, 0, canvas.Width, canvas.Height));
 
-        // Outline of the canvas (it grows while painting freely) and, when clipping, of the image.
-        DrawQuad(context, CanvasPen, new Rect(0, 0, canvas.Width, canvas.Height), toScreen);
+        // Outline of what will be saved: exactly what has been painted (plus the edited image's own area), so it
+        // grows with the paint and shrinks back on undo. When clipping, the image's own outline too.
+        if (canvas.PaintedBounds is { } painted)
+            DrawQuad(context, CanvasPen, new Rect(painted.X, painted.Y, painted.Width, painted.Height), toScreen);
         if (canvas.ClipToOriginal || (paint.ClipToBounds && paint.CanClip))
         {
             var o = canvas.Original;

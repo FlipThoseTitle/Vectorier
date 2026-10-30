@@ -51,7 +51,17 @@ public sealed class PaintCanvas
     private PixelRect _strokeRect; // area touched by the stroke (canvas pixels)
     private BrushSettings _brush;
     private Point? _lastDab;
-    private readonly List<(PixelRect Rect, byte[] Pixels)> _undo = new();
+    /// <summary>One stroke to take back: the pixels it covered, and the canvas frame before it (it may have grown).</summary>
+    private readonly record struct UndoStep(PixelRect Rect, byte[] Pixels, int FrameWidth, int FrameHeight, int FrameLeft, int FrameTop);
+
+    private readonly List<UndoStep> _undo = new();
+
+    // How far the canvas has grown to the left / top since it was made (the frame of an undo step is relative to it).
+    private int _grownLeft, _grownTop;
+    private (int Width, int Height, int Left, int Top) _strokeFrame;
+
+    private bool _hasStartContent;
+    private PixelRect? _paintedBounds;
     private WriteableBitmap? _bitmap;
     private PixelRect? _bitmapDirty;
 
@@ -99,6 +109,8 @@ public sealed class PaintCanvas
     public void Load(byte[] premultipliedBgra)
     {
         Buffer.BlockCopy(premultipliedBgra, 0, _pixels, 0, Math.Min(premultipliedBgra.Length, _pixels.Length));
+        _hasStartContent = true;
+        _paintedBounds = Original;
         _clipAlpha = new byte[Width * Height];
         for (int i = 0; i < _clipAlpha.Length; i++)
             _clipAlpha[i] = _pixels[i * 4 + 3];
@@ -144,6 +156,7 @@ public sealed class PaintCanvas
             EndStroke();
         _brush = brush;
         _inStroke = true;
+        _strokeFrame = (Width, Height, _grownLeft, _grownTop);
         _strokeRect = default;
         _lastDab = null;
         Buffer.BlockCopy(_pixels, 0, _base, 0, _pixels.Length);
@@ -199,22 +212,76 @@ public sealed class PaintCanvas
         var saved = new byte[rect.Width * rect.Height * 4];
         for (int y = 0; y < rect.Height; y++)
             Buffer.BlockCopy(_base, ((rect.Y + y) * Width + rect.X) * 4, saved, y * rect.Width * 4, rect.Width * 4);
-        _undo.Add((rect, saved));
+        _undo.Add(new UndoStep(rect, saved, _strokeFrame.Width, _strokeFrame.Height, _strokeFrame.Left, _strokeFrame.Top));
         if (_undo.Count > 40)
             _undo.RemoveAt(0);
         IsModified = true;
+        _paintedBounds = _paintedBounds is { } b ? b.Union(rect) : rect;
     }
 
     public bool Undo()
     {
         if (_inStroke || _undo.Count == 0)
             return false;
-        var (rect, saved) = _undo[^1];
+        var step = _undo[^1];
         _undo.RemoveAt(_undo.Count - 1);
+        var rect = step.Rect;
         for (int y = 0; y < rect.Height; y++)
-            Buffer.BlockCopy(saved, y * rect.Width * 4, _pixels, ((rect.Y + y) * Width + rect.X) * 4, rect.Width * 4);
+            Buffer.BlockCopy(step.Pixels, y * rect.Width * 4, _pixels, ((rect.Y + y) * Width + rect.X) * 4, rect.Width * 4);
         MarkBitmapDirty(rect);
+
+        // The stroke made the canvas grow: shrink it back to the frame it had before.
+        if (step.FrameWidth != Width || step.FrameHeight != Height || step.FrameLeft != _grownLeft || step.FrameTop != _grownTop)
+            Crop(_grownLeft - step.FrameLeft, _grownTop - step.FrameTop, step.FrameWidth, step.FrameHeight);
+
+        RecomputePaintedBounds();
         return true;
+    }
+
+    /// <summary>
+    /// What will be kept: everything painted, plus the edited image's own area. The outline shown while painting,
+    /// and it follows undo exactly.
+    /// </summary>
+    public PixelRect? PaintedBounds => _paintedBounds;
+
+    private void RecomputePaintedBounds()
+    {
+        var content = ContentBounds();
+        _paintedBounds = _hasStartContent
+            ? (content is { } c ? Original.Union(c) : Original)
+            : content;
+    }
+
+    /// <summary>Keeps only the frame (x, y, width, height) of the canvas (undoing a growth).</summary>
+    private void Crop(int x, int y, int width, int height)
+    {
+        x = Math.Clamp(x, 0, Width - 1);
+        y = Math.Clamp(y, 0, Height - 1);
+        width = Math.Clamp(width, 1, Width - x);
+        height = Math.Clamp(height, 1, Height - y);
+        T[] Cut<T>(T[] source, int bpp)
+        {
+            var target = new T[width * height * bpp];
+            for (int row = 0; row < height; row++)
+                Array.Copy(source, ((row + y) * Width + x) * bpp, target, row * width * bpp, width * bpp);
+            return target;
+        }
+        _pixels = Cut(_pixels, 4);
+        _base = Cut(_base, 4);
+        _mask = Cut(_mask, 1);
+        if (_clipAlpha != null)
+            _clipAlpha = Cut(_clipAlpha, 1);
+        var shift = new PixelVector(-x, -y);
+        for (int i = 0; i < _undo.Count; i++)
+            _undo[i] = _undo[i] with { Rect = _undo[i].Rect.Translate(shift) };
+        Original = Original.Translate(shift);
+        CanvasToLevel = Matrix.CreateTranslation(x, y) * CanvasToLevel;
+        _grownLeft -= x;
+        _grownTop -= y;
+        Width = width;
+        Height = height;
+        _bitmap = null;
+        _bitmapDirty = new PixelRect(0, 0, width, height);
     }
 
     private double Radius => Math.Max(0.5, _brush.Diameter / 2 / Math.Max(1e-6, PixelScale));
@@ -392,7 +459,11 @@ public sealed class PaintCanvas
             _clipAlpha = clip;
         }
         for (int i = 0; i < _undo.Count; i++)
-            _undo[i] = (_undo[i].Rect.Translate(new PixelVector(left, top)), _undo[i].Pixels);
+            _undo[i] = _undo[i] with { Rect = _undo[i].Rect.Translate(new PixelVector(left, top)) };
+        if (_paintedBounds is { } painted)
+            _paintedBounds = painted.Translate(new PixelVector(left, top));
+        _grownLeft += left;
+        _grownTop += top;
         if (_strokeRect.Width > 0)
             _strokeRect = _strokeRect.Translate(new PixelVector(left, top));
         Original = Original.Translate(new PixelVector(left, top));
