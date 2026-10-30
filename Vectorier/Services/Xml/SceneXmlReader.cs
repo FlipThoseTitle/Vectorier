@@ -355,12 +355,28 @@ public sealed class SceneXmlReader
         return obj;
     }
 
+    /// <summary>
+    /// Names of definitions that contain themselves (directly or through other objects), e.g. buildings_downtown.xml's
+    /// JumpInSitTest, which places two JumpInSitTest inside itself. Such a reference is left unresolved (shown as a
+    /// MISSING box): following it would nest the object into itself forever (2^depth copies), hanging the editor.
+    /// </summary>
+    public static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> CyclicReferences = new(StringComparer.Ordinal);
+
     /// <summary>Finds and builds (once) the definition of a named object.</summary>
     public ObjectDefinition? ResolveDefinition(string name)
     {
         var def = _definitions?.Find(name);
         if (def == null)
             return null;
+
+        // Safe load: a definition being built is referenced from inside itself.
+        if (_building.Contains(def.Name))
+        {
+            string chain = string.Join(" > ", _building) + " > " + def.Name;
+            if (CyclicReferences.TryAdd(def.Name, chain))
+                System.Diagnostics.Debug.WriteLine($"[SceneXmlReader] '{def.Name}' contains itself ({chain}); the inner reference is not loaded.");
+            return null;
+        }
 
         BuildDefinition(def);
         return def;

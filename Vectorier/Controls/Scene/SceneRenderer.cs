@@ -1354,7 +1354,8 @@ public sealed class SceneRenderer
         using (var layer = _ghostLayer.CreateDrawingContext(true))
         // Labels go into a transparent layer: sub-pixel (ClearType) text needs an opaque background and comes out
         // as colored, blotchy fringes there; grayscale antialiasing stays clean once the layer is faded.
-        using (layer.PushRenderOptions(new RenderOptions { TextRenderingMode = TextRenderingMode.Antialias, EdgeMode = EdgeMode.Antialias }))
+        using (layer.PushRenderOptions(new RenderOptions { EdgeMode = EdgeMode.Antialias }))
+        using (layer.PushTextOptions(new TextOptions { TextRenderingMode = TextRenderingMode.Antialias }))
         using (layer.PushTransform(Matrix.CreateTranslation(-area.X, -area.Y)))
         {
             foreach (var item in items.Where(i => !i.IsOverlay).OrderBy(i => DepthGroup(i.Element)).ThenBy(i => i.SortKey))

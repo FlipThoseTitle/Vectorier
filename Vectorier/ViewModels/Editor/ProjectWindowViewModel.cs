@@ -1456,7 +1456,6 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 default:
                     return;
             }
-            await LoadItemsAsync();
         }
         catch (Exception ex)
         {
