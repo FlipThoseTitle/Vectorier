@@ -69,6 +69,60 @@ public partial class EditorView : UserControl
     {
         if (e.PropertyName == nameof(EditorViewModel.ActiveTool))
             UpdateToolButtons();
+        else if (e.PropertyName == nameof(EditorViewModel.IsPlayingHere))
+            SetGameLock(_vm?.IsPlayingHere == true);
+    }
+
+    // ================= PLAY HERE LOCK ================= //
+
+    private Services.Tutorial.TutorialOverlay? _gameLock;
+
+    /// <summary>
+    /// While a Play Here run uses its own version of the level file, the editor is greyed out and disabled (mouse and
+    /// keys), so nothing is edited or saved until the game is closed and the file is put back.
+    /// </summary>
+    private void SetGameLock(bool locked)
+    {
+        var top = TopLevel.GetTopLevel(this);
+        var layer = top == null ? null : Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(top);
+        if (locked)
+        {
+            IsEnabled = false;
+            if (top == null || layer == null)
+                return;
+            _gameLock ??= new Services.Tutorial.TutorialOverlay();
+            if (!layer.Children.Contains(_gameLock))
+                layer.Children.Add(_gameLock);
+            FitGameLock(layer);
+            top.SizeChanged -= OnLockedWindowSizeChanged;
+            top.SizeChanged += OnLockedWindowSizeChanged;
+            _gameLock.ShowBusy(Loc.T("The game is running from the clicked point.\nClose the game window to return to the editor."));
+        }
+        else
+        {
+            IsEnabled = true;
+            if (top != null)
+                top.SizeChanged -= OnLockedWindowSizeChanged;
+            if (_gameLock != null && layer != null)
+                layer.Children.Remove(_gameLock);
+            _gameLock = null;
+            Dispatcher.UIThread.Post(() => Scene.Focus(), DispatcherPriority.Background);
+        }
+    }
+
+    private void OnLockedWindowSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is { } top && Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(top) is { } layer)
+            Dispatcher.UIThread.Post(() => FitGameLock(layer), DispatcherPriority.Background);
+    }
+
+    private void FitGameLock(Avalonia.Controls.Primitives.OverlayLayer layer)
+    {
+        if (_gameLock == null)
+            return;
+        var size = layer.Bounds.Size.Width > 0 ? layer.Bounds.Size : Bounds.Size;
+        _gameLock.Width = size.Width;
+        _gameLock.Height = size.Height;
     }
 
     private void KeepSceneHeaderClear()
@@ -473,7 +527,7 @@ public partial class EditorView : UserControl
     private const string GitHubUrl = "https://github.com/FlipThoseTitle/Vectorier";
 
     private async void OnHelpTutorial(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        => await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Tutorial"), Loc.T("Coming Soon!"), Services.MessageKind.Info);
+        => await Services.Tutorial.TutorialGuide.RestartFromHelpAsync();
 
     /// <summary>Help > Keybinds: the editor's general controls, in the same window as the Credits (read only).</summary>
     private async void OnHelpKeybinds(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

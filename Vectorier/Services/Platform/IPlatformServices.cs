@@ -34,6 +34,9 @@ public interface IPlatformServices
     /// <summary>Launches the game. Returns an error message, or null on success.</summary>
     string? LaunchGame(IFileSystem fileSystem, string projectName, string levelName, bool hunterMode);
 
+    /// <summary>A game started by <see cref="LaunchGame"/> is still open (desktop; always false elsewhere).</summary>
+    bool IsGameRunning => false;
+
     /// <summary>
     /// Plays a sound preview at a volume from 0 to 1. The task completes when the sound ends or is stopped.
     /// </summary>

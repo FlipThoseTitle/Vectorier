@@ -363,6 +363,10 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         vm.Hierarchy.ContextElement = element;
 
         var create = new MenuItem { Header = Loc.T("Create New"), Icon = Icon("Icon.Plus") };
+        // Its own size scope: shared with the items below, its columns are measured before the shortcut column
+        // ("Ctrl+Shift+V") exists and are not updated after, which pushed the > arrow out of the menu and the submenu
+        // away from it (desktop popups). It has no shortcut, so nothing needs to line up with the others.
+        Grid.SetIsSharedSizeScope(create, true);
         foreach (var type in ElementTypeInfo.MenuOrder)
         {
             var item = new MenuItem { Header = type.ToString(), Icon = new PathIcon { Data = ElementTypeInfo.GetIcon(type) } };
@@ -384,6 +388,10 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
 
         var menu = new ContextMenu();
         menu.Items.Add(create);
+
+        // Scene only: the game starts at the clicked point (the editor's level is not changed).
+        if (createAt is { } playAt && vm.CanPlay)
+            menu.Items.Add(Command(Loc.T("Play Here"), "Icon.Play", "", () => _ = vm.PlayHereAsync(playAt)));
 
         if (element != null)
         {

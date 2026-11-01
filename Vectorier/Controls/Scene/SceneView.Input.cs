@@ -666,6 +666,16 @@ public sealed partial class SceneView
             {
                 e.Pointer.Capture(null);
                 bool dragged = _dragStarted;
+                if (dragged)
+                {
+                    switch (_mode)
+                    {
+                        case InteractionMode.Move: Services.Tutorial.TutorialSignals.MoveDrags++; break;
+                        case InteractionMode.Rotate: Services.Tutorial.TutorialSignals.RotateDrags++; break;
+                        case InteractionMode.Scale: Services.Tutorial.TutorialSignals.ScaleDrags++; break;
+                        case InteractionMode.RectTransform: Services.Tutorial.TutorialSignals.RectDrags++; break;
+                    }
+                }
                 _mode = InteractionMode.None;
                 _gizmoHandle = GizmoHandle.None;
                 _memento = null;

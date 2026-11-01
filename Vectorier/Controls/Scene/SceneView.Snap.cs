@@ -219,6 +219,8 @@ public sealed partial class SceneView
     private void FinishSnapDrag()
     {
         bool dragging = _mode is InteractionMode.SnapMove or InteractionMode.SnapScale;
+        if (dragging && _snapKind == SnapKind.Platform)
+            Services.Tutorial.TutorialSignals.PlatformSnapDrags++;
         _mode = InteractionMode.None;
         _memento = null;
         _snapTarget = null;

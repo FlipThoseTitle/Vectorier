@@ -131,6 +131,23 @@ public sealed class DesktopPlatformServices : IPlatformServices
 
     public static string GetGameExecutableName() => OperatingSystem.IsWindows() ? "Vector-Raylib.exe" : "Vector-Raylib";
 
+    private Process? _game;
+
+    public bool IsGameRunning
+    {
+        get
+        {
+            try
+            {
+                return _game is { HasExited: false };
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
     public string? LaunchGame(IFileSystem fileSystem, string projectName, string levelName, bool hunterMode)
     {
         string folder = VPath.Combine("Game", GetGameRuntimeFolder());
@@ -166,7 +183,7 @@ public sealed class DesktopPlatformServices : IPlatformServices
             if (hunterMode)
                 info.ArgumentList.Add("-huntermode");
 
-            Process.Start(info);
+            _game = Process.Start(info);
             return null;
         }
         catch (Exception ex)

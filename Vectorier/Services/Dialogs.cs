@@ -83,7 +83,25 @@ public sealed class DialogService : IDialogService
         return await ShowAsync(vm) is true ? vm.InputText.Trim() : null;
     }
 
+    private static readonly List<DialogViewModel> _open = new();
+
+    /// <summary>The dialogs open right now, oldest first (the tutorial follows them).</summary>
+    public static IReadOnlyList<DialogViewModel> OpenDialogs => _open;
+
     public async Task<object?> ShowAsync(DialogViewModel dialog)
+    {
+        _open.Add(dialog);
+        try
+        {
+            return await ShowCoreAsync(dialog);
+        }
+        finally
+        {
+            _open.Remove(dialog);
+        }
+    }
+
+    private static async Task<object?> ShowCoreAsync(DialogViewModel dialog)
     {
         var topLevel = AppServices.Shell?.CurrentTopLevel;
 

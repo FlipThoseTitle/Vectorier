@@ -69,6 +69,7 @@ public partial class App : Application
             {
                 AppServices.SetFileSystem(fs);
                 AppServices.Shell.Show(new ProjectSelectionViewModel());
+                Services.Tutorial.TutorialGuide.OfferOnFirstLaunch();
             }
             else
             {

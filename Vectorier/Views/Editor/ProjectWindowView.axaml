@@ -124,7 +124,7 @@
                             IsVisible="{Binding CanImport}" ToolTip.Tip="{Binding ImportLabel}">
                         <PathIcon Data="{StaticResource Icon.Import}" Width="13" Height="13" />
                     </Button>
-                    <TextBox Grid.Column="2" MaxWidth="180" MinWidth="40" HorizontalAlignment="Right" Height="22" MinHeight="22" Padding="6,2" Margin="0,2,8,2" PlaceholderText="{l:Tr 'Search…'}"
+                    <TextBox Grid.Column="2" MaxWidth="180" MinWidth="40" HorizontalAlignment="Stretch" Height="22" MinHeight="22" Padding="6,2" Margin="0,2,8,2" PlaceholderText="{l:Tr 'Search…'}"
                              Text="{Binding SearchText}" IsVisible="{Binding ShowsItems}" VerticalContentAlignment="Center" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding ShowsItems}"
                                 ToolTip.Tip="{l:Tr 'Tile size'}">

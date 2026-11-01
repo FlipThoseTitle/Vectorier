@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             x:Class="Vectorier.Views.Dialogs.TutorialWelcomeView"
+             x:DataType="vm:TutorialWelcomeViewModel"
+             Width="520">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="16,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="{l:Tr 'Skip Tutorial'}" MinWidth="110" HorizontalContentAlignment="Center" Command="{Binding SkipCommand}" />
+                <Button Classes="accent" Content="{l:Tr 'Continue'}" MinWidth="110" HorizontalContentAlignment="Center"
+                        Command="{Binding ContinueCommand}" IsDefault="True" />
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="24,20,24,18" Spacing="12">
+            <!-- The banner is small on purpose: drawn at its own size, never stretched up. -->
+            <Image Source="avares://Vectorier.Core/Assets/Vectorier-Banner.png" Width="320" HorizontalAlignment="Center"
+                   RenderOptions.BitmapInterpolationMode="HighQuality" />
+            <TextBlock Classes="title" HorizontalAlignment="Center" Text="{l:Tr 'Welcome to Vectorier!'}" />
+            <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                       Text="{l:Tr 'Vectorier is a community-developed level editor for the game Vector, where you build your own dystopian stages full of rooftops, obstacles and daring escapes.'}" />
+            <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                       Text="{l:Tr 'Before you get into modding Vector, it is worth learning how the editor works. This short tutorial walks you through creating a project and building your first playable level, one step at a time.'}" />
+            <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"
+                       Text="{l:Tr 'You can leave the tutorial at any time, and start it again later from Help › Tutorial in the editor.'}" />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

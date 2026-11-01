@@ -191,10 +191,34 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     partial void OnFolderSearchTextChanged(string value) => ApplyFolderFilter();
 
+    // ================= TUTORIAL FILTER ================= //
+
+    private Func<PwFolder, bool>? _tutorialFolders;
+    private Func<PwItem, bool>? _tutorialItems;
+
+    /// <summary>The tutorial shows only some folders and items (null: everything again).</summary>
+    public void SetTutorialFilter(Func<PwFolder, bool>? folders, Func<PwItem, bool>? items)
+    {
+        _tutorialFolders = folders;
+        _tutorialItems = items;
+        ApplyFolderFilter();
+        if (SelectedFolder != null && !Folders.Contains(SelectedFolder) && Folders.Count > 0)
+            SelectedFolder = Folders[0];
+        ApplyFilter();
+    }
+
+    /// <summary>The folder a texture / trigger / area / model is filed in (Unorganized when none).</summary>
+    public bool FolderHoldsKey(PwFolder folder, string key)
+    {
+        string? name = Cache.FolderOf(CacheKey, key);
+        return folder.IsUnorganized ? name == null : name == folder.Name;
+    }
+
     private void ApplyFolderFilter()
     {
         string search = FolderSearchText.Trim();
-        var shown = search.Length == 0 ? _allFolders : _allFolders.Where(f => f.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+        var source = _tutorialFolders == null ? _allFolders : _allFolders.Where(_tutorialFolders).ToList();
+        var shown = search.Length == 0 ? source : source.Where(f => f.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
             || (f.FileName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
         if (shown.Count == Folders.Count && shown.SequenceEqual(Folders))
             return;
@@ -540,7 +564,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             }
             else
             {
-                SelectedFolder = _allFolders.FirstOrDefault(f => f.Name == previousFolder) ?? Folders.FirstOrDefault() ?? _allFolders.FirstOrDefault();
+                var candidates = _tutorialFolders == null ? _allFolders : Folders.ToList();
+                SelectedFolder = candidates.FirstOrDefault(f => f.Name == previousFolder) ?? Folders.FirstOrDefault() ?? _allFolders.FirstOrDefault();
                 if (SelectedFolder == null)
                     await LoadItemsAsync();
             }
@@ -805,7 +830,8 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     {
         _searchTimer?.Stop();
         string search = SearchText.Trim();
-        var filtered = search.Length == 0 ? _allItems.ToList() : _allItems.Where(i => i.Label.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+        var source = _tutorialItems == null ? _allItems : _allItems.Where(_tutorialItems).ToList();
+        var filtered = search.Length == 0 ? source.ToList() : source.Where(i => i.Label.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
         // Unchanged result (e.g. a reload with the same items): keep the grid as it is.
         if (filtered.Count == Items.Count && filtered.SequenceEqual(Items))
             return;

@@ -649,9 +649,10 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         CommitPending();
         if (ObjectEdit != null)
             return await SaveObjectAsync();
-        if (!Document.HasLocation)
-            return await SaveAsAsync();
-        return await WriteDocumentAsync();
+        bool saved = !Document.HasLocation ? await SaveAsAsync() : await WriteDocumentAsync();
+        if (saved)
+            Services.Tutorial.TutorialSignals.Saves++;
+        return saved;
     }
 
     [RelayCommand]
@@ -795,6 +796,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
                 MarkSaved();
 
             string? error = AppServices.Platform.LaunchGame(AppServices.FileSystem, Project.Name, levelName, hunter);
+            if (error == null)
+                Services.Tutorial.TutorialSignals.GameLaunches++;
             if (error != null)
                 await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), error, MessageKind.Error);
             else
