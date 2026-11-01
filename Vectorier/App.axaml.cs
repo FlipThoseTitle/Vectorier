@@ -26,6 +26,7 @@ public partial class App : Application
         Views.ViewRegistry.RegisterAll();
         Controls.NumberDrag.Install();
         Controls.EnterCommit.Install();
+        Controls.MathFields.Install();
         AppServices.Dialogs = new DialogService();
         // First launch flag, then the language (the computer's on first launch, the saved one afterwards).
         AppState.Initialize();

@@ -356,14 +356,14 @@ namespace Vectorier.Services.Triggers
             var v = TValue.Parse(s);
             switch (v.mode)
             {
-                case ValueMode.Variable: return "{" + v.varName + "}";
+                case ValueMode.Variable: return "{" + TriggerCatalog.VarLabel(v.varName) + "}";
                 case ValueMode.ModelProp: return Loc.F("{0}'s {1}", Ref(v.modelIsVar, v.model), v.prop);
                 case ValueMode.NodePos: return Loc.F("{0}'s {1}", Ref(v.modelIsVar, v.model), Ref(v.nodeIsVar, v.node) + " " + v.coord);
                 default: return string.IsNullOrEmpty(v.text) ? Loc.T("(empty)") : v.text;
             }
         }
 
-        private static string Ref(bool isVar, string n) => isVar ? "{" + n + "}" : n;
+        private static string Ref(bool isVar, string n) => isVar ? "{" + TriggerCatalog.VarLabel(n) + "}" : n;
 
         // ---------------- Xml helpers ----------------
 

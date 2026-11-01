@@ -13,22 +13,45 @@ public partial class DynamicEditorView : UserControl
     public DynamicEditorView()
     {
         InitializeComponent();
-        AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
     }
 
     private DynamicEditorViewModel? Vm => DataContext as DynamicEditorViewModel;
 
     private static DynamicTrack? TrackOf(object? sender) => (sender as Control)?.Tag as DynamicTrack;
 
-    private void OnKey(object? sender, KeyEventArgs e)
+    /// <summary>
+    /// Keyframe shortcuts while the focus is in the Dynamic Editor (the timeline takes it when clicked). Called by the
+    /// editor's shortcut handler before the Scene's Copy / Paste / Delete... Undo and Redo stay the editor's (they
+    /// include the timelines). Returns true when handled.
+    /// </summary>
+    public bool HandleKey(Key key, KeyModifiers mods)
     {
-        if (Vm == null || e.Source is TextBox)
-            return;
-        bool ctrl = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
-        if (ctrl && e.Key == Key.C) { Vm.CopyKeys(); e.Handled = true; }
-        else if (ctrl && e.Key == Key.V) { Vm.PasteKeys(); e.Handled = true; }
-        else if (!ctrl && e.Key == Key.Space) { Vm.TogglePlay(); e.Handled = true; }
-        else if (!ctrl && e.Key == Key.Delete) { Vm.DeleteKeyCommand.Execute(Vm.ActiveTrack); e.Handled = true; }
+        if (Vm is not { IsBound: true } vm)
+            return false;
+        bool ctrl = (mods & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
+        bool shift = (mods & KeyModifiers.Shift) != 0;
+        if (ctrl && !shift)
+        {
+            switch (key)
+            {
+                case Key.C: vm.CopyKeys(); return true;
+                case Key.X: vm.CutKeys(); return true;
+                case Key.V: vm.PasteKeys(); return true;
+                case Key.D: vm.DuplicateKeys(); return true;
+                case Key.A: vm.SelectAllKeys(); return true;
+            }
+            return false;
+        }
+        if (ctrl)
+            return false;
+        switch (key)
+        {
+            case Key.Space: vm.TogglePlay(); return true;
+            case Key.Delete or Key.Back: vm.DeleteKeyCommand.Execute(vm.ActiveTrack); return true;
+            case Key.Left: vm.StepCommand.Execute(shift ? "-10" : "-1"); return true;
+            case Key.Right: vm.StepCommand.Execute(shift ? "10" : "1"); return true;
+        }
+        return false;
     }
 
     private void OnAddKey(object? sender, RoutedEventArgs e) => Vm?.AddKeyCommand.Execute(TrackOf(sender));

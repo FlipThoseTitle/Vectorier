@@ -721,7 +721,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
 
     private SceneXmlWriter CreateWriter() => new()
     {
-        TextureSizeProvider = name => Context.Textures.TryGet(name) is { } asset ? (asset.Width, asset.Height) : null,
+        TextureSizeProvider = name => Context.Textures.TryGetSize(name),
     };
 
     /// <summary>Serializes the scene to XML bytes. Errors are reported in <paramref name="errors"/>.</summary>

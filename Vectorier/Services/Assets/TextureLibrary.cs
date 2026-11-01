@@ -120,7 +120,10 @@ public sealed class TextureLibrary
     private readonly List<TextureEntry> _all = new();
     private readonly ConcurrentDictionary<string, TextureAsset?> _loaded = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Task<TextureAsset?>> _loading = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, Bitmap?> _thumbs = new(StringComparer.Ordinal);
+
+    /// <summary>Pixel size of texture files read from their header (by path), so sizes never need a full decode.</summary>
+    private readonly ConcurrentDictionary<string, (int W, int H)> _sizes = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Task> _sizeLoading = new(StringComparer.Ordinal);
 
     public TextureLibrary(IFileSystem fs, ProjectInfo project)
     {
@@ -184,6 +187,55 @@ public sealed class TextureLibrary
 
     public TextureEntry? Find(string? name) => name != null && _byName.TryGetValue(name, out var entry) ? entry : null;
 
+    /// <summary>The texture if it is already loaded (never starts a load).</summary>
+    public TextureAsset? TryGetLoaded(string? name) =>
+        !string.IsNullOrEmpty(name) && _loaded.TryGetValue(name, out var asset) ? asset : null;
+
+    /// <summary>
+    /// Pixel size of a texture without decoding it: the loaded texture's, or the file header's for static textures
+    /// (read once; <see cref="TextureLoaded"/> fires when known). Sprite sheets need their atlas, so they load.
+    /// </summary>
+    public (int Width, int Height)? TryGetSize(TextureEntry entry)
+    {
+        if (ReferenceEquals(Find(entry.Name), entry) && _loaded.TryGetValue(entry.Name, out var loaded) && loaded != null)
+            return (loaded.Width, loaded.Height);
+        if (entry.IsAnimated)
+            return TryGet(entry.Name) is { } asset ? (asset.Width, asset.Height) : null;
+        if (_sizes.TryGetValue(entry.Path, out var size))
+            return size;
+        _sizeLoading.GetOrAdd(entry.Path, _ => ReadSizeAsync(entry));
+        return null;
+    }
+
+    public (int Width, int Height)? TryGetSize(string? name) => Find(name) is { } entry ? TryGetSize(entry) : null;
+
+    private async Task ReadSizeAsync(TextureEntry entry)
+    {
+        try
+        {
+            await using var stream = await _fs.OpenReadAsync(entry.Path);
+            // PNG keeps its size in the first bytes; JPEG in a frame header after the metadata.
+            var buffer = new byte[256 * 1024];
+            int read = 0, n;
+            while (read < buffer.Length && (n = await stream.ReadAsync(buffer.AsMemory(read, buffer.Length - read))) > 0)
+                read += n;
+            if (ImageHeader.TryReadSize(buffer.AsSpan(0, read), out int w, out int h))
+                _sizes[entry.Path] = (w, h);
+            else if (await Task.Run(async () => ImageLoader.Decode(await _fs.ReadAllBytesAsync(entry.Path))) is { } bitmap)
+            {
+                // Unusual file: decode once for its size only.
+                using (bitmap)
+                    _sizes[entry.Path] = (bitmap.PixelSize.Width, bitmap.PixelSize.Height);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TextureLibrary] size of {entry.Name}: {ex.Message}");
+        }
+        _sizeLoading.TryRemove(entry.Path, out _);
+        Dispatcher.UIThread.Post(() => TextureLoaded?.Invoke(entry.Name));
+    }
+
     /// <summary>Returns the texture if it is loaded; otherwise starts loading it and returns null.</summary>
     public TextureAsset? TryGet(string? name)
     {
@@ -227,6 +279,8 @@ public sealed class TextureLibrary
                     }
                     return new TextureAsset(entry, bitmap, frames);
                 });
+                if (asset != null && !entry.IsAnimated)
+                    _sizes[entry.Path] = (asset.Bitmap.PixelSize.Width, asset.Bitmap.PixelSize.Height);
             }
         }
         catch (Exception ex)
@@ -266,70 +320,149 @@ public sealed class TextureLibrary
         }
     }
 
-    private readonly ConcurrentDictionary<string, Task<Bitmap?>> _thumbLoading = new(StringComparer.Ordinal);
+    // ================= THUMBNAILS (downscaled copies) ================= //
 
     /// <summary>
-    /// Downscaled bitmap of a static texture for small previews, or null while it loads (then
-    /// <see cref="TextureLoaded"/> fires). <paramref name="width"/> is rounded up to a power of two.
+    /// Memory the downscaled copies (Project Window, Project Manager, zoomed-out Scene) may keep. Past it the least
+    /// recently drawn ones are freed and decoded again from the file when needed. Every user draws them at render
+    /// time only (nothing holds them), so freeing one never breaks a view.
     /// </summary>
-    public Bitmap? TryGetThumbnail(TextureEntry entry, int width)
+    public static long ThumbnailBudgetBytes { get; set; } = 160L * 1024 * 1024;
+
+    private sealed class Thumb
     {
-        width = Math.Clamp((int)Math.Pow(2, Math.Ceiling(Math.Log2(Math.Max(16, width)))), 16, 4096);
-        string key = entry.Path + "|" + width;
-        if (_thumbs.TryGetValue(key, out var cached))
-            return cached;
-        _thumbLoading.GetOrAdd(key, async _ =>
+        public Thumb(Bitmap? bitmap)
         {
-            Bitmap? bitmap = null;
-            try
-            {
-                byte[] data = await _fs.ReadAllBytesAsync(entry.Path);
-                bitmap = await Task.Run(() =>
-                {
-                    int? original = PngWidth(data);
-                    return ImageLoader.Decode(data, original != null && original <= width ? null : width);
-                });
-            }
-            catch
-            {
-                bitmap = null;
-            }
-            _thumbs[key] = bitmap;
-            _thumbLoading.TryRemove(key, out Task<Bitmap?>? _);
-            Dispatcher.UIThread.Post(() => TextureLoaded?.Invoke(entry.Name));
-            return bitmap;
-        });
+            Bitmap = bitmap;
+            Bytes = bitmap == null ? 64 : (long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4;
+        }
+
+        public Bitmap? Bitmap { get; }
+        public long Bytes { get; }
+        public long LastUse;
+    }
+
+    // UI thread only (renders and the posted completions).
+    private readonly Dictionary<string, Thumb> _thumbs = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _thumbLoading = new(StringComparer.Ordinal);
+    private long _thumbBytes;
+
+    /// <summary>Thumbnails drawn this recently are never freed (what is on screen stays, even past the budget).</summary>
+    private const long RecentUseMs = 3000;
+
+    public const int MinThumbnailWidth = 16;
+    public const int MaxThumbnailWidth = 4096;
+
+    /// <summary>Decode width for an on-screen width: the next power of two (so a zoom only re-decodes at each doubling).</summary>
+    public static int ThumbnailWidth(double pixelWidth) =>
+        Math.Clamp((int)Math.Pow(2, Math.Ceiling(Math.Log2(Math.Max(MinThumbnailWidth, pixelWidth)))), MinThumbnailWidth, MaxThumbnailWidth);
+
+    private static string ThumbKey(TextureEntry entry, int width) => entry.Path + "|" + width.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Downscaled bitmap of a static texture for an on-screen width (rounded up to a power of two), or null while it
+    /// loads (then <see cref="TextureLoaded"/> fires). With <paramref name="nearest"/>, another size already in memory
+    /// is returned meanwhile, so zooming does not blink. Draw it right away; do not keep it.
+    /// </summary>
+    public Bitmap? TryGetThumbnail(TextureEntry entry, int width, bool nearest = false)
+    {
+        width = ThumbnailWidth(width);
+        string key = ThumbKey(entry, width);
+        if (_thumbs.TryGetValue(key, out var cached))
+        {
+            cached.LastUse = Environment.TickCount64;
+            return cached.Bitmap;
+        }
+        if (_thumbLoading.Add(key))
+            _ = LoadThumbnailAsync(entry, width, key);
+        if (!nearest)
+            return null;
+        // Closest size in memory: larger first (sharper), then smaller.
+        for (int w = width * 2; w <= MaxThumbnailWidth; w *= 2)
+            if (_thumbs.TryGetValue(ThumbKey(entry, w), out var larger) && larger.Bitmap != null)
+                return Touch(larger);
+        for (int w = width / 2; w >= MinThumbnailWidth; w /= 2)
+            if (_thumbs.TryGetValue(ThumbKey(entry, w), out var smaller) && smaller.Bitmap != null)
+                return Touch(smaller);
         return null;
     }
 
-    private static int? PngWidth(byte[] data) =>
-        data.Length > 24 && data[0] == 0x89 && data[1] == (byte)'P' && data[2] == (byte)'N' && data[3] == (byte)'G'
-            ? (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19]
-            : null;
-
-    /// <summary>Small preview bitmap for grids (static textures decode downscaled; sprite sheets use the full sheet).</summary>
-    public async Task<Bitmap?> GetThumbnailAsync(TextureEntry entry, int width = 128)
+    private Bitmap? Touch(Thumb thumb)
     {
-        if (entry.IsAnimated)
-            return (await GetAsync(entry.Name))?.Bitmap;
-        string key = entry.Path + "|" + width;
-        if (_thumbs.TryGetValue(key, out var cached))
-            return cached;
-        // Tiles showing the same file share one decode.
-        return await _thumbLoading.GetOrAdd("g|" + key, async _ =>
+        thumb.LastUse = Environment.TickCount64;
+        return thumb.Bitmap;
+    }
+
+    private async Task LoadThumbnailAsync(TextureEntry entry, int width, string key)
+    {
+        Bitmap? bitmap = null;
+        try
         {
-            var bitmap = await ImageLoader.LoadAsync(_fs, entry.Path, width);
-            _thumbs[key] = bitmap;
-            _thumbLoading.TryRemove("g|" + key, out Task<Bitmap?>? _);
-            return bitmap;
+            byte[] data = await _fs.ReadAllBytesAsync(entry.Path);
+            bitmap = await Task.Run(() =>
+            {
+                bool known = ImageHeader.TryReadSize(data, out int w, out int h);
+                if (known)
+                    _sizes[entry.Path] = (w, h);
+                // Never upscale: a file smaller than the width is decoded as it is.
+                return ImageLoader.Decode(data, known && w <= width ? null : width);
+            });
+        }
+        catch
+        {
+            bitmap = null;
+        }
+        Dispatcher.UIThread.Post(() =>
+        {
+            _thumbLoading.Remove(key);
+            if (_thumbs.Remove(key, out var old))
+            {
+                _thumbBytes -= old.Bytes;
+                old.Bitmap?.Dispose();
+            }
+            var thumb = new Thumb(bitmap) { LastUse = Environment.TickCount64 };
+            _thumbs[key] = thumb;
+            _thumbBytes += thumb.Bytes;
+            TrimThumbnails();
+            TextureLoaded?.Invoke(entry.Name);
         });
+    }
+
+    /// <summary>Frees the least recently drawn thumbnails until the cache is back under 90% of its budget.</summary>
+    private void TrimThumbnails()
+    {
+        if (_thumbBytes <= ThumbnailBudgetBytes)
+            return;
+        long target = ThumbnailBudgetBytes * 9 / 10;
+        long recent = Environment.TickCount64 - RecentUseMs;
+        foreach (var (key, thumb) in _thumbs.OrderBy(t => t.Value.LastUse).ToList())
+        {
+            if (_thumbBytes <= target || thumb.LastUse >= recent)
+                break;
+            _thumbs.Remove(key);
+            _thumbBytes -= thumb.Bytes;
+            thumb.Bitmap?.Dispose();
+        }
     }
 
     public void Invalidate(string name)
     {
         _loaded.TryRemove(name, out _);
-        foreach (var key in _thumbs.Keys.Where(k => k.Contains("/" + name + ".", StringComparison.Ordinal)).ToList())
-            _thumbs.TryRemove(key, out _);
+        foreach (var path in _sizes.Keys.Where(k => k.Contains("/" + name + ".", StringComparison.Ordinal)).ToList())
+            _sizes.TryRemove(path, out _);
+        void Drop()
+        {
+            foreach (var key in _thumbs.Keys.Where(k => k.Contains("/" + name + ".", StringComparison.Ordinal)).ToList())
+            {
+                if (_thumbs.Remove(key, out var thumb))
+                {
+                    _thumbBytes -= thumb.Bytes;
+                    thumb.Bitmap?.Dispose();
+                }
+            }
+        }
+        if (Dispatcher.UIThread.CheckAccess()) Drop();
+        else Dispatcher.UIThread.Post(Drop);
     }
 
     // ================= IMPORT / DELETE ================= //

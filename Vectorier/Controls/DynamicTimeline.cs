@@ -25,6 +25,10 @@ public sealed class DynamicTimeline : Control
 
     private const double Inset = 6;
     private const double RulerHeight = 16;
+    private const double HandleHeight = 14;
+
+    private static readonly Color PlayheadColor = Color.FromRgb(0xE8, 0x3B, 0x3B);
+    private static readonly Color PlayheadParkedColor = Color.FromArgb(0x90, 0xE8, 0x3B, 0x3B);
 
     private static readonly Typeface Font = new(FontFamily.Default);
 
@@ -129,7 +133,9 @@ public sealed class DynamicTimeline : Control
             context.FillRectangle(new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)), new Rect(x0, inner.Y, inner.Right - x0, inner.Height));
         }
 
-        // Ruler: ten marks across the visible range.
+        // Ruler: ten marks across the visible range (numbers under the playhead's tab are left out).
+        int trackFrame = editor.TrackFrame(track);
+        var tabRect = PlayheadTab(XOf(trackFrame), trackFrame, bounds).Inflate(new Thickness(2, 0));
         const int marks = 10;
         for (int i = 0; i <= marks; i++)
         {
@@ -138,11 +144,12 @@ public sealed class DynamicTimeline : Control
             context.DrawLine(grid, new Point(x, inner.Y), new Point(x, inner.Bottom));
             int frame = (int)Math.Round(scroll + visible * t);
             var text = new FormattedText(frame.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Font, 10, fg);
-            context.DrawText(text, new Point(Math.Min(x + 2, bounds.Width - text.Width - 2), 2));
+            var at = new Point(Math.Min(x + 2, bounds.Width - text.Width - 2), 2);
+            if (!new Rect(at, new Size(text.Width, text.Height)).Intersects(tabRect))
+                context.DrawText(text, at);
         }
 
         // Keys.
-        int trackFrame = editor.TrackFrame(track);
         double rowY = inner.Y + inner.Height / 2;
         foreach (var key in track.Keys)
         {
@@ -157,9 +164,71 @@ public sealed class DynamicTimeline : Control
         }
 
         // Playhead (parked on the track's last frame when the master frame is beyond it).
-        double px = Math.Round(XOf(trackFrame)) + 0.5;
-        var playhead = new Pen(new SolidColorBrush(editor.Frame > track.TotalFrames ? Color.FromArgb(0x70, 0xFF, 0x50, 0x50) : Colors.Red), 1);
-        context.DrawLine(playhead, new Point(px, inner.Y - 2), new Point(px, inner.Bottom));
+        DrawPlayhead(context, XOf(trackFrame), trackFrame, editor.Frame > track.TotalFrames, inner, bounds);
+    }
+
+    /// <summary>
+    /// Scrub handle: a rounded tab in the ruler showing the frame, with a pointer and a line down through the keys,
+    /// so it reads as something to grab and drag (the whole strip scrubs too).
+    /// </summary>
+    private void DrawPlayhead(DrawingContext context, double x, int frame, bool parked, Rect inner, Rect bounds)
+    {
+        if (x < inner.X - 1 || x > inner.Right + 1)
+            return;
+        var color = parked ? PlayheadParkedColor : PlayheadColor;
+        var brush = new SolidColorBrush(color);
+        double px = Math.Round(x) + 0.5;
+
+        // Soft shadow, then the line.
+        context.DrawLine(new Pen(new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)), 3), new Point(px + 1, inner.Y), new Point(px + 1, inner.Bottom));
+        context.DrawLine(new Pen(brush, _hoverPlayhead || _scrubbing ? 2 : 1.5), new Point(px, inner.Y), new Point(px, inner.Bottom));
+
+        var label = new FormattedText(frame.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Font, 10, Brushes.White);
+        var tab = PlayheadTab(x, frame, bounds);
+        var geometry = new StreamGeometry();
+        using (var g = geometry.Open())
+        {
+            // Rounded tab with a small pointer under it, aimed at the frame.
+            double r = 3, bottom = tab.Bottom;
+            double tip = Math.Clamp(px, tab.X + r + 3, tab.Right - r - 3);
+            g.BeginFigure(new Point(tab.X + r, tab.Y), true);
+            g.LineTo(new Point(tab.Right - r, tab.Y));
+            g.ArcTo(new Point(tab.Right, tab.Y + r), new Size(r, r), 0, false, SweepDirection.Clockwise);
+            g.LineTo(new Point(tab.Right, bottom - r));
+            g.ArcTo(new Point(tab.Right - r, bottom), new Size(r, r), 0, false, SweepDirection.Clockwise);
+            g.LineTo(new Point(tip + 3, bottom));
+            g.LineTo(new Point(px, bottom + 3));
+            g.LineTo(new Point(tip - 3, bottom));
+            g.LineTo(new Point(tab.X + r, bottom));
+            g.ArcTo(new Point(tab.X, bottom - r), new Size(r, r), 0, false, SweepDirection.Clockwise);
+            g.LineTo(new Point(tab.X, tab.Y + r));
+            g.ArcTo(new Point(tab.X + r, tab.Y), new Size(r, r), 0, false, SweepDirection.Clockwise);
+            g.EndFigure(true);
+        }
+        context.DrawGeometry(brush, null, geometry);
+        context.DrawText(label, new Point(tab.X + (tab.Width - label.Width) / 2, tab.Y + (tab.Height - label.Height) / 2));
+    }
+
+    /// <summary>The rounded tab of the playhead in the ruler (sized to its frame number).</summary>
+    private static Rect PlayheadTab(double x, int frame, Rect bounds)
+    {
+        var label = new FormattedText(frame.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Font, 10, Brushes.White);
+        double w = Math.Max(18, label.Width + 8);
+        double px = Math.Round(x) + 0.5;
+        double left = Math.Clamp(px - w / 2, 1, Math.Max(1, bounds.Width - w - 1));
+        return new Rect(left, 1, w, HandleHeight);
+    }
+
+    private bool _hoverPlayhead;
+
+    private bool OverPlayhead(Point pos)
+    {
+        var editor = Editor;
+        var track = Track;
+        if (editor == null || track == null)
+            return false;
+        double px = XOf(editor.TrackFrame(track));
+        return Math.Abs(pos.X - px) <= 8 && pos.Y <= RulerHeight + 2 || Math.Abs(pos.X - px) <= 3;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -179,9 +248,9 @@ public sealed class DynamicTimeline : Control
         bool ctrl = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
         bool shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
 
-        // Key under the pointer?
+        // Key under the pointer? (The playhead's tab in the ruler always scrubs.)
         double rowY = Inner.Y + Inner.Height / 2;
-        var hit = track.Keys.LastOrDefault(k => Math.Abs(XOf(k.Frame) - pos.X) <= 6 && Math.Abs(pos.Y - rowY) <= 10);
+        var hit = pos.Y <= RulerHeight ? null : track.Keys.LastOrDefault(k => Math.Abs(XOf(k.Frame) - pos.X) <= 6 && Math.Abs(pos.Y - rowY) <= 10);
         if (hit != null)
         {
             if (ctrl)
@@ -198,6 +267,7 @@ public sealed class DynamicTimeline : Control
                 track.SelectedFrames.Add(hit.Frame);
             }
             _movingKeys = true;
+            editor.BeginEdit(); // the drag is one undo step
             _dragStartFrame = FrameAt(pos.X);
             _moving = track.Keys.Where(k => track.SelectedFrames.Contains(k.Frame)).Select(k => (k, k.Frame)).ToList();
             editor.SetFrame(hit.Frame);
@@ -219,6 +289,13 @@ public sealed class DynamicTimeline : Control
         if (editor == null || track == null)
             return;
         var pos = e.GetPosition(this);
+        bool hover = OverPlayhead(pos);
+        if (hover != _hoverPlayhead)
+        {
+            _hoverPlayhead = hover;
+            Cursor = hover ? new Cursor(StandardCursorType.SizeWestEast) : null;
+            InvalidateVisual();
+        }
         if (_scrubbing)
         {
             editor.SetFrame(FrameAt(pos.X));
@@ -239,12 +316,37 @@ public sealed class DynamicTimeline : Control
         if (_movingKeys && editor != null && track != null && _moving.Count > 0)
         {
             int delta = FrameAt(e.GetPosition(this).X) - _dragStartFrame;
-            editor.MoveKeys(track, _moving, delta, merge: true);
+            if (delta != 0)
+                editor.MoveKeys(track, _moving, delta, merge: true);
         }
+        if (_movingKeys)
+            editor?.EndEdit();
         _scrubbing = false;
         _movingKeys = false;
         _moving.Clear();
         e.Pointer.Capture(null);
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        if (_hoverPlayhead)
+        {
+            _hoverPlayhead = false;
+            Cursor = null;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        if (_movingKeys)
+            Editor?.EndEdit();
+        _scrubbing = false;
+        _movingKeys = false;
+        _moving.Clear();
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)

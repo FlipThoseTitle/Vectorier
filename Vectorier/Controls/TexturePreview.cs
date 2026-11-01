@@ -43,7 +43,9 @@ public static class AnimationClock
 
 /// <summary>
 /// Shows a project texture by name, fitted inside the control. Sprite sheets (.plist) are animated
-/// instead of showing the whole sheet. Loading happens only while the control is on screen.
+/// instead of showing the whole sheet. Loading happens only while the control is on screen. Static textures are
+/// drawn from the library's downscaled copies at the control's pixel size, fetched while rendering and never kept,
+/// so thousands of tiles do not keep thousands of bitmaps in memory.
 /// </summary>
 public class TexturePreview : Control
 {
@@ -64,7 +66,8 @@ public class TexturePreview : Control
         AvaloniaProperty.Register<TexturePreview, IBrush?>(nameof(Tint));
 
     private TextureAsset? _asset;
-    private Bitmap? _thumbnail;
+    private TextureEntry? _thumbEntry;
+    private TextureLibrary? _subscribed;
     private bool _attached;
     private bool _animating;
     private int _requestVersion;
@@ -120,19 +123,41 @@ public class TexturePreview : Control
         Reload();
     }
 
+    private void Subscribe(TextureLibrary? library)
+    {
+        if (ReferenceEquals(_subscribed, library))
+            return;
+        if (_subscribed != null)
+            _subscribed.TextureLoaded -= OnTextureLoaded;
+        _subscribed = library;
+        if (library != null)
+            library.TextureLoaded += OnTextureLoaded;
+    }
+
+    private void OnTextureLoaded(string name)
+    {
+        if (_thumbEntry != null && name == _thumbEntry.Name)
+            InvalidateVisual();
+    }
+
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         _attached = false;
         StopAnimation();
+        Subscribe(null);
+        // A recycled tile must not keep a texture alive.
+        _asset = null;
+        _thumbEntry = null;
     }
 
     private async void Reload()
     {
         int version = ++_requestVersion;
         _asset = null;
-        _thumbnail = null;
+        _thumbEntry = null;
         StopAnimation();
+        Subscribe(null);
         InvalidateVisual();
 
         var library = Library;
@@ -157,10 +182,9 @@ public class TexturePreview : Control
         }
         else
         {
-            var thumb = await library.GetThumbnailAsync(entry, 160);
-            if (version != _requestVersion)
-                return;
-            _thumbnail = thumb;
+            // Drawn from the library's thumbnails at render time; redraw when one arrives.
+            _thumbEntry = entry;
+            Subscribe(library);
         }
         InvalidateVisual();
     }
@@ -190,15 +214,20 @@ public class TexturePreview : Control
             return;
 
         double w, h;
+        Bitmap? thumbnail = null;
         if (_asset != null)
         {
             w = _asset.Width;
             h = _asset.Height;
         }
-        else if (_thumbnail != null)
+        else if (_thumbEntry != null && Library is { } library)
         {
-            w = _thumbnail.PixelSize.Width;
-            h = _thumbnail.PixelSize.Height;
+            double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+            thumbnail = library.TryGetThumbnail(_thumbEntry, (int)Math.Ceiling(Math.Max(bounds.Width, bounds.Height) * scaling), nearest: true);
+            if (thumbnail == null)
+                return;
+            w = thumbnail.PixelSize.Width;
+            h = thumbnail.PixelSize.Height;
         }
         else
         {
@@ -213,8 +242,8 @@ public class TexturePreview : Control
         {
             if (_asset != null)
                 _asset.Draw(context, dest, _asset.FrameAt(AnimationClock.Seconds));
-            else if (_thumbnail != null)
-                context.DrawImage(_thumbnail, dest);
+            else if (thumbnail != null)
+                context.DrawImage(thumbnail, dest);
         }
     }
 }

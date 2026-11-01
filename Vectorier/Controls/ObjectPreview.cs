@@ -259,11 +259,9 @@ public sealed class ObjectPreview : Control
 
     private static (double W, double H) NaturalSize(TextureLibrary library, TextureEntry entry)
     {
-        if (entry.IsAnimated)
-            return library.TryGet(entry.Name) is { } a ? (a.Width, a.Height) : (0, 0);
-        // Static textures: the size of the full file is known from any decoded size (aspect) only after a full
-        // load, so use the full asset (cached; needed once per texture).
-        return library.TryGet(entry.Name) is { } asset ? (asset.Width, asset.Height) : (0, 0);
+        // Static textures: read from the file's header (a full decode per texture would keep every texture of the
+        // Project Window in memory); sprite sheets need their atlas.
+        return library.TryGetSize(entry) is { } size ? (size.Width, size.Height) : (0, 0);
     }
 
     /// <summary>Draws a texture mapped onto the unit square; static textures use a thumbnail of about <paramref name="pixelWidth"/>.</summary>

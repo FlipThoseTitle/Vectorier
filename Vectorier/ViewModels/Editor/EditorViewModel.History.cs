@@ -14,13 +14,14 @@ namespace Vectorier.ViewModels.Editor;
 /// level). Changes are detected automatically from element property notifications and coalesced: a drag in
 /// the Scene, a slider or a value typed in a field is a single undo step, committed once the input is finished
 /// (pointer released, or a short pause after typing). Selection changes are steps too (they share the scene
-/// snapshot, so they cost almost nothing). The Hierarchy's expanded rows survive undo and redo.
+/// snapshot, so they cost almost nothing). The Hierarchy's expanded rows survive undo and redo. While the Dynamic
+/// Editor is open, each step also holds its timelines (keys, playhead, unsaved flags, poses not keyed yet).
 /// </summary>
 public sealed partial class EditorViewModel
 {
     private const int MaxUndo = 100;
 
-    private sealed record HistoryEntry(SceneDocument.Snapshot State, int Version, int[] Selection);
+    private sealed record HistoryEntry(SceneDocument.Snapshot State, int Version, int[] Selection, object? Dynamics);
 
     private readonly List<HistoryEntry> _undo = new();
     private readonly List<HistoryEntry> _redo = new();
@@ -58,9 +59,22 @@ public sealed partial class EditorViewModel
 
     private HistoryEntry CaptureEntry()
     {
-        // Undo states never contain a pose previewed by the Dynamic Editor.
+        // The Dynamic Editor's timelines (with the previewed poses), then the scene at rest: undo states never
+        // contain a pose previewed by the Dynamic Editor.
+        var dynamics = Dynamics.CaptureState();
         using (Dynamics.SuspendPreview())
-            return new(Document.CreateSnapshot(), _version, Selection.Select(e => e.Id).ToArray());
+            return new(Document.CreateSnapshot(), _version, Selection.Select(e => e.Id).ToArray(), dynamics);
+    }
+
+    /// <summary>
+    /// Re-captures the current state as the undo baseline without adding a step (the Dynamic Editor just bound
+    /// elements: the next step must know their timelines).
+    /// </summary>
+    public void RefreshHistoryBaseline()
+    {
+        CommitPending();
+        if (_baseline != null)
+            _baseline = _baseline with { Dynamics = Dynamics.CaptureState() };
     }
 
     private void MarkSaved()
@@ -149,6 +163,7 @@ public sealed partial class EditorViewModel
         if (_gestureDepth == 0)
             return;
         _gestureDepth = 0;
+        Dynamics.NoteTransform(DynamicTransformKind.None);
         if (_pending && _baseline != null)
         {
             _pending = false;
@@ -167,6 +182,9 @@ public sealed partial class EditorViewModel
             FlushSurfaces();
         if (_pending)
         {
+            // Dynamic Editor Auto Key: the finished change keys the edited elements, in the same undo step.
+            if (!_restoring)
+                Dynamics.OnChangeCommitted();
             _pending = false;
             _selectionPending = false;
             if (_baseline != null)
@@ -274,6 +292,8 @@ public sealed partial class EditorViewModel
             _version = entry.Version;
             IsDirty = _version != _savedVersion;
             RaiseStructureChanged();
+            using (SuppressTracking())
+                Dynamics.RestoreState(entry.Dynamics);
             SelectByIds(entry.Selection);
             RaiseSelectionChanged();
             RaiseHistoryChanged();

@@ -1489,7 +1489,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
         var writer = new SceneXmlWriter
         {
-            TextureSizeProvider = name => Textures.TryGet(name) is { } a ? (a.Width, a.Height) : null,
+            TextureSizeProvider = name => Textures.TryGetSize(name),
         };
 
         var saved = new List<string>();

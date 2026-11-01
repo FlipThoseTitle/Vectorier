@@ -248,6 +248,13 @@ public partial class EditorView : UserControl
         if (inText)
             return;
 
+        // Focus in the Dynamic Editor: Copy / Cut / Paste / Duplicate / Delete... act on keyframes, not on the Scene.
+        if ((e.Source as Visual)?.FindAncestorOfType<DynamicEditorView>(includeSelf: true) is { } dynamicEditor && dynamicEditor.HandleKey(e.Key, mods))
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Modal Scene transforms take keys first (Esc, Enter, X, Y).
         if (Scene.IsModal && Scene.HandleKey(e.Key, mods))
         {

@@ -13,6 +13,14 @@ using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
+/// <summary>Kind of Scene transform being made (Auto Key skips components the element cannot animate).</summary>
+public enum DynamicTransformKind
+{
+    None,
+    Rotate,
+    Scale,
+}
+
 public enum EasePreset
 {
     EaseIn,
@@ -57,7 +65,13 @@ public sealed partial class DynamicTrack : ObservableObject
     [ObservableProperty] private string _transformationName = "Transform";
     [ObservableProperty] private bool _isActive;
 
+    /// <summary>The timeline has changes that are not baked into a transformation yet.</summary>
+    [ObservableProperty] private bool _isModified;
+
     public ObservableCollection<string> TransformationNames { get; } = new();
+
+    /// <summary>Re-sends the picked name (the transformation list was rebuilt and the combo box lost its pick).</summary>
+    public void NotifyTransformationName() => OnPropertyChanged(nameof(TransformationName));
 
     /// <summary>Pose before the editor touched the element; put back when it is unbound.</summary>
     public DynamicKey Original { get; set; } = new();
@@ -120,6 +134,13 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     private bool _customEase;
 
     [ObservableProperty] private bool _onion;
+
+    /// <summary>Auto Key: a Scene / Inspector change of an edited element keys its pose at the playhead once the input is finished.</summary>
+    [ObservableProperty] private bool _autoKey;
+
+    /// <summary>Shows the motion paths (and their key dots) in the Scene.</summary>
+    [ObservableProperty] private bool _showPath = true;
+
     [ObservableProperty] private int _fps = 60;
 
     /// <summary>Pixels per frame on the timeline.</summary>
@@ -225,6 +246,8 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
 
     partial void OnOnionChanged(bool value) => _editor.InvalidateScene();
 
+    partial void OnShowPathChanged(bool value) => _editor.InvalidateScene();
+
     /// <summary>Raised when the timelines must redraw.</summary>
     public event Action? TimelineChanged;
 
@@ -244,12 +267,25 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
             t.RaiseKeysChanged();
     }
 
-    private void KeysChanged(DynamicTrack track)
+    /// <summary>
+    /// After a change of a track's keys: redraws, previews and records an undo step. <paramref name="edit"/> marks the
+    /// timeline as not saved into its transformation yet.
+    /// </summary>
+    private void KeysChanged(DynamicTrack track, bool edit = true)
     {
         track.Sort();
+        if (edit)
+            track.IsModified = true;
         ApplyFrameToAll();
         RaiseTimeline();
+        if (edit)
+            _editor.MarkChanged();
     }
+
+    /// <summary>A continuous edit (dragging keys or the support handle) is a single undo step.</summary>
+    public void BeginEdit() => _editor.BeginGesture();
+
+    public void EndEdit() => _editor.EndGesture();
 
     // ================= POSES ================= //
 
@@ -394,6 +430,8 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         Frame = 0;
         ApplyFrameToAll();
         RaiseTimeline();
+        // Undo steps from now on know the timelines (binding itself is not a step).
+        _editor.RefreshHistoryBaseline();
     }
 
     private DynamicTrack MakeTrack(SceneElement element)
@@ -406,11 +444,37 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         return track;
     }
 
+    /// <summary>
+    /// Syncs the transformation list in place (clearing it would make the combo box lose its pick and show "(new)"),
+    /// then re-sends the picked name.
+    /// </summary>
     private static void RefreshNames(DynamicTrack track)
     {
-        track.TransformationNames.Clear();
-        foreach (var name in track.Element.Dynamics.Select(d => string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name).Distinct())
-            track.TransformationNames.Add(name);
+        var names = track.Element.Dynamics.Select(d => N(d.Name)).Distinct().ToList();
+        var list = track.TransformationNames;
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            if (!names.Contains(list[i]))
+                list.RemoveAt(i);
+        }
+        for (int i = 0; i < names.Count; i++)
+        {
+            int at = list.IndexOf(names[i]);
+            if (at < 0)
+                list.Insert(i, names[i]);
+            else if (at != i)
+                list.Move(at, i);
+        }
+        track.NotifyTransformationName();
+    }
+
+    /// <summary>Exit button: offers to save timelines that are not baked yet, then exits.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ExitAsync()
+    {
+        if (!await ResolveUnsavedAsync(Loc.T("Exit Dynamic Editor")))
+            return;
+        Unbind();
     }
 
     /// <summary>Exits the Dynamic Editor: every element gets its rest pose back.</summary>
@@ -564,14 +628,6 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         TimelineChanged?.Invoke();
     }
 
-    [RelayCommand]
-    private void Restart()
-    {
-        StopPreview();
-        Frame = 0;
-        TimelineChanged?.Invoke();
-    }
-
     /// <summary>Frame step; the parameter comes from XAML as a string ("-5", "1"...).</summary>
     [RelayCommand]
     private void Step(string? deltaText)
@@ -678,16 +734,67 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         var track = ActiveTrack;
         if (track == null || Clipboard.Count == 0) return;
+        PlaceKeys(track, Clipboard, TrackFrame(track));
+    }
+
+    /// <summary>Cut: copies the selected keys (or the key at the playhead), then deletes them.</summary>
+    public void CutKeys()
+    {
+        var track = ActiveTrack;
+        if (track == null) return;
+        var frames = track.SelectedFrames.Count > 0 ? track.SelectedFrames.ToHashSet() : new HashSet<int> { TrackFrame(track) };
+        if (!track.Keys.Any(k => frames.Contains(k.Frame))) return;
+        CopyKeys();
+        track.Keys.RemoveAll(k => frames.Contains(k.Frame));
         track.SelectedFrames.Clear();
-        int at = TrackFrame(track);
-        foreach (var (df, k) in Clipboard)
+        KeysChanged(track);
+    }
+
+    /// <summary>
+    /// Duplicate: copies of the selected keys (or the key at the playhead) placed after them, keeping their spacing,
+    /// with a gap of <see cref="DuplicateGap"/> frames. The copies are selected so they can be dragged into place.
+    /// </summary>
+    public void DuplicateKeys()
+    {
+        var track = ActiveTrack;
+        if (track == null) return;
+        var frames = track.SelectedFrames.Count > 0 ? track.SelectedFrames.ToList() : new List<int> { TrackFrame(track) };
+        var keys = track.Keys.Where(k => frames.Contains(k.Frame)).OrderBy(k => k.Frame).ToList();
+        if (keys.Count == 0) return;
+        var copies = keys.Select(k => (k.Frame - keys[0].Frame, k.Clone())).ToList();
+        int start = keys[^1].Frame + DuplicateGap;
+        PlaceKeys(track, copies, start);
+        SetFrame(start);
+    }
+
+    /// <summary>Frames between the last duplicated key and the first copy.</summary>
+    public const int DuplicateGap = 10;
+
+    /// <summary>Puts keys (frame offsets from <paramref name="at"/>) on the track, lengthening it if they go past its end.</summary>
+    private void PlaceKeys(DynamicTrack track, IReadOnlyList<(int Df, DynamicKey Key)> keys, int at)
+    {
+        track.SelectedFrames.Clear();
+        int last = at + keys.Max(k => k.Df);
+        if (last > track.TotalFrames)
+            track.TotalFrames = last;
+        foreach (var (df, k) in keys)
         {
             var key = k.Clone();
-            key.Frame = Math.Clamp(at + df, 0, track.TotalFrames);
+            key.Frame = Math.Max(0, at + df);
             Upsert(track, key);
             track.SelectedFrames.Add(key.Frame);
         }
         KeysChanged(track);
+    }
+
+    public void SelectAllKeys()
+    {
+        var track = ActiveTrack;
+        if (track == null) return;
+        track.SelectedFrames.Clear();
+        foreach (var k in track.Keys)
+            track.SelectedFrames.Add(k.Frame);
+        RaiseTimeline();
     }
 
     /// <summary>Moves keys by a frame delta (timeline drag). Moved keys win over stationary ones on the same frame.</summary>
@@ -717,7 +824,9 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         track.TotalFrames = Math.Max(1, total);
         if (Frame > MaxEnd) Frame = MaxEnd;
+        track.IsModified = true;
         RaiseTimeline();
+        _editor.MarkChanged();
     }
 
     // ================= TRANSFORMATIONS (load / save) ================= //
@@ -729,7 +838,10 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         ActiveTrack = track;
         track.TransformationName = name;
         LoadTransformation(track, name);
-        KeysChanged(track);
+        track.IsModified = false;
+        KeysChanged(track, edit: false);
+        // Viewing another transformation is not a change: undo steps from now on start from it.
+        _editor.RefreshHistoryBaseline();
     }
 
     /// <summary>Unity LoadFromDynamicTransform: rebuilds keys from a saved transformation, starting from the rest pose.</summary>
@@ -906,22 +1018,93 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
 
     private static double Round(double v) => Math.Round(v, 4);
 
-    /// <summary>Unity "Save": bakes the timeline into the element's transformation with the current name.</summary>
+    /// <summary>Save button: asks for the transformation's name, then bakes the timeline into it.</summary>
     [RelayCommand]
-    private void SaveTransformation(DynamicTrack? track)
+    private async System.Threading.Tasks.Task SaveTransformation(DynamicTrack? track)
     {
         track ??= ActiveTrack;
         if (track == null) return;
-        string name = N(track.TransformationName);
+        await SaveWithPromptAsync(track);
+    }
+
+    /// <summary>
+    /// Asks for the name (the picked transformation's, or a new one) and saves. Saving under another name keeps the
+    /// picked transformation and adds a new one. False when cancelled.
+    /// </summary>
+    public async System.Threading.Tasks.Task<bool> SaveWithPromptAsync(DynamicTrack track)
+    {
+        ActiveTrack = track;
+        string current = N(track.TransformationName);
+        bool exists = track.Element.Dynamics.Any(d => N(d.Name) == current);
+        string initial = exists ? current : UniqueName(track, "Transform", null);
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Save Transformation"),
+            Loc.F("Transformation name for '{0}':", track.Header), initial,
+            text => ValidateSaveName(track, text, exists ? current : null), Loc.T("Save"));
+        if (name == null)
+            return false;
+        SaveAs(track, name.Trim());
+        return true;
+    }
+
+    private static string? ValidateSaveName(DynamicTrack track, string text, string? current)
+    {
+        string name = text.Trim();
+        if (name.Length == 0)
+            return Loc.T("Enter a name.");
+        if (name != current && track.Element.Dynamics.Any(d => N(d.Name) == name))
+            return Loc.F("'{0}' already has a transformation named '{1}'.", track.Header, name);
+        return null;
+    }
+
+    /// <summary>Unity "Save": bakes the timeline into the element's transformation with this name.</summary>
+    private void SaveAs(DynamicTrack track, string name)
+    {
+        name = N(name);
         var baked = Bake(track, name);
         var list = track.Element.Dynamics;
         int index = list.FindIndex(d => N(d.Name) == name);
         if (index >= 0) list[index] = baked;
         else list.Add(baked);
+        track.TransformationName = name;
         RefreshNames(track);
+        track.IsModified = false;
         _editor.MarkChanged();
         _editor.StatusText = Loc.F("Saved transformation '{0}' on {1}", name, track.Header);
         RaiseTimeline();
+    }
+
+    /// <summary>
+    /// Timelines with changes not baked into a transformation: asks whether to save them (one name prompt per
+    /// element, in turn). False when the user cancels.
+    /// </summary>
+    private async System.Threading.Tasks.Task<bool> ResolveUnsavedAsync(string title)
+    {
+        var pending = Tracks.Where(t => t.IsModified).ToList();
+        if (pending.Count == 0)
+            return true;
+        string message = pending.Count == 1
+            ? Loc.F("The timeline of '{0}' has changes that are not saved into a transformation yet. Save them?", pending[0].Header)
+            : Loc.F("{0} timelines have changes that are not saved into a transformation yet. Save them? You will name each transformation in turn.", pending.Count);
+        var dialog = new ViewModels.Dialogs.MessageDialogViewModel(title, message, MessageKind.Warning);
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Save"), "Save", isDefault: true));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Don't Save"), "Discard"));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Cancel"), null, isCancel: true));
+        switch (await AppServices.Dialogs.ShowAsync(dialog))
+        {
+            case "Save":
+                foreach (var track in pending)
+                {
+                    if (!Tracks.Contains(track))
+                        continue;
+                    if (!await SaveWithPromptAsync(track))
+                        return false;
+                }
+                return true;
+            case "Discard":
+                return true;
+            default:
+                return false;
+        }
     }
 
     [RelayCommand]
@@ -934,8 +1117,9 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         RefreshNames(track);
         track.TransformationName = name;
         LoadTransformation(track, name);
+        track.IsModified = false;
+        KeysChanged(track, edit: false);
         _editor.MarkChanged();
-        KeysChanged(track);
     }
 
     [RelayCommand]
@@ -948,8 +1132,11 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
             _editor.MarkChanged();
         RefreshNames(track);
         track.TransformationName = track.TransformationNames.FirstOrDefault() ?? "Transform";
+        RefreshNames(track);
         LoadTransformation(track, track.TransformationName);
-        KeysChanged(track);
+        track.IsModified = false;
+        KeysChanged(track, edit: false);
+        _editor.MarkChanged();
     }
 
     public void RenameTransformation(DynamicTrack track, string newName)
@@ -1028,8 +1215,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         b.SupportX = absolute.X - a.X;
         b.SupportY = absolute.Y - a.Y;
         b.Ease = EasePreset.Custom;
-        ApplyFrameToAll();
-        RaiseTimeline();
+        KeysChanged(track);
     }
 
     /// <summary>
@@ -1041,6 +1227,9 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         if (Tracks.Count == 0)
             return;
+        // The trigger plays transformations by name: unsaved timelines are saved (and named) first.
+        if (!await ResolveUnsavedAsync(Loc.T("Add Trigger")) || Tracks.Count == 0)
+            return;
         var first = Tracks[0].Element;
         var parent = first.Parent;
         // Elements at the same level as the first one decide the content; the trigger goes right above them.
@@ -1048,7 +1237,9 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         var siblings = _editor.Document.SiblingsOf(first);
         int index = level.Select(t => siblings.IndexOf(t.Element)).Where(i => i >= 0).DefaultIfEmpty(-1).Min();
 
-        var names = level.Select(t => t.TransformationName?.Trim() ?? string.Empty)
+        // Only transformations that exist on their element (a timeline never saved has none to play).
+        var names = level.Where(t => t.Element.Dynamics.Any(d => N(d.Name) == N(t.TransformationName)))
+            .Select(t => t.TransformationName?.Trim() ?? string.Empty)
             .Where(n => n.Length > 0).Distinct(StringComparer.Ordinal).ToList();
         // Several transformations: run them one after another, at the same time, or a random few.
         string order = "Straight";
@@ -1072,7 +1263,8 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
                     value => ValidateRandomCount(value, available), Loc.T("Add Trigger"));
                 if (text == null)
                     return;
-                randomCount = int.Parse(text.Trim(), System.Globalization.CultureInfo.InvariantCulture);
+                Controls.MathFields.TryEvaluate(text.Trim(), System.Globalization.CultureInfo.CurrentCulture.NumberFormat, out decimal picked2);
+                randomCount = (int)picked2;
             }
         }
 
@@ -1106,16 +1298,21 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
             return;
         trigger.Name = "TriggerTransform";
         trigger.ContentXml = content;
+        // The new trigger becomes the only selection and the Scene frames it.
+        _editor.Select(trigger);
+        _editor.RequestFrame(trigger);
         _editor.StatusText = names.Count == 0
             ? Loc.T("Added a trigger (no transformation name to play).")
-            : Loc.F("Added a trigger that plays {0}. Save the transformations so the names exist.", string.Join(", ", names));
+            : Loc.F("Added a trigger that plays {0}.", string.Join(", ", names));
     }
 
     /// <summary>Run Randomly: a whole number from 1 to the number of transformations.</summary>
     private static string? ValidateRandomCount(string value, int available)
     {
-        if (!int.TryParse(value.Trim(), System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out int count))
+        if (!Controls.MathFields.TryEvaluate(value.Trim(), System.Globalization.CultureInfo.CurrentCulture.NumberFormat, out decimal number) || number != Math.Truncate(number)
+            || number < int.MinValue || number > int.MaxValue)
             return Loc.T("Enter a whole number (for example 1).");
+        int count = (int)number;
         if (count < 0)
             return Loc.T("Warning: the number can't be negative.");
         if (count == 0)
@@ -1123,5 +1320,112 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         if (count > available)
             return Loc.F("Error: there are only {0} transformations.", available);
         return null;
+    }
+    // ================= UNDO / REDO ================= //
+
+    private sealed record TrackState(int ElementId, List<DynamicKey> Keys, int[] SelectedFrames, int TotalFrames, string Name,
+        bool Modified, DynamicKey Pose);
+
+    private sealed record State(int Frame, List<TrackState> Tracks);
+
+    /// <summary>
+    /// The timelines for an undo step: keys, key selection, lengths, picked transformation, unsaved flag, the playhead
+    /// and each element's current pose (a move not keyed yet comes back too). Null while nothing is being edited.
+    /// </summary>
+    public object? CaptureState()
+    {
+        if (Tracks.Count == 0)
+            return null;
+        return new State(Frame, Tracks.Select(t => new TrackState(t.ElementId, t.Keys.Select(k => k.Clone()).ToList(),
+            t.SelectedFrames.ToArray(), t.TotalFrames, t.TransformationName, t.IsModified, Capture(t.Element, 0))).ToList());
+    }
+
+    /// <summary>Puts the timelines of an undo step back (on the elements being edited now).</summary>
+    public void RestoreState(object? state)
+    {
+        if (state is not State s || Tracks.Count == 0)
+            return;
+        StopPreview();
+        var restored = new List<(DynamicTrack Track, DynamicKey Pose)>();
+        foreach (var ts in s.Tracks)
+        {
+            var track = Tracks.FirstOrDefault(t => t.ElementId == ts.ElementId);
+            if (track == null)
+                continue;
+            track.Keys.Clear();
+            track.Keys.AddRange(ts.Keys.Select(k => k.Clone()));
+            track.SelectedFrames.Clear();
+            track.SelectedFrames.UnionWith(ts.SelectedFrames);
+            track.TotalFrames = ts.TotalFrames;
+            track.TransformationName = ts.Name;
+            RefreshNames(track);
+            track.IsModified = ts.Modified;
+            restored.Add((track, ts.Pose));
+        }
+        int frame = Math.Clamp(s.Frame, 0, MaxEnd);
+        if (Frame != frame)
+            Frame = frame;
+        ApplyFrameToAll();
+        foreach (var (track, pose) in restored)
+            Apply(track.Element, pose);
+        RaiseTimeline();
+    }
+
+    // ================= AUTO KEY ================= //
+
+    private DynamicTransformKind _transformKind;
+
+    /// <summary>The Scene reports rotations and scales, so Auto Key can skip what an element cannot animate.</summary>
+    public void NoteTransform(DynamicTransformKind kind) => _transformKind = kind;
+
+    /// <summary>
+    /// Called when a change becomes an undo step (the pointer was released, a hotkey transform confirmed, a field
+    /// committed): with Auto Key on, every edited element whose pose differs from its timeline is keyed at the
+    /// playhead. Playback and scrubbing never get here (they do not record changes).
+    /// </summary>
+    public void OnChangeCommitted()
+    {
+        var kind = _transformKind;
+        _transformKind = DynamicTransformKind.None;
+        if (!AutoKey || Tracks.Count == 0 || IsPlaying)
+            return;
+        bool any = false;
+        foreach (var track in Tracks)
+        {
+            var e = track.Element;
+            // Rotating something that cannot rotate (it only orbits in a multi-selection), or scaling something
+            // without a size, is not keyed.
+            if (kind == DynamicTransformKind.Rotate && e is not ImageElement)
+                continue;
+            if (kind == DynamicTransformKind.Scale && !e.HasSize)
+                continue;
+            int frame = TrackFrame(track);
+            var expected = Evaluate(track, frame);
+            var now = Capture(e, frame);
+            bool moved = Math.Abs(now.X - expected.X) > Eps || Math.Abs(now.Y - expected.Y) > Eps;
+            bool sized = e.HasSize && (Math.Abs(now.Width - expected.Width) > Eps || Math.Abs(now.Height - expected.Height) > Eps);
+            bool styled = e is ImageElement && (Math.Abs(now.Rotation - expected.Rotation) > Eps || now.Color != expected.Color);
+            if (!moved && !sized && !styled)
+                continue;
+            if (!e.HasSize)
+            {
+                now.Width = expected.Width;
+                now.Height = expected.Height;
+            }
+            if (track.KeyAt(frame) is { } existing)
+            {
+                now.Ease = existing.Ease;
+                now.SupportX = existing.SupportX;
+                now.SupportY = existing.SupportY;
+            }
+            Upsert(track, now);
+            track.Sort();
+            track.IsModified = true;
+            any = true;
+        }
+        if (!any)
+            return;
+        ApplyFrameToAll();
+        RaiseTimeline();
     }
 }

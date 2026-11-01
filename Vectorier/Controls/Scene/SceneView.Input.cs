@@ -176,6 +176,7 @@ public sealed partial class SceneView
             Math.Abs(pos.X - support.Handle.X) <= 6 && Math.Abs(pos.Y - support.Handle.Y) <= 6)
         {
             _mode = InteractionMode.DynamicSupport;
+            _editor.BeginGesture(); // the whole drag is one undo step
             e.Pointer.Capture(this);
             e.Handled = true;
             return;
@@ -579,6 +580,8 @@ public sealed partial class SceneView
             {
                 // A right click without any movement at all opens the Create menu.
                 bool menu = _mode == InteractionMode.Pan && !_rightMoved && pos == _pressScreen && e.InitialPressMouseButton == MouseButton.Right;
+                if (_mode == InteractionMode.DynamicSupport)
+                    _editor.EndGesture();
                 _mode = InteractionMode.None;
                 e.Pointer.Capture(null);
                 Cursor = null;
@@ -853,6 +856,7 @@ public sealed partial class SceneView
 
     private void RotateTargets(double angle)
     {
+        _editor?.Dynamics.NoteTransform(DynamicTransformKind.Rotate);
         bool single = _targets.Count == 1;
         foreach (var t in _targets)
         {
@@ -879,6 +883,7 @@ public sealed partial class SceneView
 
     private void ScaleTargets(Point pivotScreen, double sx, double sy, bool free)
     {
+        _editor?.Dynamics.NoteTransform(DynamicTransformKind.Scale);
         foreach (var t in _targets)
         {
             if (t is ModelElement && _targets.Count == 1)

@@ -852,22 +852,28 @@ public sealed class SceneRenderer
         return false;
     }
 
+    /// <summary>Device pixels per screen unit of the view being drawn (Windows display scaling...).</summary>
+    public double RenderScaling { get; set; } = 1;
+
     private bool DrawImage(DrawingContext context, RenderItem item, ImageElement image, Point o, Matrix m, double seconds)
     {
         var textures = _editor.Context.Textures;
-        var asset = textures.TryGet(image.ClassName);
-        if (asset == null)
+        var entry = textures.Find(image.ClassName);
+        if (entry == null)
         {
             if (textures.IsMissing(image.ClassName))
                 DrawMissing(context, image.GetLocalCorners(), o, m);
             return false;
         }
+        // The size comes from the file's header for static textures: zoomed out, the full texture is never decoded.
+        if (textures.TryGetSize(entry) is not { } size)
+            return false;
 
-        if (image.AutoSize && (Math.Abs(image.Width - asset.Width) > 1e-6 || Math.Abs(image.Height - asset.Height) > 1e-6))
+        if (image.AutoSize && (Math.Abs(image.Width - size.Width) > 1e-6 || Math.Abs(image.Height - size.Height) > 1e-6))
         {
             // The game uses the texture size when the XML has none.
             using (_editor.SuppressTracking())
-                image.FillNaturalSize(asset.Width, asset.Height);
+                image.FillNaturalSize(size.Width, size.Height);
             MarkDirty(item);
             if (item.Instance?.Reference is { } def)
                 def.ComputeBounds();
@@ -876,23 +882,80 @@ public sealed class SceneRenderer
 
         var (a, b, c, d) = image.GetBasis();
         var local = new Matrix(a, b, c, d, o.X + image.X, o.Y + image.Y);
-        DrawAsset(context, asset, local * m, image.Color, seconds);
+        return DrawTexture(context, entry, size.Width, local * m, image.Color, seconds);
+    }
+
+    /// <summary>
+    /// Draws a texture on the unit square at the resolution the zoom needs: when it covers well under half of its
+    /// pixels on screen, a downscaled copy (a power of two wide) is drawn instead of the full texture, which then
+    /// does not even have to be loaded. Sprite sheets always use the full sheet (their frames are in pixels).
+    /// Returns true when the texture animates.
+    /// </summary>
+    private bool DrawTexture(DrawingContext context, Services.Assets.TextureEntry entry, int pixelWidth, Matrix unitToScreen, Color color, double seconds)
+    {
+        var textures = _editor.Context.Textures;
+        if (!entry.IsAnimated)
+        {
+            double screenWidth = Math.Sqrt(unitToScreen.M11 * unitToScreen.M11 + unitToScreen.M12 * unitToScreen.M12) * RenderScaling;
+            int level = Services.Assets.TextureLibrary.ThumbnailWidth(screenWidth);
+            if (level * 2 <= pixelWidth)
+            {
+                var loaded = textures.TryGetLoaded(entry.Name);
+                var mip = textures.TryGetThumbnail(entry, level, nearest: true);
+                if (mip != null)
+                    DrawBitmap(context, mip, unitToScreen, color);
+                else if (loaded != null)
+                    DrawAsset(context, loaded, unitToScreen, color, seconds); // full texture meanwhile
+                return false;
+            }
+        }
+        var asset = textures.TryGet(entry.Name);
+        if (asset == null)
+        {
+            // Zooming in on a downscaled texture: keep showing it until the full one is decoded.
+            if (!entry.IsAnimated && textures.TryGetThumbnail(entry, Services.Assets.TextureLibrary.MaxThumbnailWidth, nearest: true) is { } any)
+                DrawBitmap(context, any, unitToScreen, color);
+            return false;
+        }
+        DrawAsset(context, asset, unitToScreen, color, seconds);
         return asset.IsAnimated;
+    }
+
+    /// <summary>A whole bitmap mapped onto the unit square (downscaled textures), tinted like <see cref="DrawAsset"/>.</summary>
+    private static void DrawBitmap(DrawingContext context, Bitmap bitmap, Matrix unitToScreen, Color color)
+    {
+        if (color.A == 0)
+            return;
+        var source = TintCache.NeedsTint(color) ? TintCache.Get(bitmap, color) ?? bitmap : bitmap;
+        using (context.PushTransform(unitToScreen))
+        {
+            var src = new Rect(0, 0, source.PixelSize.Width, source.PixelSize.Height);
+            if (color.A < 255)
+            {
+                using (context.PushOpacity(color.A / 255.0))
+                    context.DrawImage(source, src, new Rect(0, 0, 1, 1));
+            }
+            else
+            {
+                context.DrawImage(source, src, new Rect(0, 0, 1, 1));
+            }
+        }
     }
 
     private bool DrawTexturedRect(DrawingContext context, RenderItem item, SceneElement e, Point o, Matrix m, double seconds)
     {
         var textures = _editor.Context.Textures;
-        var asset = textures.TryGet(e.Name);
-        if (asset == null)
+        var entry = textures.Find(e.Name);
+        if (entry == null)
         {
             if (textures.IsMissing(e.Name))
                 DrawMissing(context, e.GetLocalCorners(), o, m);
             return false;
         }
+        if (textures.TryGetSize(entry) is not { } size)
+            return false;
         var local = new Matrix(e.Width, 0, 0, e.Height, o.X + e.X, o.Y + e.Y);
-        DrawAsset(context, asset, local * m, Colors.White, seconds);
-        return asset.IsAnimated;
+        return DrawTexture(context, entry, size.Width, local * m, Colors.White, seconds);
     }
 
     /// <summary>Draws a texture mapped onto the unit square transformed by <paramref name="unitToScreen"/>.</summary>
@@ -1316,17 +1379,24 @@ public sealed class SceneRenderer
     /// Draws an element that is not part of the level (placement / drag preview), semi-transparent, on the
     /// gameplay layer. Its referenced content and children are drawn like the real thing.
     /// </summary>
-    private RenderTargetBitmap? _ghostLayer;
+    /// <summary>One offscreen layer per ghost drawn in a frame (the placement ghost, each onion-skin pose...).</summary>
+    private readonly Dictionary<int, RenderTargetBitmap> _ghostLayers = new();
 
     /// <param name="renderScaling">Pixels per unit of the screen (DPI scaling), for a sharp preview.</param>
-    public void RenderGhost(DrawingContext context, SceneViewport viewport, SceneElement element, double opacity, double renderScaling = 1)
+    /// <param name="group">Parallax group to draw in (the Default layer when null).</param>
+    /// <param name="offset">Level offset added to the element (the world position of the parent it stands for).</param>
+    /// <param name="slot">Separate offscreen layer for each ghost drawn in the same frame.</param>
+    public void RenderGhost(DrawingContext context, SceneViewport viewport, SceneElement element, double opacity, double renderScaling = 1,
+        LayerGroup? group = null, Vector offset = default, int slot = 0)
     {
-        var group = new LayerGroup(Layers.GetFactor(Layers.Default), 0);
+        var layerGroup = group ?? new LayerGroup(Layers.GetFactor(Layers.Default), 0);
         var items = new List<RenderItem>();
-        CollectGhost(element, element, group, null, default, items, 0);
+        CollectGhost(element, element, layerGroup, null, default, items, 0);
         if (items.Count == 0)
             return;
-        var m = viewport.LevelToScreen(group);
+        var m = viewport.LevelToScreen(layerGroup);
+        if (offset != default)
+            m = Matrix.CreateTranslation(offset.X, offset.Y) * m;
         double seconds = AnimationClock.Seconds;
 
         // The preview is drawn once into its own layer and that layer is faded: overlapping parts do not add up,
@@ -1346,12 +1416,13 @@ public sealed class SceneRenderer
             return;
         area = new Rect(Math.Floor(area.X), Math.Floor(area.Y), Math.Ceiling(area.Width) + 1, Math.Ceiling(area.Height) + 1);
         var pixels = new PixelSize(Math.Max(1, (int)Math.Ceiling(area.Width * renderScaling)), Math.Max(1, (int)Math.Ceiling(area.Height * renderScaling)));
-        if (_ghostLayer == null || _ghostLayer.PixelSize != pixels)
+        if (!_ghostLayers.TryGetValue(slot, out var ghostLayer) || ghostLayer.PixelSize != pixels)
         {
-            _ghostLayer?.Dispose();
-            _ghostLayer = new RenderTargetBitmap(pixels, new Vector(96 * renderScaling, 96 * renderScaling));
+            ghostLayer?.Dispose();
+            ghostLayer = new RenderTargetBitmap(pixels, new Vector(96 * renderScaling, 96 * renderScaling));
+            _ghostLayers[slot] = ghostLayer;
         }
-        using (var layer = _ghostLayer.CreateDrawingContext(true))
+        using (var layer = ghostLayer.CreateDrawingContext(true))
         // Labels go into a transparent layer: sub-pixel (ClearType) text needs an opaque background and comes out
         // as colored, blotchy fringes there; grayscale antialiasing stays clean once the layer is faded.
         using (layer.PushRenderOptions(new RenderOptions { EdgeMode = EdgeMode.Antialias }))
@@ -1364,7 +1435,7 @@ public sealed class SceneRenderer
                 DrawOverlay(layer, item, m, viewport, seconds);
         }
         using (context.PushOpacity(opacity))
-            context.DrawImage(_ghostLayer, new Rect(_ghostLayer.Size), area);
+            context.DrawImage(ghostLayer, new Rect(ghostLayer.Size), area);
     }
 
     private static void CollectGhost(SceneElement element, SceneElement owner, LayerGroup group, ObjectElement? instance, Vector offset,

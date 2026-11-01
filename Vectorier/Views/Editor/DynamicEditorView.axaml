@@ -18,6 +18,12 @@
         </Style>
         <Style Selector="NumericUpDown">
             <Setter Property="MinHeight" Value="22" />
+            <!-- In the wrapping toolbar the field is as tall as the buttons: keep it and its text centered. -->
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ToggleButton.autokey:checked Ellipse">
+            <Setter Property="Fill" Value="#E81123" />
         </Style>
     </UserControl.Styles>
 
@@ -31,24 +37,21 @@
                     <Button Classes="tool" Command="{Binding AddTriggerCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Add a trigger next to the edited elements that plays their transformations when the player enters it'}">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="{l:Tr 'Add Trigger'}" /></StackPanel>
                     </Button>
-                    <Button Classes="tool" Command="{Binding UnbindCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Stop editing (restores the elements)'}">
+                    <Button Classes="tool" Command="{Binding ExitCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Stop editing (restores the elements)'}">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="{l:Tr 'Exit'}" /></StackPanel>
                     </Button>
                 </StackPanel>
                 <!-- Wraps onto a second line when the window is narrow (display scaling above 100%) instead of overlapping. -->
                 <WrapPanel ItemSpacing="2" LineSpacing="2">
-                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-5" ToolTip.Tip="{l:Tr 'Back 5 frames'}"><PathIcon Data="{StaticResource Icon.SkipStart}" /></Button>
                     <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-1" ToolTip.Tip="{l:Tr 'Previous frame'}"><PathIcon Data="{StaticResource Icon.StepBackward}" /></Button>
                     <TextBlock Text="{l:Tr 'Frame'}" Classes="dim" Margin="4,0" />
                     <NumericUpDown Value="{Binding Frame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
                                    Width="80" ShowButtonSpinner="False" />
                     <TextBlock Text="{Binding FrameText}" Classes="dim" Margin="4,0" />
                     <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="1" ToolTip.Tip="{l:Tr 'Next frame'}"><PathIcon Data="{StaticResource Icon.StepForward}" /></Button>
-                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="5" ToolTip.Tip="{l:Tr 'Forward 5 frames'}"><PathIcon Data="{StaticResource Icon.SkipEnd}" /></Button>
                     <ToggleButton Classes="tool" IsChecked="{Binding IsPlaying, Mode=OneWay}" Command="{Binding TogglePlayCommand}" ToolTip.Tip="{l:Tr 'Play / Pause (Space)'}">
                         <PathIcon Data="{StaticResource Icon.Play}" />
                     </ToggleButton>
-                    <Button Classes="tool" Command="{Binding RestartCommand}" ToolTip.Tip="{l:Tr 'Restart'}"><PathIcon Data="{StaticResource Icon.Refresh}" /></Button>
                     <TextBlock Text="{l:Tr 'FPS'}" Classes="dim" Margin="8,0,4,0" />
                     <NumericUpDown Value="{Binding Fps, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Maximum="240"
                                    Width="60" ShowButtonSpinner="False" />
@@ -56,8 +59,18 @@
                     <ToggleButton Classes="tool" IsChecked="{Binding CustomEase}" ToolTip.Tip="{l:Tr 'Custom ease: edit Bezier supports directly (drag the handle in the Scene)'}">
                         <TextBlock Text="{l:Tr 'Custom Ease'}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" IsChecked="{Binding Onion}" ToolTip.Tip="{l:Tr 'Onion skin: outlines of the previous and next keys'}">
+                    <ToggleButton Classes="tool" IsChecked="{Binding Onion}" ToolTip.Tip="{l:Tr 'Onion skin: transparent previews of the previous and next keys'}">
                         <TextBlock Text="{l:Tr 'Onion'}" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding ShowPath}" ToolTip.Tip="{l:Tr 'Show the motion paths and their keys in the Scene'}">
+                        <TextBlock Text="{l:Tr 'Path'}" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool autokey" IsChecked="{Binding AutoKey}"
+                                  ToolTip.Tip="{l:Tr 'Auto Key: moving, resizing, rotating or recoloring an edited element keys its pose at the playhead when you finish the change'}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource AppForegroundDim}" VerticalAlignment="Center" />
+                            <TextBlock Text="{l:Tr 'Auto Key'}" />
+                        </StackPanel>
                     </ToggleButton>
                     <TextBlock Text="{l:Tr 'Zoom'}" Classes="dim" Margin="8,0,4,0" />
                     <Slider Minimum="0.2" Maximum="8" Value="{Binding Zoom}" Width="100" VerticalAlignment="Center" Margin="0,-8" />
@@ -124,10 +137,9 @@
                                         <Button Classes="tool" Tag="{Binding}" Click="OnRename" ToolTip.Tip="{l:Tr 'Rename'}"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
                                         <Button Classes="tool" Tag="{Binding}" Click="OnNewTransformation" ToolTip.Tip="{l:Tr 'New transformation'}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
                                         <Button Classes="tool" Tag="{Binding}" Click="OnRemoveTransformation" ToolTip.Tip="{l:Tr 'Remove transformation'}"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
-                                        <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="{l:Tr 'Bake the keys into the transformation'}">
+                                        <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="{l:Tr 'Name the transformation and bake the keys into it'}">
                                             <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="{l:Tr 'Save'}" /></StackPanel>
                                         </Button>
-                                        <TextBlock Classes="dim" Text="{Binding TransformationName}" VerticalAlignment="Center" />
                                     </WrapPanel>
                                 </DockPanel>
                                 <c:DynamicTimeline Track="{Binding}" Editor="{Binding $parent[UserControl].((vm:DynamicEditorViewModel)DataContext)}" Height="64" />

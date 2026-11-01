@@ -189,7 +189,6 @@ public partial class TriggerEditorView : UserControl
         _ => string.Empty,
     };
 
-    private static readonly string[] TriggerNodes = { "COM", "DetectorH", "Head", "Foot" };
 
     private void BuildVariables()
     {
@@ -199,14 +198,15 @@ public partial class TriggerEditorView : UserControl
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("90,*,Auto,Auto"), Margin = new Thickness(0, 1, 14, 1) };
             if (v.locked)
             {
-                var name = new TextBlock { Text = v.name, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+                // Shown without the "$" (Active, AI, Node); the XML keeps $Active...
+                var name = new TextBlock { Text = TriggerCatalog.VarLabel(v.name), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
                 ToolTip.SetTip(name, LockedHint(v.name));
                 row.Children.Add(name);
                 Control editor = v.name switch
                 {
                     "$Active" => BoolEditor(v.value != "0", on => { v.value = on ? "1" : "0"; Touch(); }, "Active", "Inactive"),
                     "$AI" => ChoiceWithCustom(VTypes.AILabels, VTypes.AIValues, v.value, s => { v.value = s; Touch(); }, () => v.uiCustom, c => v.uiCustom = c, integer: true),
-                    "$Node" => TextWithPicker(v.value, TriggerNodes, s => { v.value = s; Touch(); }),
+                    "$Node" => StrictCombo(v.value, TriggerCatalog.TriggerNodes, s => { v.value = s; Touch(); }),
                     _ => Text(v.value, s => { v.value = s; Touch(); }),
                 };
                 Grid.SetColumn(editor, 1);
@@ -393,7 +393,7 @@ public partial class TriggerEditorView : UserControl
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             if (i == 0)
                 grid.Children.Add(new TextBlock { Text = Loc.T(head), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Top, MinWidth = 60, Margin = new Thickness(0, 0, 8, 0) });
-            var line = new TextBlock { Text = lines[i], TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"), FontSize = 11 };
+            var line = new TextBlock { Text = TriggerCatalog.FriendlyText(lines[i]), TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"), FontSize = 11 };
             Grid.SetRow(line, i);
             Grid.SetColumn(line, 1);
             grid.Children.Add(line);
@@ -432,7 +432,7 @@ public partial class TriggerEditorView : UserControl
             var have = Data.vars.Find(x => x.name == u.name);
             string status = have == null ? Loc.T("Missing") : have.type != u.vtype && !string.IsNullOrEmpty(u.type) ? Loc.F("Added (as {0})", have.type) : Loc.T("Added");
             if (have == null) missingCount++;
-            Cell(u.name, r, 0); Cell(u.vtype.ToString(), r, 1); Cell(string.IsNullOrEmpty(u.def) ? Loc.T("(empty)") : u.def, r, 2); Cell(status, r, 3, missing: have == null);
+            Cell(TriggerCatalog.VarLabel(u.name), r, 0); Cell(u.vtype.ToString(), r, 1); Cell(string.IsNullOrEmpty(u.def) ? Loc.T("(empty)") : u.def, r, 2); Cell(status, r, 3, missing: have == null);
             r++;
         }
         stack.Children.Add(grid);
@@ -520,16 +520,7 @@ public partial class TriggerEditorView : UserControl
                 {
                     card = Card(Loc.T("Compare"), CardButtons(list, idx));
                     card.Children.Add(ParamRow(CheckDef, C.a, CheckDef.type));
-                    var cmp = new ComboBox { ItemsSource = Tr(CompareLabels), SelectedIndex = (int)C.cmp * 2 + (C.not ? 1 : 0), Width = 170 };
-                    cmp.SelectionChanged += (_, _) =>
-                    {
-                        if (cmp.SelectedIndex < 0) return;
-                        C.cmp = (Cmp)(cmp.SelectedIndex / 2);
-                        C.not = cmp.SelectedIndex % 2 == 1;
-                        Touch();
-                    };
-                    card.Children.Add(LabeledRow(string.Empty, cmp));
-                    card.Children.Add(ParamRow(AgainstDef, C.b, AgainstDef.type));
+                    BuildCompare(card, C);
                     break;
                 }
                 case CondKind.Group:
@@ -563,6 +554,88 @@ public partial class TriggerEditorView : UserControl
                     break;
             }
             host.Children.Add(WrapCard(card));
+        }
+    }
+
+    /// <summary>One way of comparing: the operator, and for booleans a fixed true / false instead of a second value.</summary>
+    private sealed record CompareOp(string Label, Cmp Cmp, bool Not, string? BoolValue);
+
+    /// <summary>
+    /// The comparison follows the type of what is checked: booleans read "is true" / "is false" (and can still be
+    /// compared with another value), only numbers can be greater / less, and the second value gets the editor of
+    /// that type (a key list for keys, the results for a model's condition...).
+    /// </summary>
+    private void BuildCompare(StackPanel card, TCond C)
+    {
+        var type = CompareType(C.a, out var choices);
+        bool isBool = type == VType.Bool;
+        var ops = new List<CompareOp>();
+        if (isBool)
+        {
+            ops.Add(new CompareOp("is true", Cmp.Equal, false, "1"));
+            ops.Add(new CompareOp("is false", Cmp.Equal, false, "0"));
+        }
+        ops.Add(new CompareOp(CompareLabels[0], Cmp.Equal, false, null));
+        ops.Add(new CompareOp(CompareLabels[1], Cmp.Equal, true, null));
+        if (VTypes.FamilyOf(type) == VTypes.Family.Number)
+        {
+            for (int i = 2; i < CompareLabels.Length; i++)
+                ops.Add(new CompareOp(CompareLabels[i], (Cmp)(i / 2), i % 2 == 1, null));
+        }
+
+        string? boolLiteral = BoolLiteral(C.b);
+        int current = isBool && !C.not && C.cmp == Cmp.Equal && boolLiteral != null
+            ? (boolLiteral == "1" ? 0 : 1)
+            : ops.FindIndex(o => o.BoolValue == null && o.Cmp == C.cmp && o.Not == C.not);
+        if (current < 0)
+        {
+            // e.g. "is greater than" on a text from a file: kept as written.
+            ops.Add(new CompareOp(CompareLabels[(int)C.cmp * 2 + (C.not ? 1 : 0)], C.cmp, C.not, null));
+            current = ops.Count - 1;
+        }
+
+        var combo = new ComboBox { ItemsSource = ops.Select(o => Loc.T(o.Label)).ToList(), SelectedIndex = current, Width = 170 };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedIndex < 0 || combo.SelectedIndex == current) return;
+            var op = ops[combo.SelectedIndex];
+            C.cmp = op.Cmp;
+            C.not = op.Not;
+            if (op.BoolValue != null)
+            {
+                C.b = TValue.Literal(op.BoolValue);
+            }
+            else if (isBool && BoolLiteral(C.b) != null)
+            {
+                // "is equal to" another value: compare with a (boolean) variable instead of a fixed true / false.
+                C.b = new TValue { mode = ValueMode.Variable, varName = Data.vars.FirstOrDefault(v => v.type == VType.Bool && v.name != C.a.varName)?.name ?? string.Empty };
+            }
+            Changed();
+        };
+        card.Children.Add(LabeledRow(string.Empty, combo));
+        if (ops[current].BoolValue == null)
+            card.Children.Add(ParamRow(new ParamDef(AgainstDef.attr, AgainstDef.label, type, "", choices).Queries(), C.b, type));
+    }
+
+    /// <summary>"1" / "0" when the value is a fixed boolean, otherwise null.</summary>
+    private static string? BoolLiteral(TValue v)
+    {
+        if (v.mode != ValueMode.Literal) return null;
+        if (v.text == "1" || string.Equals(v.text, "true", StringComparison.OrdinalIgnoreCase)) return "1";
+        if (v.text == "0" || string.Equals(v.text, "false", StringComparison.OrdinalIgnoreCase)) return "0";
+        return null;
+    }
+
+    /// <summary>Type of the checked value: a variable's type, a model property's, a node position is a number.</summary>
+    private VType CompareType(TValue a, out string[]? choices)
+    {
+        choices = null;
+        switch (a.mode)
+        {
+            case ValueMode.Variable: return Data.TypeOf(a.varName);
+            case ValueMode.ModelProp: return TriggerCatalog.ModelPropType(a.prop, out choices);
+            case ValueMode.NodePos: return VType.Number;
+            default: return VType.String;
         }
     }
 
@@ -796,7 +869,11 @@ public partial class TriggerEditorView : UserControl
     {
         // Name slots are a plain variable name, written without the "_".
         if (pd.varName)
-            return TextWithPicker(v.text, Data.VarNames(), s => { v.mode = ValueMode.Literal; v.text = s; Changed(); }, rebuildOnType: true);
+            return TextWithPicker(v.text, VarChoices(pd, lit), s => { v.mode = ValueMode.Literal; v.text = s; Changed(); }, rebuildOnType: true,
+                itemLabel: TriggerCatalog.VarLabel, boxText: TriggerCatalog.VarLabel, boxParse: TriggerCatalog.VarFromLabel);
+
+        // The checked value of a comparison decides how it compares: changing it rebuilds the card.
+        bool rebuild = ReferenceEquals(pd, CheckDef);
 
         var modes = new List<ValueMode> { ValueMode.Literal, ValueMode.Variable };
         if (pd.query) { modes.Add(ValueMode.ModelProp); modes.Add(ValueMode.NodePos); }
@@ -818,14 +895,16 @@ public partial class TriggerEditorView : UserControl
         switch (v.mode)
         {
             case ValueMode.Variable:
-                editor = TextWithPicker(v.varName, VarChoices(pd, lit), s => { v.varName = s; Touch(); });
+                editor = TextWithPicker(v.varName, VarChoices(pd, lit), s => { v.varName = s; if (rebuild) Changed(); else Touch(); },
+                    rebuildOnType: rebuild, rebuildOnPick: rebuild,
+                    itemLabel: TriggerCatalog.VarLabel, boxText: TriggerCatalog.VarLabel, boxParse: TriggerCatalog.VarFromLabel);
                 break;
             case ValueMode.ModelProp:
             {
                 var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") };
                 row.Children.Add(RefEditor(v, false));
                 var prop = new ComboBox { ItemsSource = TriggerCatalog.ModelProps, SelectedIndex = Math.Max(0, Array.IndexOf(TriggerCatalog.ModelProps, v.prop)), HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(4, 0, 0, 0) };
-                prop.SelectionChanged += (_, _) => { if (prop.SelectedItem is string s) { v.prop = s; Touch(); } };
+                prop.SelectionChanged += (_, _) => { if (prop.SelectedItem is string s && s != v.prop) { v.prop = s; if (rebuild) Changed(); else Touch(); } };
                 Grid.SetColumn(prop, 1);
                 row.Children.Add(prop);
                 editor = row;
@@ -856,15 +935,23 @@ public partial class TriggerEditorView : UserControl
         return grid;
     }
 
-    /// <summary>Variables whose type fits the slot first; the others under "Other Types".</summary>
+    /// <summary>
+    /// The trigger's settings (Active, AI, Node), a line, what the game sets (Model inside Trigger, Key Pressed in
+    /// Trigger, Signal's Name), a line, then the user's variables: those whose type fits the slot first, the others
+    /// under "Other Types". "-" is a separator.
+    /// </summary>
     private List<string> VarChoices(ParamDef? pd, VType lit)
     {
         bool all = pd == null || pd.query || pd.varName;
         var fam = VTypes.FamilyOf(lit);
-        var names = Data.VarNames();
-        var fits = names.Where(n => all || VTypes.FamilyOf(Data.TypeOf(n)) == fam);
-        var others = names.Where(n => !(all || VTypes.FamilyOf(Data.TypeOf(n)) == fam)).Select(n => "Other Types/" + n);
-        return fits.Concat(others).ToList();
+        var list = new List<string>(TriggerCatalog.FixedVars) { "-" };
+        list.AddRange(TriggerCatalog.BuiltInVars);
+        var names = Data.VarNames().Where(n => !TriggerCatalog.IsLabelled(n)).ToList();
+        if (names.Count > 0)
+            list.Add("-");
+        list.AddRange(names.Where(n => all || VTypes.FamilyOf(Data.TypeOf(n)) == fam));
+        list.AddRange(names.Where(n => !(all || VTypes.FamilyOf(Data.TypeOf(n)) == fam)).Select(n => "Other Types/" + n));
+        return list;
     }
 
     /// <summary>Model or node part of a ?getModel query; a leading "_" means a variable.</summary>
@@ -873,6 +960,9 @@ public partial class TriggerEditorView : UserControl
         string shown = nodeSlot ? v.NodeRef : v.ModelRef;
         IList<string> literals = nodeSlot ? TriggerCatalog.CommonNodes : _vm!.Models.Count > 0 ? _vm.Models : TriggerCatalog.CommonModels;
         var choices = literals.Select(n => "Name/" + n).Concat(Data.VarNames().Select(n => "Variable/" + n)).ToList();
+        // _$Model is shown as "Model inside Trigger" (and typed back the same way).
+        static string Show(string s) => s.Length > 1 && s[0] == '_' && TriggerCatalog.IsLabelled(s[1..]) ? TriggerCatalog.VarLabel(s[1..]) : s;
+        static string Parse(string s) => TriggerCatalog.VarFromLabel(s) is var n && n != s ? "_" + n : s;
         return TextWithPicker(shown, choices, s =>
         {
             bool isVar;
@@ -883,7 +973,7 @@ public partial class TriggerEditorView : UserControl
             if (nodeSlot) { v.nodeIsVar = isVar; v.node = name; }
             else { v.modelIsVar = isVar; v.model = name; }
             Touch();
-        }, rebuildOnPick: true);
+        }, rebuildOnPick: true, itemLabel: TriggerCatalog.VarLabel, boxText: Show, boxParse: Parse);
     }
 
     /// <summary>Literal editor for a value type (shared by slots and the Variables panel).</summary>
@@ -923,7 +1013,7 @@ public partial class TriggerEditorView : UserControl
             case VType.Orientation:
                 return StrictCombo(val, pd?.choices is { Length: > 0 } c ? c : VTypes.Orientations, set);
             case VType.Model:
-                return StrictCombo(val, _vm!.ModelChoices, set);
+                return ModelPicker(val, set, getCustom, setCustom);
             case VType.Spawn:
                 return _vm!.Spawns.Count > 0 ? StrictCombo(val, _vm.Spawns, set) : Text(val, set);
             case VType.Color:
@@ -999,6 +1089,34 @@ public partial class TriggerEditorView : UserControl
         return combo;
     }
 
+    /// <summary>The level's models (Player, Hunter...) plus "Custom" with a name field for any other model.</summary>
+    private Control ModelPicker(string value, Action<string> set, Func<bool> getCustom, Action<bool> setCustom)
+    {
+        var models = _vm!.ModelChoices;
+        int matched = models.IndexOf(value);
+        bool custom = getCustom() || (matched < 0 && !string.IsNullOrEmpty(value) && value != VTypes.NoModel);
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(custom ? "Auto,*" : "*") };
+        var labels = models.Concat(new[] { Loc.T("Custom") }).ToList();
+        var combo = new ComboBox { ItemsSource = labels, SelectedIndex = custom ? labels.Count - 1 : Math.Max(0, matched), HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 100 };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedIndex < 0) return;
+            if (combo.SelectedIndex == labels.Count - 1) setCustom(true);
+            else { setCustom(false); set(models[combo.SelectedIndex]); }
+            Changed();
+        };
+        grid.Children.Add(combo);
+        if (custom)
+        {
+            var box = Text(matched >= 0 ? string.Empty : value, set);
+            box.Margin = new Thickness(4, 0, 0, 0);
+            box.PlaceholderText = Loc.T("Model name");
+            Grid.SetColumn(box, 1);
+            grid.Children.Add(box);
+        }
+        return grid;
+    }
+
     /// <summary>Presets plus "Custom" with a number field (AI, Zoom).</summary>
     private Control ChoiceWithCustom(string[] labels, string[] values, string value, Action<string> set, Func<bool> getCustom, Action<bool> setCustom, bool integer)
     {
@@ -1039,15 +1157,21 @@ public partial class TriggerEditorView : UserControl
     /// Free text with a drop-down picker. Choices containing "/" become submenus; long lists can be grouped by
     /// first letter. <paramref name="rebuildOnType"/> refreshes the form after typing (template names, var names).
     /// </summary>
+    /// <param name="itemLabel">Text shown for a choice in the menu (the choice itself is what is set).</param>
+    /// <param name="boxText">Text shown in the box for a value; <paramref name="boxParse"/> turns typed text back into a value.</param>
     private Control TextWithPicker(string value, IList<string> choices, Action<string> set, bool rebuildOnType = false,
-        bool groupByDot = false, string? emptyText = null, bool groupAlphabetically = false, bool rebuildOnPick = false)
+        bool groupByDot = false, string? emptyText = null, bool groupAlphabetically = false, bool rebuildOnPick = false,
+        Func<string, string>? itemLabel = null, Func<string, string>? boxText = null, Func<string, string>? boxParse = null)
     {
+        boxText ??= s => s;
+        boxParse ??= s => s;
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var box = new TextBox { Text = value ?? string.Empty };
+        string shownValue = boxText(value ?? string.Empty);
+        var box = new TextBox { Text = shownValue };
         if (rebuildOnType)
-            box.LostFocus += (_, _) => { if (box.Text != value) set(box.Text ?? string.Empty); };
+            box.LostFocus += (_, _) => { if (box.Text != shownValue) set(boxParse(box.Text ?? string.Empty)); };
         else
-            box.TextChanged += (_, _) => set(box.Text ?? string.Empty);
+            box.TextChanged += (_, _) => set(boxParse(box.Text ?? string.Empty));
         grid.Children.Add(box);
 
         var button = new Button { Classes = { "tool" }, Padding = new Thickness(2), MinWidth = 22, Margin = new Thickness(2, 0, 0, 0), Content = new PathIcon { Data = IconGeometry("Icon.ChevronDown"), Width = 10, Height = 10 } };
@@ -1062,18 +1186,25 @@ public partial class TriggerEditorView : UserControl
             bool alphabet = groupAlphabetically && choices.Count > 30;
             foreach (var choice in choices)
             {
+                if (choice == "-")
+                {
+                    // Separator, never first or doubled.
+                    if (menu.Items.Count > 0 && menu.Items[^1] is not Separator)
+                        menu.Items.Add(new Separator());
+                    continue;
+                }
                 string label = choice;
                 string? group = null;
                 if (groupByDot && choice.IndexOf('.') is int dot && dot > 0) { group = choice[..dot]; label = choice[(dot + 1)..]; }
                 else if (choice.IndexOf('/') is int slash && slash > 0) { group = choice[..slash]; label = choice[(slash + 1)..]; }
                 else if (alphabet) group = char.IsLetter(choice[0]) ? char.ToUpperInvariant(choice[0]).ToString() : "#";
 
-                var item = new MenuItem { Header = string.IsNullOrEmpty(label) ? Loc.T("(unnamed)") : label };
+                var item = new MenuItem { Header = string.IsNullOrEmpty(label) ? Loc.T("(unnamed)") : itemLabel?.Invoke(label) ?? label };
                 string picked = choice.StartsWith("Other Types/", StringComparison.Ordinal) ? choice["Other Types/".Length..] : choice;
                 item.Click += (_, _) =>
                 {
                     if (!rebuildOnPick && !groupByDot)
-                        box.Text = picked;
+                        box.Text = boxText(picked);
                     set(picked);
                     if (rebuildOnType || rebuildOnPick || groupByDot) Changed();
                 };

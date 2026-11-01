@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Triggers
 {
@@ -273,6 +274,64 @@ namespace Vectorier.Services.Triggers
         // set by the game at runtime, never declared in Init
         public static readonly string[] BuiltInVars = { "$Model", "$Key", "$ActionID" };
 
+        // the trigger's own settings, always declared in Init
+        public static readonly string[] FixedVars = { "$Active", "$AI", "$Node" };
+
+        // nodes a trigger can test entry with ($Node)
+        public static readonly string[] TriggerNodes = { "COM", "DetectorH", "DetectorV" };
+
+        // ---------------- Names shown for the $ variables (the XML keeps $Model, _$Model...) ----------------
+
+        private static readonly string[] LabelledVars = { "$Active", "$AI", "$Node", "$Model", "$Key", "$ActionID" };
+        private static readonly string[] VarLabels = { "Active", "AI", "Node", "Model inside Trigger", "Key Pressed in Trigger", "Signal's Name" };
+
+        /// <summary>The name shown for a variable: Active, AI, Node, Model inside Trigger... (others unchanged).</summary>
+        public static string VarLabel(string name)
+        {
+            int i = Array.IndexOf(LabelledVars, name);
+            return i < 0 ? name : Loc.T(VarLabels[i]);
+        }
+
+        /// <summary>Back from a shown name (translated or English) to the variable; anything else is returned as typed.</summary>
+        public static string VarFromLabel(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            string t = text.Trim();
+            for (int i = 0; i < LabelledVars.Length; i++)
+                if (string.Equals(t, Loc.T(VarLabels[i]), StringComparison.OrdinalIgnoreCase) || string.Equals(t, VarLabels[i], StringComparison.OrdinalIgnoreCase))
+                    return LabelledVars[i];
+            return text;
+        }
+
+        public static bool IsLabelled(string name) => Array.IndexOf(LabelledVars, name) >= 0;
+
+        /// <summary>Replaces $Model, _$Model... in a text with their shown names (template descriptions, hints).</summary>
+        public static string FriendlyText(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.IndexOf('$') < 0) return text;
+            // longest first, so $ActionID is not read as $Active... and _$X before $X
+            foreach (var n in LabelledVars.OrderByDescending(n => n.Length))
+                text = text.Replace("_" + n, VarLabel(n)).Replace(n, VarLabel(n));
+            return text;
+        }
+
+        /// <summary>Value type of a model property (?getModel[...].prop), with fixed choices where it has them.</summary>
+        public static VType ModelPropType(string prop, out string[] choices)
+        {
+            choices = null;
+            switch (prop)
+            {
+                case "direction":
+                case "isControlled":
+                case "isCameraFollow": return VType.Bool;
+                case "animationName": return VType.Animation;
+                case "animationFrame": return VType.UInt;
+                case "condition": choices = Results; return VType.String;
+                case "AI": return VType.Int;
+                default: return VType.String;
+            }
+        }
+
         // ---------------- Events ----------------
 
         public static readonly EntryDef[] Events =
@@ -293,7 +352,7 @@ namespace Vectorier.Services.Triggers
                 "Fires when the timer started by the 'Start Timer' action runs out."),
 
             new EntryDef("Activate", "Activate", "Signal Received", "Signal Received",
-                "Fires when another loop sends a signal. Compare $ActionID in 'Only If' to pick which one.",
+                "Fires when another loop sends a signal. Compare Signal's Name in 'Only If' to pick which one.",
                 new ParamDef("ActionID", "Only this signal", VType.String, "", null,
                     "Leave empty to catch every signal and filter it in 'Only If'.", true)),
 

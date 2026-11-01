@@ -176,6 +176,8 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private void OnElementChanged(SceneElement element, string? property)
     {
+        if (property == null || !PoseProperties.Contains(property))
+            _onionCopies.Remove(element);
         if (_renderer == null)
             return;
         if (property == null || StructuralProperties.Contains(property))
@@ -360,6 +362,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         }
 
         var viewport = Viewport;
+        _renderer.RenderScaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
         using (context.PushClip(new Rect(size)))
         {
             _renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
@@ -398,15 +401,17 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private static readonly Pen PathPen = new(new SolidColorBrush(Color.FromRgb(0xFF, 0x8C, 0x00)), 1.5, new DashStyle(new double[] { 5, 3 }, 0));
     private static readonly Pen PathPenInactive = new(new SolidColorBrush(Color.FromArgb(0x90, 0x80, 0x80, 0x80)), 1, new DashStyle(new double[] { 5, 3 }, 0));
-    private static readonly Pen OnionPen = new(new SolidColorBrush(Color.FromArgb(0xA0, 0x30, 0x80, 0xFF)), 1, new DashStyle(new double[] { 3, 3 }, 0));
+    private const double OnionOpacity = 0.35;
     private static readonly Pen SupportPen = new(new SolidColorBrush(Color.FromRgb(0xE0, 0x40, 0xE0)), 1);
 
-    /// <summary>Dynamic Editor overlays: motion paths, onion-skin outlines and the custom-ease support handle.</summary>
+    /// <summary>Dynamic Editor overlays: motion paths, onion-skin ghosts and the custom-ease support handle.</summary>
     private void RenderDynamics(DrawingContext context, SceneViewport viewport)
     {
         if (_editor == null || _renderer == null || !_editor.Dynamics.IsBound)
             return;
         var dyn = _editor.Dynamics;
+        int onionSlot = 1; // slot 0 is the placement ghost
+        double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
         foreach (var track in dyn.Tracks)
         {
             var element = track.Element;
@@ -414,7 +419,19 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             var origin = element.ParentWorldPosition;
             var pivotOffset = PivotToCenter(element);
 
-            var path = dyn.SamplePath(track);
+            // Onion skin: the previous and next keyed poses drawn as transparent copies of the element (the same
+            // preview the Project Window shows while placing), under the paths and handles.
+            if (dyn.Onion)
+            {
+                var group = _renderer.GroupFor(element);
+                foreach (var key in dyn.OnionKeys(track))
+                {
+                    if (OnionGhost(element, key) is { } ghost)
+                        _renderer.RenderGhost(context, viewport, ghost, OnionOpacity, scaling, group, new Vector(origin.X, origin.Y), onionSlot++);
+                }
+            }
+
+            var path = dyn.ShowPath ? dyn.SamplePath(track) : new List<Point>();
             if (path.Count > 1)
             {
                 var geometry = new StreamGeometry();
@@ -433,18 +450,6 @@ public sealed partial class SceneView : Control, IInternalDropTarget
                 }
             }
 
-            if (dyn.Onion)
-            {
-                foreach (var key in dyn.OnionKeys(track))
-                {
-                    double w = element.HasSize ? key.Width : 60, h = element.HasSize ? key.Height : 60;
-                    double x = element.HasSize ? key.X : key.X - w / 2, y = element.HasSize ? key.Y : key.Y - h / 2;
-                    var a = new Point(x + origin.X, y + origin.Y).Transform(m);
-                    var b = new Point(x + w + origin.X, y + h + origin.Y).Transform(m);
-                    context.DrawRectangle(null, OnionPen, RectEx.Box(a, b));
-                }
-            }
-
             if (track.IsActive && DynamicSupportHandle(viewport, track) is { } handle)
             {
                 context.DrawLine(SupportPen, handle.A, handle.Handle);
@@ -452,6 +457,38 @@ public sealed partial class SceneView : Control, IInternalDropTarget
                 context.FillRectangle(new SolidColorBrush(Color.FromRgb(0xE0, 0x40, 0xE0)), new Rect(handle.Handle.X - 4, handle.Handle.Y - 4, 8, 8));
             }
         }
+    }
+
+    /// <summary>Copies of animated elements used for the onion skin (rebuilt when the element changes, not its pose).</summary>
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SceneElement, SceneElement> _onionCopies = new();
+
+    private static readonly HashSet<string> PoseProperties = new(StringComparer.Ordinal)
+    {
+        nameof(SceneElement.X), nameof(SceneElement.Y), nameof(SceneElement.Width), nameof(SceneElement.Height),
+        nameof(ImageElement.Rotation), nameof(ImageElement.Color),
+    };
+
+    /// <summary>A detached copy of the element posed like a key (position relative to its parent).</summary>
+    private SceneElement? OnionGhost(SceneElement element, ViewModels.Editor.DynamicKey key)
+    {
+        if (!_onionCopies.TryGetValue(element, out var copy))
+        {
+            copy = element.Clone(keepIds: false);
+            _onionCopies.AddOrUpdate(element, copy);
+        }
+        copy.X = key.X;
+        copy.Y = key.Y;
+        if (element.HasSize)
+        {
+            copy.Width = key.Width;
+            copy.Height = key.Height;
+        }
+        if (copy is ImageElement image)
+        {
+            image.Rotation = key.Rotation;
+            image.Color = key.Color;
+        }
+        return copy;
     }
 
     /// <summary>Paths are drawn through the element's center (its pivot is often a corner).</summary>
