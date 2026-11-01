@@ -625,11 +625,11 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         return Place(space, host, model, bin, PivotNodeName, StayInPlace, Animation.StartFrame);
     }
 
-    private bool Place(Vector3 space, SceneElement? host, MoveModel model, byte[] bin, string pivot, bool stayInPlace, int startFrame)
+    private bool Place(Vector3 space, SceneElement? host, MoveModel model, byte[] bin, string pivot, bool stayInPlace, int startFrame, bool? reverse = null)
     {
         try
         {
-            Animation.Reverse = Reverse;
+            Animation.Reverse = reverse ?? Reverse;
             Animation.StartFrame = startFrame;
             Animation.PlaceAt(space, model, bin, pivot, stayInPlace, Now);
             Host = host;
@@ -786,6 +786,86 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         catch (Exception ex)
         {
             Report(Loc.F("Preview Animation failed for '{0}': {1}", spawn.Name, ex.Message));
+        }
+    }
+
+    // ---------------- Trigger ----------------
+
+    /// <summary>The &lt;ForceAnimation&gt; actions the trigger runs (its own loops and its template's).</summary>
+    public async Task<List<Services.Triggers.TriggerForcedAnimation>> FindTriggerAnimationsAsync(TriggerElement trigger)
+    {
+        XElement? templates = null;
+        try
+        {
+            string path = VPath.Combine(_editor.Project.XmlRoot, "TriggerTemplates.xml");
+            if (await AppServices.FileSystem.FileExistsAsync(path))
+                templates = XmlHelpers.ParseDocument(await AppServices.FileSystem.ReadAllBytesAsync(path)).Root;
+        }
+        catch
+        {
+            // without templates: only the trigger's own loops
+        }
+        string content = trigger.ContentXml;
+        return await Task.Run(() => Services.Triggers.TriggerAnimationResolver.Find(content, templates));
+    }
+
+    /// <summary>
+    /// Trigger "Preview Animation": plays the move of the trigger's Force Animation where the model meets the
+    /// trigger. Model Enters the Trigger (and any other event): the COM on the trigger's left side, DetectorH on
+    /// its bottom; Model Leaves the Trigger: the COM on its right side. The preview follows the trigger when it moves.
+    /// </summary>
+    public async Task PreviewTriggerAsync(TriggerElement trigger)
+    {
+        try
+        {
+            var animations = await FindTriggerAnimationsAsync(trigger);
+            var forced = animations.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.Animation))
+                         ?? throw new InvalidDataException(animations.Count == 0
+                             ? "The trigger has no Force Animation."
+                             : "The Force Animation's animation name could not be resolved from the trigger's variables.");
+
+            var root = await LoadMovesRootAsync();
+            var move = FindMove(root!, forced.Animation) ?? throw new InvalidDataException($"Could not find <Moves><{forced.Animation} ... /> in moves.xml.");
+            string? fileName = (string?)move.Attribute("FileName");
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new InvalidDataException($"Move '{forced.Animation}' does not have a FileName attribute.");
+            string pivot = (string?)move.Attribute("PivotNode") is { } p && !string.IsNullOrWhiteSpace(p) ? p : "NPivot";
+            // Frame -1 (or none): the move's own FirstFrame, as in the game.
+            int startFrame = forced.Frame;
+            if (startFrame < 0)
+                startFrame = int.TryParse((string?)move.Attribute("FirstFrame"), out int ff) ? ff : 0;
+            string? path = await ResolveProjectFileAsync($"{BinsRelativeFolder}/{fileName}")
+                           ?? throw new FileNotFoundException("Animation bin not found: " + VPath.Combine(_editor.Project.Path, BinsRelativeFolder, fileName));
+            byte[] bin = await AppServices.FileSystem.ReadAllBytesAsync(path);
+
+            var model = await EnsureModelAsync();
+            if (model == null) return;
+            if (!model.TryGetNodeIndex("COM", out int comIndex))
+                throw new InvalidDataException("Node 'COM' was not found in the model XML.");
+            if (!model.TryGetNodeIndex("DetectorH", out int detectorIndex))
+                throw new InvalidDataException("Node 'DetectorH' was not found in the model XML.");
+
+            StopPlacement();
+            var host = (SceneElement)trigger;
+            var bounds = trigger.GetLocalBounds().Translate(new Avalonia.Vector(trigger.ParentWorldPosition.X, trigger.ParentWorldPosition.Y));
+            var target = ToSpace(new Point(forced.OnExit ? bounds.Right : bounds.Left, bounds.Bottom), host);
+
+            // Place once, measure the start frame's COM and DetectorH, then move it so they land exactly.
+            if (!Place(target, host, model, bin, pivot, false, startFrame, forced.Reversed) || Animation.AnimationNodes is not { } nodes)
+                return;
+            var shift = new Vector3(target.X - nodes[comIndex].X, target.Y - nodes[detectorIndex].Y, 0);
+            if (Place(target + shift, host, model, bin, pivot, false, startFrame, forced.Reversed))
+            {
+                PivotNodeName = pivot;
+                StayInPlace = false;
+                StatusMessage = Loc.F("{0} (frame {1}{2}), {3}", forced.Animation, startFrame,
+                    forced.Reversed ? ", " + Loc.T("Reversed") : string.Empty,
+                    forced.OnExit ? Loc.T("Model Leaves the Trigger") : Loc.T("Model Enters the Trigger"));
+            }
+        }
+        catch (Exception ex)
+        {
+            Report(Loc.F("Preview Animation failed for '{0}': {1}", trigger.Name, ex.Message));
         }
     }
 

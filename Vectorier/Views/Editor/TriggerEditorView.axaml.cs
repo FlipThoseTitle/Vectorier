@@ -226,6 +226,12 @@ public partial class TriggerEditorView : UserControl
             }
             else
             {
+                // Name, type and remove on the first line, the value editor on its own line under them: value
+                // editors (combos with a custom field, model / animation pickers...) need more width than is left
+                // beside the name and type in this narrow panel, and overlapped the type list.
+                row.ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto");
+                row.RowDefinitions = new RowDefinitions("Auto,Auto");
+                row.Margin = new Thickness(0, 1, 14, 5);
                 var nameBox = new TextBox { Text = v.name, MinWidth = 50 };
                 ToolTip.SetTip(nameBox, v.name);
                 nameBox.LostFocus += (_, _) =>
@@ -236,11 +242,12 @@ public partial class TriggerEditorView : UserControl
                 row.Children.Add(nameBox);
 
                 var value = Literal(v.type, v.value, null, () => v.uiCustom, c => v.uiCustom = c, s => { v.value = s; Touch(); });
-                value.Margin = new Thickness(4, 0);
-                Grid.SetColumn(value, 1);
+                value.Margin = new Thickness(0, 3, 0, 0);
+                Grid.SetRow(value, 1);
+                Grid.SetColumnSpan(value, 3);
                 row.Children.Add(value);
 
-                var type = new ComboBox { ItemsSource = VTypes.VariableTypeLabels, SelectedIndex = Array.IndexOf(VTypes.VariableTypes, v.type), Width = 92 };
+                var type = new ComboBox { ItemsSource = VTypes.VariableTypeLabels, SelectedIndex = Array.IndexOf(VTypes.VariableTypes, v.type), Width = 92, Margin = new Thickness(4, 0, 0, 0) };
                 type.SelectionChanged += (_, _) =>
                 {
                     if (type.SelectedIndex < 0) return;
@@ -251,11 +258,11 @@ public partial class TriggerEditorView : UserControl
                     v.uiCustom = false;
                     Changed();
                 };
-                Grid.SetColumn(type, 2);
+                Grid.SetColumn(type, 1);
                 row.Children.Add(type);
 
                 var remove = IconButton("Icon.Minus", Loc.T("Remove variable"), () => _vm!.RemoveVariable(v));
-                Grid.SetColumn(remove, 3);
+                Grid.SetColumn(remove, 2);
                 row.Children.Add(remove);
             }
             VarsPanel.Children.Add(row);

@@ -77,6 +77,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         OnPropertyChanged(string.Empty);
         if (element is SpawnElement)
             _ = EnsureMovesAsync();
+        _ = RefreshTriggerAnimationAsync();
     }
 
     // ================= IMAGE ================= //
@@ -179,6 +180,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             case nameof(ImageElement.Color): OnPropertyChanged(nameof(ImageColor)); break;
             case nameof(ObjectElement.Reference): OnPropertyChanged(nameof(ReferenceText)); break;
             case nameof(PlatformElement.Surface): RaiseSurface(); break;
+            case nameof(TriggerElement.ContentXml): _ = RefreshTriggerAnimationAsync(); break;
             case nameof(AreaElement.AreaType):
                 OnPropertyChanged(nameof(IsTrickArea));
                 OnPropertyChanged(nameof(NameEditable));
@@ -537,6 +539,44 @@ public sealed partial class InspectorViewModel : ObservableObject
             return;
         _editor.IsMoveVisualizerTab = true;
         await _editor.MoveVisualizer.PreviewAreaAsync(entry.Target);
+    }
+
+    // ================= TRIGGER: PREVIEW ANIMATION ================= //
+
+    /// <summary>The selected Trigger runs a Force Animation (its own loops or its template's): "Preview Animation" is shown.</summary>
+    [ObservableProperty] private bool _canPreviewTriggerAnimation;
+
+    private int _triggerAnimationCheck;
+
+    private async System.Threading.Tasks.Task RefreshTriggerAnimationAsync()
+    {
+        int check = ++_triggerAnimationCheck;
+        if (_target is not TriggerElement trigger)
+        {
+            CanPreviewTriggerAnimation = false;
+            return;
+        }
+        bool found;
+        try
+        {
+            found = (await _editor.MoveVisualizer.FindTriggerAnimationsAsync(trigger)).Count > 0;
+        }
+        catch
+        {
+            found = false;
+        }
+        if (check == _triggerAnimationCheck)
+            CanPreviewTriggerAnimation = found;
+    }
+
+    /// <summary>Plays the trigger's Force Animation in the Move Visualizer, placed on the trigger.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task PreviewTriggerAnimation()
+    {
+        if (_target is not TriggerElement trigger)
+            return;
+        _editor.IsMoveVisualizerTab = true;
+        await _editor.MoveVisualizer.PreviewTriggerAsync(trigger);
     }
 
     [RelayCommand]

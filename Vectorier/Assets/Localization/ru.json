@@ -160,6 +160,8 @@
     "Replace the models of both Common Mode and Hunter Mode with the default Player and Hunter?\nEvery model you configured in this level is removed.": "Заменить модели обычного режима и режима «Охотник» стандартными Player и Hunter?\nВсе модели, настроенные на этом уровне, будут удалены.",
     "Use Defaults": "Использовать стандартные",
     "Preview Animation": "Просмотр анимации",
+    "Play the trigger's Force Animation where the model meets the trigger": "Воспроизвести принудительную анимацию триггера там, где модель встречает триггер",
+    "{0} (frame {1}{2}), {3}": "{0} (кадр {1}{2}), {3}",
     "Stop Placement": "Остановить размещение",
     "Start Placement": "Начать размещение",
     "Pause": "Пауза",

@@ -1315,7 +1315,7 @@ public sealed class SceneRenderer
             var tc = new Point(center.X, center.Y + 23.5259);
             var a = new Point(tc.X - w / 2, tc.Y - h / 2).Transform(m);
             var c = new Point(tc.X + w / 2, tc.Y + h / 2).Transform(m);
-            context.DrawImage(track, new Rect(track.Size), RectEx.Box(a, c));
+            context.DrawImage(track, new Rect(0, 0, track.PixelSize.Width, track.PixelSize.Height), RectEx.Box(a, c));
         }
         return animated;
     }
@@ -1442,7 +1442,10 @@ public sealed class SceneRenderer
                 DrawOverlay(layer, item, m, viewport, seconds);
         }
         using (context.PushOpacity(opacity))
-            context.DrawImage(ghostLayer, new Rect(ghostLayer.Size), area);
+            // The source rectangle is in pixels: with display scaling above 100% the layer has more pixels than
+            // its size in screen units, and taking only Size of it blew the preview up (it looked bigger than
+            // what is placed).
+            context.DrawImage(ghostLayer, new Rect(0, 0, ghostLayer.PixelSize.Width, ghostLayer.PixelSize.Height), area);
     }
 
     private static void CollectGhost(SceneElement element, SceneElement owner, LayerGroup group, ObjectElement? instance, Vector offset,

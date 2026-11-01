@@ -35,6 +35,12 @@ public partial class InspectorView : UserControl
             vm.OpenTriggerEditorCommand.Execute(null);
     }
 
+    private void OnPreviewTriggerAnimation(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is InspectorViewModel vm)
+            vm.PreviewTriggerAnimationCommand.Execute(null);
+    }
+
     private void OnSelectTrick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is InspectorViewModel vm)

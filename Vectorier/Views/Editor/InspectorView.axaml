@@ -177,6 +177,14 @@
                                             <TextBlock Text="{l:Tr 'Open Trigger Editor'}" />
                                         </StackPanel>
                                     </Button>
+                                    <Button HorizontalAlignment="Stretch" Height="32" Click="OnPreviewTriggerAnimation"
+                                            IsVisible="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).CanPreviewTriggerAnimation}"
+                                            ToolTip.Tip="{l:Tr 'Play the trigger\'s Force Animation where the model meets the trigger'}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <PathIcon Data="{StaticResource Icon.Play}" />
+                                            <TextBlock Text="{l:Tr 'Preview Animation'}" />
+                                        </StackPanel>
+                                    </Button>
                                     <TextBlock Classes="label" Text="{l:Tr 'Content (XML)'}" />
                                     <TextBox Text="{Binding ContentXml, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="NoWrap"
                                              FontFamily="Cascadia Mono, Consolas, Menlo, monospace" FontSize="11" MinHeight="120" MaxHeight="320"
