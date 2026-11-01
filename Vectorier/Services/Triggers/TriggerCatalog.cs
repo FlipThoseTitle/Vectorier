@@ -254,7 +254,6 @@ namespace Vectorier.Services.Triggers
     {
         public static readonly string[] Keys = VTypes.Keys;
         public static readonly string[] Results = { "Win", "Loss", "Death" };
-        public static readonly string[] Styles = { "None", "Fade", "Blink", "Scale" };
         public static readonly string[] LineOrientations = { "Vertical", "Horizontal" };
 
         public static readonly string[] ModelProps =
@@ -460,9 +459,9 @@ namespace Vectorier.Services.Triggers
             new EntryDef("MessageOnScreen", "MessageOnScreen", "Show Message", "Game/Show Message", "",
                 new ParamDef("Text", "Text", VType.String, "Hello World!"),
                 new ParamDef("Color", "Color", VType.Color, VTypes.White),
-                new ParamDef("Frames", "Frames", VType.UInt, "120"),
-                new ParamDef("AppearStyle", "Appear", VType.String, "Fade", Styles),
-                new ParamDef("DisappearStyle", "Disappear", VType.String, "Fade", Styles)),
+                // No AppearStyle / DisappearStyle: the game only ever fades the message in and out (Unity and
+                // Vector Raylib ignore both). An existing file's attributes are kept as they are on save.
+                new ParamDef("Frames", "Frames", VType.UInt, "120")),
 
             new EntryDef("EndGame", "EndGame", "End The Level", "Game/End The Level", "",
                 new ParamDef("Result", "Result", VType.String, "Win", Results),
