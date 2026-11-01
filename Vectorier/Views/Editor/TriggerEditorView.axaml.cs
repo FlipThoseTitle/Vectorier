@@ -110,6 +110,11 @@ public partial class TriggerEditorView : UserControl
     private void Rebuild()
     {
         if (_vm == null) return;
+        if (_vm.IsTemplateList)
+        {
+            BuildTemplateList();
+            return;
+        }
         var offset = MainScroll.Offset;
         BuildLoopList();
         BuildVariables();
@@ -193,6 +198,12 @@ public partial class TriggerEditorView : UserControl
     private void BuildVariables()
     {
         VarsPanel.Children.Clear();
+        if (_vm!.IsTemplateMode)
+        {
+            VarsPanel.Children.Add(Hint(_vm.TemplateIsLibrary
+                ? "A Library template has no <Init>: its loops are building blocks for other templates. Each loop lists its variables in <Using>."
+                : "The template's <Init>. Each loop lists the variables it reads in <Using>."));
+        }
         foreach (var v in Data.vars)
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("90,*,Auto,Auto"), Margin = new Thickness(0, 1, 14, 1) };
@@ -251,6 +262,155 @@ public partial class TriggerEditorView : UserControl
         }
     }
 
+    // ================= EDIT TEMPLATES: TEMPLATE LIST ================= //
+
+    /// <summary>
+    /// Every template of TriggerTemplates.xml: open one to edit it, reorder them, and mark which are a Library
+    /// (building blocks without &lt;Init&gt;).
+    /// </summary>
+    private void BuildTemplateList()
+    {
+        var panel = TemplateListPanel;
+        panel.Children.Clear();
+        var file = _vm!.TemplateFile;
+        if (file == null) return;
+        panel.Children.Add(new TextBlock { Text = Loc.T("Trigger Templates"), Classes = { "block-title" } });
+        panel.Children.Add(Hint("Pick a template to edit it. The arrows change the order in the file; a Library template is a set of loops other templates use, without <Init>."));
+        var templates = file.Templates;
+        if (templates.Count == 0)
+            panel.Children.Add(Hint("TriggerTemplates.xml has no templates."));
+
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,90,Auto,Auto"), Margin = new Thickness(6, 8, 6, 2) };
+        header.Children.Add(new TextBlock { Text = Loc.T("Template"), FontWeight = FontWeight.SemiBold });
+        var libHead = new TextBlock { Text = Loc.T("Library"), FontWeight = FontWeight.SemiBold };
+        Grid.SetColumn(libHead, 1);
+        header.Children.Add(libHead);
+        panel.Children.Add(header);
+
+        for (int i = 0; i < templates.Count; i++)
+        {
+            var t = templates[i];
+            string name = TriggerCatalog.FriendlyText(TriggerTemplateFile.NameOf(t));
+            int loops = t.Elements("Loop").Count() + t.Elements("Template").Count();
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,90,Auto,Auto") };
+
+            var open = new Button { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Classes = { "tool" } };
+            var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            label.Children.Add(new PathIcon { Data = IconGeometry("Icon.Trigger"), Width = 12, Height = 12 });
+            label.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(name) ? Loc.T("(unnamed)") : name, FontWeight = FontWeight.SemiBold });
+            label.Children.Add(new TextBlock { Text = Loc.F("{0} loop(s)", loops), Classes = { "hint" }, VerticalAlignment = VerticalAlignment.Center });
+            open.Content = label;
+            ToolTip.SetTip(open, Loc.T("Edit this template"));
+            open.Click += (_, _) => _vm!.OpenTemplate(t);
+            row.Children.Add(open);
+
+            var library = new CheckBox { IsChecked = TriggerTemplateFile.IsLibrary(t), Margin = new Thickness(6, 0, 0, 0) };
+            ToolTip.SetTip(library, Loc.T("Library: used by other templates, has no <Init> (removed when ticked)"));
+            library.IsCheckedChanged += (_, _) => _vm!.SetTemplateLibrary(t, library.IsChecked == true);
+            Grid.SetColumn(library, 1);
+            row.Children.Add(library);
+
+            var up = IconButton("Icon.ArrowUp", Loc.T("Move up"), () => _vm!.MoveTemplate(t, -1));
+            up.IsEnabled = i > 0;
+            Grid.SetColumn(up, 2);
+            row.Children.Add(up);
+            var down = IconButton("Icon.ArrowDown", Loc.T("Move down"), () => _vm!.MoveTemplate(t, 1));
+            down.IsEnabled = i < templates.Count - 1;
+            Grid.SetColumn(down, 3);
+            row.Children.Add(down);
+
+            panel.Children.Add(new Border { Classes = { "card" }, Padding = new Thickness(2), Child = row });
+        }
+    }
+
+    // ---------------- <Using> (template loops) ----------------
+
+    /// <summary>
+    /// The loop's &lt;Using&gt;: the variables it reads, with their type and default value (what the Variables panel's
+    /// New Variable does for a trigger). ComplexName marks a variable whose name gets the block's Prefix.
+    /// </summary>
+    private Control BuildUsing(TLoop L)
+    {
+        var body = Block("<Using>", "Variables used in this Loop");
+        if (L.usings.Count == 0)
+            body.Children.Add(Hint("None."));
+        else
+        {
+            var head = new Grid { ColumnDefinitions = new ColumnDefinitions("150,*,100,Auto,Auto"), Margin = new Thickness(0, 2) };
+            void H(string text, int col)
+            {
+                var tb = new TextBlock { Text = Loc.T(text), Classes = { "hint" } };
+                Grid.SetColumn(tb, col);
+                head.Children.Add(tb);
+            }
+            H("Name", 0); H("Default value", 1); H("Type", 2); H("Complex Name", 3);
+            body.Children.Add(head);
+        }
+        foreach (var u in L.usings)
+        {
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("150,*,100,Auto,Auto"), Margin = new Thickness(0, 1) };
+            var nameBox = new TextBox { Text = u.name };
+            nameBox.LostFocus += (_, _) =>
+            {
+                if (nameBox.Text != u.name) _vm!.RenameUsing(L, u, nameBox.Text ?? string.Empty);
+            };
+            row.Children.Add(nameBox);
+
+            var value = Literal(u.VType, u.def, null, () => false, _ => { }, s => { u.def = s; Touch(); });
+            value.Margin = new Thickness(4, 0);
+            Grid.SetColumn(value, 1);
+            row.Children.Add(value);
+
+            // The editor's types; a type the editor doesn't know is listed as written (and kept).
+            var labels = VTypes.VariableTypeLabels.ToList();
+            bool known = Enum.TryParse<VType>(u.type, true, out _) ||
+                         u.type.ToLowerInvariant() is "integer" or "boolean" or "float" or "text";
+            int index = known ? Array.IndexOf(VTypes.VariableTypes, u.VType) : -1;
+            if (index < 0)
+            {
+                labels.Add(u.type);
+                index = labels.Count - 1;
+            }
+            var type = new ComboBox { ItemsSource = labels, SelectedIndex = index, HorizontalAlignment = HorizontalAlignment.Stretch };
+            type.SelectionChanged += (_, _) =>
+            {
+                if (type.SelectedIndex < 0 || type.SelectedIndex >= VTypes.VariableTypes.Length) return;
+                var t = VTypes.VariableTypes[type.SelectedIndex];
+                if (string.Equals(u.type, t.ToString(), StringComparison.OrdinalIgnoreCase)) return;
+                u.type = t.ToString();
+                if (!u.def.StartsWith("?", StringComparison.Ordinal) && !u.def.StartsWith("_", StringComparison.Ordinal))
+                    u.def = VTypes.Coerce(t, u.def, _vm!.Models);
+                Changed();
+            };
+            Grid.SetColumn(type, 2);
+            row.Children.Add(type);
+
+            var complex = new CheckBox { IsChecked = u.complexName, Margin = new Thickness(8, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
+            ToolTip.SetTip(complex, Loc.T("ComplexName: the name gets the Prefix of the block that uses this loop"));
+            complex.IsCheckedChanged += (_, _) => { u.complexName = complex.IsChecked == true; Touch(); };
+            Grid.SetColumn(complex, 3);
+            row.Children.Add(complex);
+
+            var remove = IconButton("Icon.Minus", Loc.T("Remove variable"), () => _vm!.RemoveUsing(L, u));
+            Grid.SetColumn(remove, 4);
+            row.Children.Add(remove);
+            body.Children.Add(row);
+        }
+        body.Children.Add(AddButtonSimple("Add Variable", () => _vm!.AddUsing(L)));
+        return body.Parent as Control ?? body;
+    }
+
+    private static Control AddButtonSimple(string text, Action click)
+    {
+        var button = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        content.Children.Add(new PathIcon { Data = IconGeometry("Icon.Plus") });
+        content.Children.Add(new TextBlock { Text = Loc.T(text) });
+        button.Content = content;
+        button.Click += (_, _) => click();
+        return button;
+    }
+
     // ================= MAIN PANEL ================= //
 
     private void BuildMain()
@@ -282,6 +442,9 @@ public partial class TriggerEditorView : UserControl
                 MainPanel.Children.Add(RawBox(L.raw, s => { L.raw = s; Touch(); }));
                 break;
             default:
+                // Template loops declare the variables they read in <Using>, above When.
+                if (vm.IsTemplateMode)
+                    MainPanel.Children.Add(BuildUsing(L));
                 MainPanel.Children.Add(BuildWhen(L));
                 MainPanel.Children.Add(BuildOnlyIf(L));
                 MainPanel.Children.Add(BuildDo(L));
@@ -294,11 +457,11 @@ public partial class TriggerEditorView : UserControl
         var row = new WrapPanel { ItemSpacing = 8, LineSpacing = 4, Margin = new Thickness(0, 0, 0, 8) };
         row.Children.Add(new TextBlock { Text = Loc.T("Loop Name"), VerticalAlignment = VerticalAlignment.Center });
         var name = new TextBox { Text = L.name, Width = 200, IsEnabled = L.kind != LoopKind.FullTemplate };
-        name.TextChanged += (_, _) =>
+        OnEdited(name, text =>
         {
-            L.name = name.Text ?? string.Empty;
+            L.name = text;
             Touch();
-        };
+        });
         name.LostFocus += (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(L.name)) L.name = TLoop.NoName;
@@ -936,7 +1099,7 @@ public partial class TriggerEditorView : UserControl
     }
 
     /// <summary>
-    /// The trigger's settings (Active, AI, Node), a line, what the game sets (Model inside Trigger, Key Pressed in
+    /// The trigger's settings (Active, AI, Node, Flag1), a line, what the game sets (Model inside Trigger, Key Pressed in
     /// Trigger, Signal's Name), a line, then the user's variables: those whose type fits the slot first, the others
     /// under "Other Types". "-" is a separator.
     /// </summary>
@@ -946,7 +1109,7 @@ public partial class TriggerEditorView : UserControl
         var fam = VTypes.FamilyOf(lit);
         var list = new List<string>(TriggerCatalog.FixedVars) { "-" };
         list.AddRange(TriggerCatalog.BuiltInVars);
-        var names = Data.VarNames().Where(n => !TriggerCatalog.IsLabelled(n)).ToList();
+        var names = Data.VarNames().Where(n => !TriggerCatalog.IsLabelled(n) && Array.IndexOf(TriggerCatalog.FixedVars, n) < 0).ToList();
         if (names.Count > 0)
             list.Add("-");
         list.AddRange(names.Where(n => all || VTypes.FamilyOf(Data.TypeOf(n)) == fam));
@@ -1052,10 +1215,34 @@ public partial class TriggerEditorView : UserControl
         return box;
     }
 
+    /// <summary>
+    /// Calls <paramref name="edited"/> when the user changes the text. TextChanged also fires when a new box first shows
+    /// its text, which must not count as a change (the trigger would read as having unapplied changes).
+    /// </summary>
+    private static void OnEdited(TextBox box, Action<string> edited)
+    {
+        string last = box.Text ?? string.Empty;
+        box.TextChanged += (_, _) =>
+        {
+            string text = box.Text ?? string.Empty;
+            if (text == last) return;
+            last = text;
+            edited(text);
+        };
+    }
+
     private static TextBox Text(string value, Action<string> set)
     {
         var box = new TextBox { Text = value, HorizontalAlignment = HorizontalAlignment.Stretch };
-        box.TextChanged += (_, _) => set(box.Text ?? string.Empty);
+        // TextChanged also fires when the box first shows its text: only real edits count.
+        string last = value ?? string.Empty;
+        box.TextChanged += (_, _) =>
+        {
+            string text = box.Text ?? string.Empty;
+            if (text == last) return;
+            last = text;
+            set(text);
+        };
         return box;
     }
 
@@ -1066,7 +1253,14 @@ public partial class TriggerEditorView : UserControl
             Text = value, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, MinHeight = 60,
             FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"), FontSize = 11,
         };
-        box.TextChanged += (_, _) => set(box.Text ?? string.Empty);
+        string last = value ?? string.Empty;
+        box.TextChanged += (_, _) =>
+        {
+            string text = box.Text ?? string.Empty;
+            if (text == last) return;
+            last = text;
+            set(text);
+        };
         return box;
     }
 
@@ -1171,7 +1365,16 @@ public partial class TriggerEditorView : UserControl
         if (rebuildOnType)
             box.LostFocus += (_, _) => { if (box.Text != shownValue) set(boxParse(box.Text ?? string.Empty)); };
         else
-            box.TextChanged += (_, _) => set(boxParse(box.Text ?? string.Empty));
+        {
+            string last = shownValue;
+            box.TextChanged += (_, _) =>
+            {
+                string text = box.Text ?? string.Empty;
+                if (text == last) return;
+                last = text;
+                set(boxParse(text));
+            };
+        }
         grid.Children.Add(box);
 
         var button = new Button { Classes = { "tool" }, Padding = new Thickness(2), MinWidth = 22, Margin = new Thickness(2, 0, 0, 0), Content = new PathIcon { Data = IconGeometry("Icon.ChevronDown"), Width = 10, Height = 10 } };
@@ -1239,7 +1442,7 @@ public partial class TriggerEditorView : UserControl
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
         var box = new TextBox { Text = value ?? string.Empty };
-        box.TextChanged += (_, _) => set(box.Text ?? string.Empty);
+        OnEdited(box, set);
         grid.Children.Add(box);
 
         async void Preview(string move)
@@ -1304,7 +1507,7 @@ public partial class TriggerEditorView : UserControl
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var box = new TextBox { Text = value ?? string.Empty };
-        box.TextChanged += (_, _) => set(box.Text ?? string.Empty);
+        OnEdited(box, set);
         grid.Children.Add(box);
 
         var button = new Button { Classes = { "tool" }, Padding = new Thickness(2), MinWidth = 22, Margin = new Thickness(2, 0, 0, 0), Content = new PathIcon { Data = IconGeometry("Icon.ChevronDown"), Width = 10, Height = 10 } };

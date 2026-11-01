@@ -34,7 +34,10 @@
                 <PathIcon Data="{StaticResource Icon.Pencil}" Width="26" Height="26" Foreground="{DynamicResource AppAccent}" IsVisible="{Binding ShowInput}" />
             </Panel>
             <StackPanel Grid.Column="1" Spacing="8">
-                <SelectableTextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                <!-- Long texts (Keybinds) scroll instead of growing past the screen. -->
+                <ScrollViewer MaxHeight="560" HorizontalScrollBarVisibility="Disabled">
+                    <SelectableTextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                </ScrollViewer>
                 <CheckBox Content="{Binding CheckBoxText}" IsChecked="{Binding IsChecked}" IsVisible="{Binding ShowCheckBox}" />
                 <TextBox x:Name="Input" Text="{Binding InputText}" IsVisible="{Binding ShowInput}" MinWidth="300" />
                 <TextBlock Classes="error" Text="{Binding ValidationError}" IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />

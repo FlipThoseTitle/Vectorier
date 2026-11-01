@@ -43,15 +43,13 @@
                 </StackPanel>
                 <!-- Wraps onto a second line when the window is narrow (display scaling above 100%) instead of overlapping. -->
                 <WrapPanel ItemSpacing="2" LineSpacing="2">
-                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="-1" ToolTip.Tip="{l:Tr 'Previous frame'}"><PathIcon Data="{StaticResource Icon.StepBackward}" /></Button>
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsPlaying, Mode=OneWay}" Command="{Binding TogglePlayCommand}" ToolTip.Tip="{l:Tr 'Play / Pause (Space)'}">
+                        <PathIcon Data="{StaticResource Icon.Play}" />
+                    </ToggleButton>
                     <TextBlock Text="{l:Tr 'Frame'}" Classes="dim" Margin="4,0" />
                     <NumericUpDown Value="{Binding Frame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
                                    Width="80" ShowButtonSpinner="False" />
                     <TextBlock Text="{Binding FrameText}" Classes="dim" Margin="4,0" />
-                    <Button Classes="tool" Command="{Binding StepCommand}" CommandParameter="1" ToolTip.Tip="{l:Tr 'Next frame'}"><PathIcon Data="{StaticResource Icon.StepForward}" /></Button>
-                    <ToggleButton Classes="tool" IsChecked="{Binding IsPlaying, Mode=OneWay}" Command="{Binding TogglePlayCommand}" ToolTip.Tip="{l:Tr 'Play / Pause (Space)'}">
-                        <PathIcon Data="{StaticResource Icon.Play}" />
-                    </ToggleButton>
                     <TextBlock Text="{l:Tr 'FPS'}" Classes="dim" Margin="8,0,4,0" />
                     <NumericUpDown Value="{Binding Fps, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Maximum="240"
                                    Width="60" ShowButtonSpinner="False" />

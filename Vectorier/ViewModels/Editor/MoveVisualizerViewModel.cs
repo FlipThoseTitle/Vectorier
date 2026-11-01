@@ -154,7 +154,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     [ObservableProperty] private MovementType _movementType = MovementType.Jump;
     [ObservableProperty] private TrickEntry? _selectedTrick;
     [ObservableProperty] private string _customBinPath = string.Empty;
-    [ObservableProperty] private string _pivotNodeName = "NPivot";
+    [ObservableProperty] private string _pivotNodeName = "DetectorH";
     [ObservableProperty] private bool _stayInPlace;
 
     [ObservableProperty]

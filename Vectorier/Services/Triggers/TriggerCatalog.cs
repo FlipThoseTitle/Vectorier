@@ -274,8 +274,8 @@ namespace Vectorier.Services.Triggers
         // set by the game at runtime, never declared in Init
         public static readonly string[] BuiltInVars = { "$Model", "$Key", "$ActionID" };
 
-        // the trigger's own settings, always declared in Init
-        public static readonly string[] FixedVars = { "$Active", "$AI", "$Node" };
+        // the trigger's own settings (and the shared Flag1), always declared in Init
+        public static readonly string[] FixedVars = { "$Active", "$AI", "$Node", "Flag1" };
 
         // nodes a trigger can test entry with ($Node)
         public static readonly string[] TriggerNodes = { "COM", "DetectorH", "DetectorV" };

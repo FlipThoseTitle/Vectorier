@@ -214,15 +214,17 @@ public sealed partial class SceneView
             return;
         }
 
-        // Middle click: select the element's highest root Object (however deeply it is nested).
+        // Middle button: held and moved it pans; clicked and released without moving it selects the element's
+        // highest root Object (however deeply it is nested), see OnPointerReleased.
         if (point.Properties.IsMiddleButtonPressed)
         {
-            if (_renderer.HitTest(Viewport, pos) is { } rootHit)
-            {
-                var root = rootHit.Owner.Root;
-                _editor.Select(root);
-                _editor.RevealInHierarchy(root);
-            }
+            StopFrameAnimation();
+            _pressScreen = pos;
+            _startCenter = _center;
+            _startZoom = _zoom;
+            _mode = InteractionMode.Pan;
+            _rightMoved = false;
+            e.Pointer.Capture(this);
             e.Handled = true;
             return;
         }
@@ -498,7 +500,10 @@ public sealed partial class SceneView
             case InteractionMode.Pan:
             {
                 if (pos != _pressScreen)
+                {
                     _rightMoved = true;
+                    Cursor = HandCursor; // a middle click only shows the hand once it moves
+                }
                 double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
                 _center -= (pos - previous) / _zoom * speed;
                 UpdateEditorCenter();
@@ -580,6 +585,8 @@ public sealed partial class SceneView
             {
                 // A right click without any movement at all opens the Create menu.
                 bool menu = _mode == InteractionMode.Pan && !_rightMoved && pos == _pressScreen && e.InitialPressMouseButton == MouseButton.Right;
+                // A middle click without any movement selects the root Object under the pointer.
+                bool pickRoot = _mode == InteractionMode.Pan && !_rightMoved && e.InitialPressMouseButton == MouseButton.Middle;
                 if (_mode == InteractionMode.DynamicSupport)
                     _editor.EndGesture();
                 _mode = InteractionMode.None;
@@ -588,6 +595,12 @@ public sealed partial class SceneView
                 UpdateCursor(pos);
                 if (menu)
                     ContextMenuRequested?.Invoke(_renderer.HitTest(Viewport, pos)?.Owner.Root, ScreenToLevel(pos));
+                if (pickRoot && _renderer.HitTest(Viewport, pos) is { } rootHit)
+                {
+                    var root = rootHit.Owner.Root;
+                    _editor.Select(root);
+                    _editor.RevealInHierarchy(root);
+                }
                 return;
             }
 
@@ -1108,6 +1121,35 @@ public sealed partial class SceneView
     }
 
     public bool IsModal => _mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale or InteractionMode.Stamp;
+
+    /// <summary>A transform of the selection is in progress (left drag, gizmo, Rect tool or G / R / S).</summary>
+    public bool IsTransforming =>
+        _memento != null && (_mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale ||
+                             _dragStarted && _mode is InteractionMode.Move or InteractionMode.Rotate or InteractionMode.Scale or InteractionMode.RectTransform);
+
+    /// <summary>
+    /// Ctrl+D while dragging or during G / R / S: the selection is duplicated where it is now, the copies become the
+    /// selection and the transform goes on with them (the originals stay where they were left). The whole thing stays
+    /// one undo step.
+    /// </summary>
+    public bool DuplicateDuringTransform()
+    {
+        if (_editor == null || _renderer == null || !IsTransforming)
+            return false;
+        var copies = _editor.DuplicateSelection();
+        if (copies.Count == 0)
+            return false;
+        _editor.Select(copies);
+        _targets = _editor.GetTopmostSelection();
+        _memento = new TransformMemento(_targets);
+        // The transform starts over from the copies' current state and the pointer's current place.
+        _pressScreen = _lastPointer;
+        if (_mode == InteractionMode.RectTransform)
+            _rectStart = _renderer.ScreenBounds(Viewport, _targets);
+        _editor.StatusText = Loc.F("Duplicated {0} element(s)", copies.Count);
+        InvalidateVisual();
+        return true;
+    }
 
     /// <summary>Keys that only make sense in the Scene. Returns true when handled.</summary>
     public bool HandleKey(Key key, KeyModifiers mods)

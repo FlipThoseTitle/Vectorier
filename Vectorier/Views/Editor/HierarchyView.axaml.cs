@@ -31,7 +31,7 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         RowList.DoubleTapped += OnRowDoubleTapped;
         RowList.AddHandler(PointerMovedEvent, OnMarqueeMoved, RoutingStrategies.Tunnel);
         RowList.AddHandler(PointerReleasedEvent, OnMarqueeReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
-        RowList.AddHandler(PointerCaptureLostEvent, (_, _) => { EndMarquee(); _eyePaint = null; }, RoutingStrategies.Bubble);
+        RowList.AddHandler(PointerCaptureLostEvent, (_, _) => { EndMarquee(); _eyePaint = null; _lockPaint = null; }, RoutingStrategies.Bubble);
         _ = new InternalDrag(RowList, CreatePayload);
     }
 
@@ -63,16 +63,41 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         return null;
     }
 
-    private static bool IsEye(Visual? visual)
+    private static bool IsEye(Visual? visual) => IsRowToggle(visual, "row-eye");
+
+    private static bool IsLock(Visual? visual) => IsRowToggle(visual, "row-lock");
+
+    private static bool IsRowToggle(Visual? visual, string cls)
     {
         for (var v = visual; v != null; v = v.GetVisualParent())
         {
-            if (v is Border b && b.Classes.Contains("row-eye"))
+            if (v is Border b && b.Classes.Contains(cls))
                 return true;
             if (v is Border { Tag: HierarchyRow })
                 return false;
         }
         return false;
+    }
+
+    private void OnToggleAllLock(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null)
+            return;
+        var all = _vm.Document.AllElements().ToList();
+        if (all.Any(x => x.IsLocked))
+            foreach (var x in all) x.IsLocked = false;
+        else
+            foreach (var root in _vm.Document.Roots) root.IsLocked = true;
+        UpdateAllLock();
+    }
+
+    private void UpdateAllLock()
+    {
+        if (_vm == null || Application.Current == null)
+            return;
+        bool anyLocked = _vm.Document.AllElements().Any(x => x.IsLocked);
+        if (Application.Current.TryGetResource(anyLocked ? "Icon.Lock" : "Icon.LockOpen", null, out var res) && res is Avalonia.Media.Geometry g)
+            AllLockIcon.Data = g;
     }
 
     private void OnToggleAllVisibility(object? sender, RoutedEventArgs e)
@@ -122,6 +147,18 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         // The scrollbar keeps its own input (no rectangle selection, no context menu).
         if ((e.Source as Visual)?.FindAncestorOfType<Avalonia.Controls.Primitives.ScrollBar>(true) != null)
             return;
+
+        // Lock: toggles picking in the Scene without selecting it; dragging paints the same state across rows.
+        if (row?.Element is { } lockElement && point.Properties.IsLeftButtonPressed && IsLock(e.Source as Visual))
+        {
+            _pressedRow = null;
+            _lockPaint = !lockElement.IsLocked;
+            lockElement.IsLocked = _lockPaint.Value;
+            UpdateAllLock();
+            e.Pointer.Capture(RowList);
+            e.Handled = true;
+            return;
+        }
 
         // Eye: toggles the element's visibility without selecting it; dragging paints the same state across rows.
         if (row?.Element is { } eyeElement && point.Properties.IsLeftButtonPressed && IsEye(e.Source as Visual))
@@ -205,9 +242,21 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
     private List<SceneElement> _marqueeBase = new();
 
     private bool? _eyePaint;
+    private bool? _lockPaint;
 
     private void OnMarqueeMoved(object? sender, PointerEventArgs e)
     {
+        if (_lockPaint is { } lockPaint)
+        {
+            var hit = RowList.InputHitTest(e.GetPosition(RowList)) as Visual;
+            if (IsLock(hit) && RowFrom(hit)?.Element is { } element && element.IsLocked != lockPaint)
+            {
+                element.IsLocked = lockPaint;
+                UpdateAllLock();
+            }
+            e.Handled = true;
+            return;
+        }
         if (_eyePaint is { } paint)
         {
             var hit = RowList.InputHitTest(e.GetPosition(RowList)) as Visual;
@@ -247,6 +296,13 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
 
     private void OnMarqueeReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_lockPaint != null)
+        {
+            _lockPaint = null;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (_eyePaint != null)
         {
             _eyePaint = null;

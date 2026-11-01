@@ -182,6 +182,19 @@ namespace Vectorier.Services.Triggers
 
     public enum LoopKind { Custom, TemplateLoop, FullTemplate, Raw }
 
+    // One <Variable> of a loop's <Using> (TriggerTemplates.xml): a variable the loop reads, with its type and
+    // default. The editor uses it; the game ignores <Using>.
+    public class TUsing
+    {
+        public string name = "NewVariable";
+        public string def = "";
+        public string type = "String";          // as written (Type="UInt"...)
+        public bool complexName;                // ComplexName="1"
+        public List<KeyValuePair<string, string>> extra = new List<KeyValuePair<string, string>>();
+
+        public VType VType => VTypes.FromName(type);
+    }
+
     public class TLoop
     {
         public const string NoName = "Loop";
@@ -190,6 +203,7 @@ namespace Vectorier.Services.Triggers
         public LoopKind kind = LoopKind.Custom;
         public string template = "";
 
+        public List<TUsing> usings = new List<TUsing>();
         public List<TEvent> events = new List<TEvent>();
         public string rootOp = "And";
         public List<TCond> conds = new List<TCond>();
@@ -236,6 +250,9 @@ namespace Vectorier.Services.Triggers
         public List<TLoop> loops = new List<TLoop>();
 
         public static readonly string[] LockedNames = { "$Active", "$AI", "$Node", "Flag1" };
+
+        // Library templates (TriggerTemplates.xml, Library="1") have no <Init>: it is neither shown nor written.
+        public bool omitInit;
 
         public static bool IsLocked(string n) { return Array.IndexOf(LockedNames, n) >= 0; }
 
@@ -284,7 +301,11 @@ namespace Vectorier.Services.Triggers
         {
             var list = new List<string>();
             for (int i = 0; i < vars.Count; i++)
-                if (!string.IsNullOrEmpty(vars[i].name)) list.Add(vars[i].name);
+                if (!string.IsNullOrEmpty(vars[i].name) && !(omitInit && vars[i].locked)) list.Add(vars[i].name);
+            // template loops declare their variables in <Using>
+            foreach (var L in loops)
+                foreach (var u in L.usings)
+                    if (!string.IsNullOrEmpty(u.name) && !list.Contains(u.name)) list.Add(u.name);
             for (int i = 0; i < TriggerCatalog.BuiltInVars.Length; i++)
                 if (!list.Contains(TriggerCatalog.BuiltInVars[i])) list.Add(TriggerCatalog.BuiltInVars[i]);
             return list;
@@ -294,12 +315,15 @@ namespace Vectorier.Services.Triggers
         {
             var v = vars.Find(x => x.name == name);
             if (v != null) return v.type;
+            foreach (var L in loops)
+                foreach (var u in L.usings)
+                    if (u.name == name) return u.VType;
             if (name == "$Model") return VType.Model;
             if (name == "$Key") return VType.Key;
             return VType.String;
         }
 
-        public TriggerData Clone() => Parse(ToXml());
+        public TriggerData Clone() => Parse(ToXml(), omitInit);
 
         // ---------------- Write ----------------
 
@@ -310,8 +334,8 @@ namespace Vectorier.Services.Triggers
             doc.AppendChild(root);
 
             var init = doc.CreateElement("Init");
-            root.AppendChild(init);
-            for (int i = 0; i < vars.Count; i++)
+            if (!omitInit) root.AppendChild(init);
+            for (int i = 0; i < vars.Count && !omitInit; i++)
             {
                 if (string.IsNullOrEmpty(vars[i].name)) continue;
                 var sv = doc.CreateElement("SetVariable");
@@ -353,6 +377,23 @@ namespace Vectorier.Services.Triggers
             }
 
             if (L.HasName) le.SetAttribute("Name", L.name);
+
+            if (L.usings.Count > 0)
+            {
+                var ue = doc.CreateElement("Using");
+                le.AppendChild(ue);
+                foreach (var u in L.usings)
+                {
+                    if (string.IsNullOrEmpty(u.name)) continue;
+                    var ve = doc.CreateElement("Variable");
+                    ve.SetAttribute("Name", u.name);
+                    ve.SetAttribute("DefaultValue", u.def ?? "");
+                    if (u.complexName) ve.SetAttribute("ComplexName", "1");
+                    if (!string.IsNullOrEmpty(u.type)) ve.SetAttribute("Type", u.type);
+                    foreach (var kv in u.extra) ve.SetAttribute(kv.Key, kv.Value);
+                    ue.AppendChild(ve);
+                }
+            }
 
             if (L.events.Count > 0)
             {
@@ -532,6 +573,8 @@ namespace Vectorier.Services.Triggers
                 var pd = def.ps[i];
                 string v = null;
                 for (int j = 0; j < ps.Count; j++) if (ps[j].attr == pd.attr) { v = ps[j].v.ToXml(); break; }
+                // an optional attribute the entry doesn't have stays out (no Reversed="0" added on save)
+                if (v == null && pd.optional) continue;
                 if (v == null) v = pd.def;
                 if (pd.optional && string.IsNullOrEmpty(v)) continue;
                 el.SetAttribute(pd.attr, v ?? "");
@@ -575,16 +618,19 @@ namespace Vectorier.Services.Triggers
 
         // ---------------- Read ----------------
 
-        public static TriggerData Parse(string contentInnerXml)
+        public static TriggerData Parse(string contentInnerXml) => Parse(contentInnerXml, library: false);
+
+        /// <param name="library">A library template: no &lt;Init&gt; (none is read, added or written).</param>
+        public static TriggerData Parse(string contentInnerXml, bool library)
         {
-            var d = new TriggerData();
+            var d = new TriggerData { omitInit = library };
 
             var doc = new XmlDocument();
             try { doc.LoadXml("<Content>" + (contentInnerXml ?? "") + "</Content>"); }
-            catch { d.EnsureLockedVars(); return d; }
+            catch { if (!library) d.EnsureLockedVars(); return d; }
 
             var root = doc.DocumentElement;
-            if (root == null) { d.EnsureLockedVars(); return d; }
+            if (root == null) { if (!library) d.EnsureLockedVars(); return d; }
 
             foreach (XmlNode n in root.ChildNodes)
             {
@@ -614,7 +660,7 @@ namespace Vectorier.Services.Triggers
                 }
             }
 
-            d.EnsureLockedVars();
+            if (!library) d.EnsureLockedVars();
             return d;
         }
 
@@ -630,6 +676,25 @@ namespace Vectorier.Services.Triggers
                 L.kind = LoopKind.TemplateLoop;
                 L.template = lt;
                 return L;
+            }
+
+            if (le.SelectSingleNode("Using") is XmlElement us)
+            {
+                foreach (var ve in Elements(us))
+                {
+                    if (ve.Name != "Variable") continue;
+                    var u = new TUsing
+                    {
+                        name = ve.GetAttribute("Name"),
+                        def = ve.GetAttribute("DefaultValue"),
+                        type = ve.GetAttribute("Type"),
+                        complexName = ve.GetAttribute("ComplexName") == "1",
+                    };
+                    foreach (XmlAttribute a in ve.Attributes)
+                        if (a.Name is not ("Name" or "DefaultValue" or "Type" or "ComplexName"))
+                            u.extra.Add(new KeyValuePair<string, string>(a.Name, a.Value));
+                    L.usings.Add(u);
+                }
             }
 
             var ev = le.SelectSingleNode("Events") as XmlElement;

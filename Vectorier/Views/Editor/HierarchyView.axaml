@@ -39,6 +39,15 @@
         <Style Selector="Border.row-eye.hidden">
             <Setter Property="Opacity" Value="0.75" />
         </Style>
+        <Style Selector="Border.row-lock">
+            <Setter Property="Opacity" Value="0.25" />
+        </Style>
+        <Style Selector="Border.row-lock:pointerover">
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="Border.row-lock.locked">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
         <Style Selector="ToggleButton.expander">
             <Setter Property="Template">
                 <ControlTemplate>
@@ -57,6 +66,11 @@
         <DockPanel>
             <Border DockPanel.Dock="Top" Classes="panel-header">
                 <DockPanel>
+                    <!-- Right of the eye: locks / unlocks everything -->
+                    <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="20" MinHeight="18" Click="OnToggleAllLock"
+                            ToolTip.Tip="{l:Tr 'Unlock everything if something is locked, otherwise lock everything'}">
+                        <PathIcon Name="AllLockIcon" Data="{StaticResource Icon.LockOpen}" Width="13" Height="13" />
+                    </Button>
                     <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="20" MinHeight="18" Click="OnToggleAllVisibility"
                             ToolTip.Tip="{l:Tr 'Show everything if something is hidden, otherwise hide everything'}">
                         <PathIcon Name="AllEyeIcon" Data="{StaticResource Icon.Eye}" Width="13" Height="13" />
@@ -81,6 +95,14 @@
                                     <Panel>
                                         <PathIcon Data="{StaticResource Icon.Eye}" Width="12" Height="12" IsVisible="{Binding !Element.IsHidden, FallbackValue=True}" />
                                         <PathIcon Data="{StaticResource Icon.EyeOff}" Width="12" Height="12" IsVisible="{Binding Element.IsHidden, FallbackValue=False}" />
+                                    </Panel>
+                                </Border>
+                                <!-- Lock: the element and its content cannot be picked in the Scene (editor only) -->
+                                <Border DockPanel.Dock="Left" Classes="row-lock" Classes.locked="{Binding Element.IsLocked, FallbackValue=False}"
+                                        Width="16" Background="Transparent" IsVisible="{Binding !IsRoot}" ToolTip.Tip="{l:Tr 'Lock / unlock selecting in the Scene'}">
+                                    <Panel>
+                                        <PathIcon Data="{StaticResource Icon.LockOpen}" Width="11" Height="11" IsVisible="{Binding !Element.IsLocked, FallbackValue=True}" />
+                                        <PathIcon Data="{StaticResource Icon.Lock}" Width="11" Height="11" IsVisible="{Binding Element.IsLocked, FallbackValue=False}" />
                                     </Panel>
                                 </Border>
                                 <StackPanel Orientation="Horizontal" Margin="{Binding Indent}" Spacing="3">

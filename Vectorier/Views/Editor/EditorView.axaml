@@ -134,6 +134,9 @@
             </MenuItem>
             <MenuItem Header="{l:Tr '_Help'}">
                 <MenuItem Header="{l:Tr '_Tutorial'}" Click="OnHelpTutorial" />
+                <MenuItem Header="{l:Tr '_Keybinds'}" Click="OnHelpKeybinds" />
+            </MenuItem>
+            <MenuItem Header="{l:Tr '_About'}">
                 <MenuItem Header="{l:Tr '_GitHub'}" Click="OnHelpGitHub" />
                 <MenuItem Header="{l:Tr '_Credits'}" Click="OnHelpCredits" />
                 <Separator />

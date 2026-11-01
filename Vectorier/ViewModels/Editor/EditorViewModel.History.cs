@@ -276,6 +276,7 @@ public sealed partial class EditorViewModel
             // The Hierarchy keeps what was expanded (elements are recreated from the snapshot).
             var expanded = Document.AllElements().Where(e => e.IsExpanded).Select(e => e.Id).ToHashSet();
             var hidden = Document.AllElements().Where(e => e.IsHidden).Select(e => e.Id).ToHashSet();
+            var locked = Document.AllElements().Where(e => e.IsLocked).Select(e => e.Id).ToHashSet();
             using (SuppressTracking())
             {
                 ClearSelectionSilently();
@@ -286,6 +287,8 @@ public sealed partial class EditorViewModel
                         element.IsExpanded = true;
                     if (hidden.Contains(element.Id))
                         element.IsHidden = true;
+                    if (locked.Contains(element.Id))
+                        element.IsLocked = true;
                 }
             }
             _baseline = entry;
@@ -325,6 +328,7 @@ public sealed partial class EditorViewModel
         nameof(SceneElement.IsSelected),
         nameof(SceneElement.IsExpanded),
         nameof(SceneElement.IsHidden),
+        nameof(SceneElement.IsLocked),
         nameof(SceneElement.DisplayName),
         nameof(ObjectElement.Reference),
         nameof(ObjectElement.IsReference),

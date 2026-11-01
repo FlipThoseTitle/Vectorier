@@ -9,7 +9,7 @@ using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Triggers
 {
-    /// <summary>Read only: TriggerTemplates.xml is never written back.</summary>
+    /// <summary>Read only view of TriggerTemplates.xml (Edit Templates writes it through <see cref="TriggerTemplateFile"/>).</summary>
     public sealed class TriggerTemplateLibrary
     {
         public enum Section { When, OnlyIf, Do }

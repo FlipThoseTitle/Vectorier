@@ -549,6 +549,13 @@ public sealed class SceneRenderer
         return false;
     }
 
+    /// <summary>
+    /// Locked in the Hierarchy (the element, an ancestor, or the object whose content this is): Scene picking passes
+    /// through it to whatever is behind.
+    /// </summary>
+    private static bool IsLocked(RenderItem item) =>
+        (item.Instance ?? item.Element).IsLockedInScene || item.Owner.IsLockedInScene;
+
     // ================= QUERIES (selection) ================= //
 
     /// <summary>Topmost item under a screen point (overlays first, then the nearest layer).</summary>
@@ -570,7 +577,7 @@ public sealed class SceneRenderer
 
         foreach (var item in candidates)
         {
-            if (IsHidden(item))
+            if (IsHidden(item) || IsLocked(item))
                 continue;
             var p = viewport.ScreenToLevel(screen, item.Group);
             double tolerance = 3 / (viewport.Zoom * item.Group.FrameScale);
@@ -599,7 +606,7 @@ public sealed class SceneRenderer
         var hits = new List<RenderItem>();
         foreach (var item in candidates)
         {
-            if (IsHidden(item))
+            if (IsHidden(item) || IsLocked(item))
                 continue;
             var p = viewport.ScreenToLevel(screen, item.Group);
             double tolerance = 3 / (viewport.Zoom * item.Group.FrameScale);
@@ -728,7 +735,7 @@ public sealed class SceneRenderer
         }
         foreach (var item in candidates)
         {
-            if (IsHidden(item))
+            if (IsHidden(item) || IsLocked(item))
                 continue;
             // Cameras are picked by their icon, not by their whole view rectangle.
             if (item.Element is CameraElement)

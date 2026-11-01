@@ -93,6 +93,21 @@ public abstract partial class SceneElement : ObservableObject
     }
     [ObservableProperty] private bool _isSelected;
 
+    /// <summary>Locked from the Hierarchy's lock: cannot be picked in the Scene (editor only, never written).</summary>
+    [ObservableProperty] private bool _isLocked;
+
+    /// <summary>This element or one of its parents is locked.</summary>
+    public bool IsLockedInScene
+    {
+        get
+        {
+            for (var e = this; e != null; e = e.Parent)
+                if (e.IsLocked)
+                    return true;
+            return false;
+        }
+    }
+
     public ObjectElement? Parent { get; internal set; }
 
     /// <summary>Dynamic &lt;Transformation&gt;s attached to this element.</summary>
