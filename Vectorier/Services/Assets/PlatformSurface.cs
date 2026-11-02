@@ -119,18 +119,21 @@ public static class PlatformSurface
 
     /// <summary>
     /// Builds a dressed platform for placement. <paramref name="rect"/> is the platform (level space, Y down);
-    /// the returned Object sits at its top-left corner and holds the images and the Platform (with its settings).
+    /// the returned Object sits at 0, 0 and holds the images (locked) and the Platform (with its settings), which keeps
+    /// the position.
     /// </summary>
     public static async Task<ObjectElement> BuildAsync(TextureLibrary textures, PlatformSurfaceType type, Rect rect, int seed,
         bool floor = true, bool leftWall = true, bool rightWall = true)
     {
         await EnsureCatalogAsync(textures);
-        var group = new ObjectElement { X = Math.Round(rect.X), Y = Math.Round(rect.Y), IsExpanded = false };
+        // The Object stays at 0, 0: the platform carries the position (it drives the textures), so its X / Y are
+        // the place the user chose.
+        var group = new ObjectElement { X = 0, Y = 0, IsExpanded = false };
         var settings = new PlatformSurfaceSettings(type, floor, leftWall, rightWall, seed == 0 ? PlatformSurfaceSettings.NewSeed() : seed);
         var platform = new PlatformElement
         {
-            X = 0,
-            Y = 0,
+            X = Math.Round(rect.X),
+            Y = Math.Round(rect.Y),
             Width = Math.Max(1, Math.Round(rect.Width)),
             Height = Math.Max(1, Math.Round(rect.Height)),
             Surface = settings,
@@ -180,6 +183,8 @@ public static class PlatformSurface
                 NativeWidth = (int)sprite.Width,
                 NativeHeight = (int)sprite.Height,
                 SurfaceOwner = platform.Id,
+                // Locked: clicks in the Scene go to the platform, which drives the textures.
+                IsLocked = true,
             };
             // The game needs Width / Height on every tile (without them the corners, floor and walls are not drawn).
             image.AutoSize = false;

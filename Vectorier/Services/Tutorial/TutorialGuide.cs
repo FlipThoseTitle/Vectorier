@@ -158,6 +158,7 @@ public static partial class TutorialGuide
         _timer?.Stop();
         ClearFilters();
         SceneGuides.Clear();
+        UnclampPlatform();
         Detach();
         AppServices.Platform?.Settings.Set(DoneSettingKey, "1");
         _ = completed;

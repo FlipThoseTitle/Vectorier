@@ -195,17 +195,16 @@ public sealed partial class EditorViewModel
     private void WrapInObject(PlatformElement platform)
     {
         int index = Document.Roots.IndexOf(platform);
+        // The Object at 0, 0; the platform keeps its own position (it drives the textures).
         var group = new ObjectElement
         {
-            X = platform.X,
-            Y = platform.Y,
+            X = 0,
+            Y = 0,
             Layer = platform.Layer,
             Order = platform.Order,
             Name = string.Empty,
         };
         Document.Roots.RemoveAt(index);
-        platform.X = 0;
-        platform.Y = 0;
         group.AddChild(platform);
         Document.Roots.Insert(index, group);
     }
@@ -318,7 +317,10 @@ public sealed partial class EditorViewModel
             foreach (var image in siblings.OfType<ImageElement>())
             {
                 if (image.SurfaceOwner == 0 && PlatformSurface.IsSurfaceTexture(image.Name) && local.Contains(image.GetLocalBounds()))
+                {
                     image.SurfaceOwner = platform.Id;
+                    image.IsLocked = true;
+                }
             }
             platform.SurfaceBuiltKey = PlatformSurface.BuildKey(platform, settings);
         }

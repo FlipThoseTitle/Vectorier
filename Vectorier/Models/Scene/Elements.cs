@@ -196,6 +196,9 @@ public sealed partial class ImageElement : SceneElement
         t.AutoSize = AutoSize;
         t.HasMatrix = HasMatrix;
         t.SurfaceOwner = SurfaceOwner;
+        // A platform's generated textures stay locked in their copies (the platform is what you move and resize).
+        if (SurfaceOwner != 0)
+            t.IsLocked = IsLocked;
     }
 }
 

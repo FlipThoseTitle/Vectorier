@@ -31,7 +31,7 @@ public static partial class TutorialGuide
     private static readonly Avalonia.Point ObstacleAirAt = new(843.419, -24.766);
     private static readonly Avalonia.Point ObstacleGroundAt = new(593.891, 131);
     private static readonly Avalonia.Point BonusAt = new(647.771, 53.957);
-    private static readonly Avalonia.Rect PlatformBox = new(-315, -69, 2000, 500);
+    private static readonly Avalonia.Rect PlatformBox = new(-803, 153, 2000, 500);
     private static readonly Avalonia.Rect TriggerBox = new(474.839, -172.345, 41.739, 396.522);
 
     /// <summary>The Move Visualizer's runner is held on this frame as a size reference.</summary>
@@ -113,6 +113,37 @@ public static partial class TutorialGuide
             return;
         if (editor.Selection.Count != 1 || !ReferenceEquals(editor.Selection[0], element))
             editor.Select(element);
+    }
+
+    private static PlatformElement? _clamped;
+
+    /// <summary>
+    /// From the size step to the end of the tutorial, the platform can never be bigger than its box: every change
+    /// (Rect / Scale drags, the Inspector) is cut back at once, also while a drag is still going.
+    /// </summary>
+    private static void ClampPlatform(PlatformElement platform)
+    {
+        UnclampPlatform();
+        _clamped = platform;
+        platform.PropertyChanged += OnClampedChanged;
+        OnClampedChanged(platform, new System.ComponentModel.PropertyChangedEventArgs(nameof(SceneElement.Width)));
+    }
+
+    private static void UnclampPlatform()
+    {
+        if (_clamped != null)
+            _clamped.PropertyChanged -= OnClampedChanged;
+        _clamped = null;
+    }
+
+    private static void OnClampedChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is not PlatformElement p)
+            return;
+        if (e.PropertyName == nameof(SceneElement.Width) && p.Width > PlatformBox.Width)
+            p.Width = PlatformBox.Width;
+        else if (e.PropertyName == nameof(SceneElement.Height) && p.Height > PlatformBox.Height)
+            p.Height = PlatformBox.Height;
     }
 
     private static void PlaceAt(SceneElement element, Avalonia.Point at)
@@ -588,21 +619,21 @@ public static partial class TutorialGuide
             {
                 // The platform moves to where the rest of the level is built, and stays there.
                 if (_platform != null)
+                {
                     PlaceAt(_platform, PlatformBox.TopLeft);
+                    ClampPlatform(_platform);
+                }
                 Look(PlatformBox);
             },
             Tick = () =>
             {
                 KeepSelected(_platform);
-                if (_platform == null)
-                    return;
-                PlaceAt(_platform, PlatformBox.TopLeft);
-                if (_platform.Width > PlatformBox.Width)
-                    _platform.Width = PlatformBox.Width;
-                if (_platform.Height > PlatformBox.Height)
-                    _platform.Height = PlatformBox.Height;
+                if (_platform != null)
+                    PlaceAt(_platform, PlatformBox.TopLeft);
             },
-            Done = () => _platform != null && _platform.Width >= PlatformBox.Width - 0.5 && _platform.Height >= PlatformBox.Height - 0.5,
+            // Done once the size is reached and the drag is over (a drag still going would keep resizing it).
+            Done = () => _platform != null && _platform.Width >= PlatformBox.Width - 0.5 && _platform.Height >= PlatformBox.Height - 0.5
+                && Scene() is SceneView { IsTransforming: false },
         });
 
         // ---------------- Play ----------------
