@@ -52,6 +52,9 @@
       <VectorierData Include="$(_VectorierData)Editor\**\*" DataFolder="Editor\" />
       <VectorierData Include="$(_VectorierData)Game\**\*" DataFolder="Game\" />
       <VectorierData Include="$(_VectorierData)Projects\**\*" Exclude="$(_VectorierData)Projects\**\.vectorier\**" DataFolder="Projects\" />
+      <!-- The editor's .vectorier cache is left out of the other projects, but the template's is kept: its folders
+           are copied into every new project. -->
+      <VectorierData Include="$(_VectorierData)Projects\_ProjectTemplate\.vectorier\**\*" DataFolder="Projects\_ProjectTemplate\.vectorier\" />
     </ItemGroup>
     <Warning Condition="'@(VectorierData)' == ''"
              Text="Vectorier data folders not found in '$(VectorierDataDir)'. Put Editor, Game and Projects there or pass -p:VectorierDataDir=..." />
