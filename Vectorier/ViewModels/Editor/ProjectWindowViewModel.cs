@@ -207,11 +207,21 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         ApplyFilter();
     }
 
-    /// <summary>The folder a texture / trigger / area / model is filed in (Unorganized when none).</summary>
-    public bool FolderHoldsKey(PwFolder folder, string key)
+    /// <summary>
+    /// True for the Textures folder the named texture is filed in (Unorganized when it is in none), wherever the user
+    /// organised it: the tutorial shows only that folder.
+    /// </summary>
+    public bool FolderHoldsTexture(PwFolder folder, string textureName)
     {
-        string? name = Cache.FolderOf(CacheKey, key);
-        return folder.IsUnorganized ? name == null : name == folder.Name;
+        foreach (var item in TextureItems())
+        {
+            if (!string.Equals(item.Texture?.Name, textureName, StringComparison.OrdinalIgnoreCase))
+                continue;
+            string? name = Cache.FolderOf(TexturesKey, item.Key);
+            if (folder.IsUnorganized ? name == null : name == folder.Name)
+                return true;
+        }
+        return false;
     }
 
     private void ApplyFolderFilter()

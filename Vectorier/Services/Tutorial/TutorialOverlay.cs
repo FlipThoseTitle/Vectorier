@@ -22,6 +22,7 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
     private const double HolePadding = 4;
 
     private readonly Border _card;
+    private readonly TextBlock _section;
     private readonly TextBlock _title;
     private readonly TextBlock _text;
     private readonly TextBlock _progress;
@@ -43,6 +44,7 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
         _dim = new DimLayer(this) { IsHitTestVisible = false };
         Children.Add(_dim);
 
+        _section = new TextBlock { FontSize = 11, Opacity = 0.65, TextWrapping = TextWrapping.Wrap };
         _title = new TextBlock { FontWeight = FontWeight.SemiBold, FontSize = 15, TextWrapping = TextWrapping.Wrap };
         _text = new TextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = 19 };
         _progress = new TextBlock { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Opacity = 0.65 };
@@ -64,13 +66,13 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
         {
             Width = 380,
             Padding = new Thickness(16, 14, 16, 12),
-            CornerRadius = new CornerRadius(6),
+            // A plain window-like box: thin neutral border, slightly rounded corners, no shadow.
+            CornerRadius = new CornerRadius(3),
             BorderThickness = new Thickness(1),
-            BoxShadow = BoxShadows.Parse("0 6 28 0 #80000000"),
-            Child = new StackPanel { Spacing = 6, Children = { _title, _text, buttons } },
+            Child = new StackPanel { Spacing = 6, Children = { _section, _title, _text, buttons } },
         };
         _card.Bind(Border.BackgroundProperty, _card.GetResourceObservable("AppPanelBackground"));
-        _card.Bind(Border.BorderBrushProperty, _card.GetResourceObservable("AppAccent"));
+        _card.Bind(Border.BorderBrushProperty, _card.GetResourceObservable("AppBorderStrong"));
         _title.Bind(TextBlock.ForegroundProperty, _title.GetResourceObservable("AppAccent"));
         Children.Add(_card);
 
@@ -83,11 +85,13 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
     public event Action? ExitClicked;
 
     /// <summary>Shows a step. <paramref name="holes"/> are in this overlay's coordinates.</summary>
-    public void Show(string title, string text, string? nextText, string exitText, string progress, IReadOnlyList<Rect> holes, bool interactive, bool dimmed)
+    public void Show(string section, string title, string text, string? nextText, string exitText, string progress, IReadOnlyList<Rect> holes, bool interactive, bool dimmed)
     {
         _busyMode = false;
         _busy.IsVisible = false;
         _card.IsVisible = true;
+        _section.Text = section;
+        _section.IsVisible = !string.IsNullOrEmpty(section);
         _title.Text = title;
         _title.IsVisible = !string.IsNullOrEmpty(title);
         _text.Text = text;

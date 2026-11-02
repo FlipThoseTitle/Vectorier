@@ -664,11 +664,13 @@ public sealed partial class SceneView
             case InteractionMode.RectTransform:
             case InteractionMode.TrapezoidBase:
             {
-                e.Pointer.Capture(null);
+                // Read before releasing the capture: that raises OnPointerCaptureLost, which already resets _mode.
+                var released = _mode;
                 bool dragged = _dragStarted;
+                e.Pointer.Capture(null);
                 if (dragged)
                 {
-                    switch (_mode)
+                    switch (released)
                     {
                         case InteractionMode.Move: Services.Tutorial.TutorialSignals.MoveDrags++; break;
                         case InteractionMode.Rotate: Services.Tutorial.TutorialSignals.RotateDrags++; break;

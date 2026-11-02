@@ -32,6 +32,15 @@ public sealed class TutorialStep
     /// <summary>The user can click and drag inside the lit places.</summary>
     public bool Interactive;
 
+    /// <summary>When set, decides <see cref="Interactive"/> on every tick (e.g. clickable only until something is open).</summary>
+    public Func<bool>? InteractiveWhen;
+
+    /// <summary>When set, Next is only shown while it returns true (e.g. once the right tab is open).</summary>
+    public Func<bool>? NextWhen;
+
+    /// <summary>The part of the tutorial this step belongs to (shown with the step's number in that part).</summary>
+    public string Section = string.Empty;
+
     /// <summary>False: the window is not dimmed and stays fully usable (only the card is shown).</summary>
     public bool Dimmed = true;
 
@@ -253,11 +262,19 @@ public static partial class TutorialGuide
                 holes.Add(rect);
         }
 
-        bool showNext = step.Done == null || step.AllowNext;
+        bool showNext = (step.Done == null || step.AllowNext) && (step.NextWhen?.Invoke() ?? true);
         string? nextText = showNext ? Loc.T(step.NextText ?? "Next") : null;
-        int shownIndex = _steps.Take(_index + 1).Count(s => s.Skip?.Invoke() != true);
-        int total = _steps.Count(s => s.Skip?.Invoke() != true);
-        _overlay!.Show(Loc.T(step.Title), _shownText, nextText, Loc.T("Exit Tutorial"), $"{shownIndex} / {total}", holes, step.Interactive, step.Dimmed);
+        if (step.DynamicText != null)
+            _shownText = step.DynamicText();
+        bool interactive = step.InteractiveWhen?.Invoke() ?? step.Interactive;
+
+        // Counted per section (a handful of steps each) rather than over the whole tutorial.
+        var shown = _steps.Where(s => s.Skip?.Invoke() != true).ToList();
+        var sections = shown.Select(s => s.Section).Distinct().ToList();
+        var inSection = shown.Where(s => s.Section == step.Section).ToList();
+        int stepNumber = inSection.IndexOf(step) + 1;
+        string sectionText = Loc.F("Part {0} of {1}: {2}", sections.IndexOf(step.Section) + 1, sections.Count, Loc.T(step.Section));
+        _overlay!.Show(sectionText, Loc.T(step.Title), _shownText, nextText, Loc.T("Exit Tutorial"), $"{stepNumber} / {inSection.Count}", holes, interactive, step.Dimmed);
     }
 
     private static TopLevel? MainHost() => AppServices.Shell?.CurrentTopLevel;

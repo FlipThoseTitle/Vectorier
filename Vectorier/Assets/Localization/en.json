@@ -1396,6 +1396,11 @@
     "Playing {0} from the clicked point": "Playing {0} from the clicked point",
     "Back from playing {0}": "Back from playing {0}",
     "The level file could not be put back after playing: {0}\n\nSave the level again to fix it.": "The level file could not be put back after playing: {0}\n\nSave the level again to fix it.",
-    "The game is running from the clicked point.\nClose the game window to return to the editor.": "The game is running from the clicked point.\nClose the game window to return to the editor."
+    "The game is running from the clicked point.\nClose the game window to return to the editor.": "The game is running from the clicked point.\nClose the game window to return to the editor.",
+    "Part {0} of {1}: {2}": "Part {0} of {1}: {2}",
+    "Your Level": "Your Level",
+    "Background": "Background",
+    "Obstacle": "Obstacle",
+    "Finishing Up": "Finishing Up"
   }
 }
