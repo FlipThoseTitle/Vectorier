@@ -81,6 +81,9 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
         Children.Add(_busy);
     }
 
+    /// <summary>The card goes to the top-left corner (a step whose whole window must stay visible).</summary>
+    public bool CardTopLeft { get; set; }
+
     public event Action? NextClicked;
     public event Action? ExitClicked;
 
@@ -145,7 +148,9 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
         var c = _card.DesiredSize;
         var area = new Rect(Bounds.Size).Deflate(12);
         Point at;
-        if (_holes.Count == 0)
+        if (CardTopLeft)
+            at = area.TopLeft;
+        else if (_holes.Count == 0)
         {
             at = new Point((Bounds.Width - c.Width) / 2, (Bounds.Height - c.Height) / 2);
         }

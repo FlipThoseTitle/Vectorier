@@ -16,25 +16,6 @@
         </Style>
     </UserControl.Styles>
     <UserControl.Resources>
-        <DataTemplate x:Key="SetList" x:DataType="vm:SetEntry">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,1">
-                <ComboBox HorizontalAlignment="Stretch" SelectedItem="{Binding File}"
-                          ItemsSource="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).XmlFiles}" />
-                <Button Grid.Column="1" Classes="tool" ToolTip.Tip="{l:Tr 'Move up'}"
-                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).MoveSetUpCommand}" CommandParameter="{Binding}">
-                    <PathIcon Data="{StaticResource Icon.ArrowUp}" />
-                </Button>
-                <Button Grid.Column="2" Classes="tool" ToolTip.Tip="{l:Tr 'Move down'}"
-                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).MoveSetDownCommand}" CommandParameter="{Binding}">
-                    <PathIcon Data="{StaticResource Icon.ArrowDown}" />
-                </Button>
-                <Button Grid.Column="3" Classes="tool" ToolTip.Tip="{l:Tr 'Remove'}"
-                        Command="{Binding $parent[UserControl].((vm:LevelSettingsViewModel)DataContext).RemoveSetCommand}" CommandParameter="{Binding}">
-                    <PathIcon Data="{StaticResource Icon.Delete}" />
-                </Button>
-            </Grid>
-        </DataTemplate>
-
         <!-- Check list of the mode's models ("None" first) -->
         <DataTemplate x:Key="ModelChoiceList" x:DataType="vm:ModelChoice">
             <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,0,0,1" />
@@ -154,46 +135,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Classes="section" Text="{l:Tr 'Sets'}" Margin="0,12,0,0" />
-                        <TextBlock Classes="dim" TextWrapping="Wrap"
-                                   Text="{l:Tr 'Set automatically from the objects used in the level when it is saved: Building files are City sets, Object files are Ground sets.'}" />
-                        <TextBlock Classes="label" Text="{l:Tr 'City (Building files)'}" Margin="0,6,0,0" />
-                        <ItemsControl ItemsSource="{Binding CitySets}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:SetEntry">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,1">
-                                        <PathIcon Data="{StaticResource Icon.FileXml}" Width="12" Height="12" />
-                                        <TextBlock Text="{Binding File}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Classes="dim" Text="{l:Tr 'None used'}" Margin="8,1" IsVisible="{Binding !HasCitySets}" />
-                        <TextBlock Classes="label" Text="{l:Tr 'Ground (Object files)'}" Margin="0,6,0,0" />
-                        <ItemsControl ItemsSource="{Binding GroundSets}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:SetEntry">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,1">
-                                        <PathIcon Data="{StaticResource Icon.FileXml}" Width="12" Height="12" />
-                                        <TextBlock Text="{Binding File}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Classes="dim" Text="{l:Tr 'None used'}" Margin="8,1" IsVisible="{Binding !HasGroundSets}" />
-                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
-                            <TextBlock Classes="label" Text="{l:Tr 'Library'}" VerticalAlignment="Center" />
-                            <Border Background="#33FF9800" BorderBrush="#FF9800" BorderThickness="1" CornerRadius="3" Padding="5,0">
-                                <TextBlock Text="{l:Tr 'Deprecated'}" FontSize="11" Foreground="#E65100" />
-                            </Border>
-                        </StackPanel>
-                        <TextBlock Classes="dim" TextWrapping="Wrap"
-                                   Text="{l:Tr 'Legacy: kept for compatibility with older versions of the game. Prefer City and Ground sets; Library sets are still written to the XML.'}" />
-                        <ItemsControl ItemsSource="{Binding LibrarySets}" ItemTemplate="{StaticResource SetList}" Opacity="0.8" />
-                        <Button HorizontalAlignment="Left" Command="{Binding AddSetCommand}" CommandParameter="Library">
-                            <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="{l:Tr 'Add Library (legacy)'}" /></StackPanel>
-                        </Button>
-
+                        <!-- Sets are not shown: they are written from the objects the level uses when it is saved. -->
                         <StackPanel IsVisible="{Binding IsLevelMode}">
                         <TextBlock Classes="section" Text="{l:Tr 'Music'}" Margin="0,12,0,0" />
                         <Grid Classes="row" ColumnDefinitions="110,*,Auto">

@@ -443,6 +443,15 @@ public partial class EditorView : UserControl
             return;
         }
 
+        // L locks / unlocks the selection in the Scene (everything when nothing is selected), like the Hierarchy's locks.
+        if (e.Key == Key.L && mods == KeyModifiers.None)
+        {
+            if (_heldKeys.Add(e.Key))
+                HierarchyPanel.ToggleLockFromKey();
+            e.Handled = true;
+            return;
+        }
+
         // Z toggles Center / Pivot, X toggles Global / Local (like Unity).
         if (mods == KeyModifiers.None && e.Key is Key.Z or Key.X)
         {
@@ -552,7 +561,8 @@ public partial class EditorView : UserControl
                 ("MMB " + Loc.T("click"), "Select the element's root Object"),
                 ("Ctrl + A", "Select all"),
                 ("Ctrl + Shift + D / Esc", "Clear the selection"),
-                ("H", "Hide / show the selection")) + "\n" +
+                ("H", "Hide / show the selection"),
+                ("L", "Lock / unlock the selection (everything when nothing is selected)")) + "\n" +
             Section("Tools",
                 ("Q / W / E / T / B", "Move / Rotate / Scale / Rect / Brush tool"),
                 ("G / R / S", "Move / rotate / scale with the pointer (click confirms, right click or Esc cancels)"),

@@ -38,6 +38,12 @@ public sealed class TutorialStep
     /// <summary>When set, Next is only shown while it returns true (e.g. once the right tab is open).</summary>
     public Func<bool>? NextWhen;
 
+    /// <summary>Where to place things in the Scene (dashed boxes, ringed crosses), re-read on every tick.</summary>
+    public Func<IReadOnlyList<SceneGuide>>? Guides;
+
+    /// <summary>The card sits in the window's top-left corner instead of next to the lit places (it would cover them).</summary>
+    public bool CardTopLeft;
+
     /// <summary>The part of the tutorial this step belongs to (shown with the step's number in that part).</summary>
     public string Section = string.Empty;
 
@@ -151,6 +157,7 @@ public static partial class TutorialGuide
         _index = -1;
         _timer?.Stop();
         ClearFilters();
+        SceneGuides.Clear();
         Detach();
         AppServices.Platform?.Settings.Set(DoneSettingKey, "1");
         _ = completed;
@@ -218,6 +225,7 @@ public static partial class TutorialGuide
         try
         {
             step.Tick?.Invoke();
+            SceneGuides.Set(step.Guides?.Invoke() ?? Array.Empty<SceneGuide>());
             if (step.Done?.Invoke() == true)
             {
                 Advance();
@@ -274,6 +282,7 @@ public static partial class TutorialGuide
         var inSection = shown.Where(s => s.Section == step.Section).ToList();
         int stepNumber = inSection.IndexOf(step) + 1;
         string sectionText = Loc.F("Part {0} of {1}: {2}", sections.IndexOf(step.Section) + 1, sections.Count, Loc.T(step.Section));
+        _overlay!.CardTopLeft = step.CardTopLeft;
         _overlay!.Show(sectionText, Loc.T(step.Title), _shownText, nextText, Loc.T("Exit Tutorial"), $"{stepNumber} / {inSection.Count}", holes, interactive, step.Dimmed);
     }
 

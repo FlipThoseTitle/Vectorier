@@ -363,6 +363,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
         var viewport = Viewport;
         _renderer.RenderScaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        _renderer.ShowOriginMarker = !Services.Tutorial.TutorialGuide.IsActive;
         using (context.PushClip(new Rect(size)))
         {
             _renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
@@ -372,6 +373,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
                 _renderer.RenderSelection(context, viewport, _editor.Selection);
             RenderToolOverlay(context, viewport);
             RenderBrushCursor(context, viewport);
+            RenderTutorialGuides(context);
         }
 
         UpdateAnimationClock();
@@ -389,9 +391,51 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private void OnAnimationTick() => InvalidateVisual();
 
+    // ================= TUTORIAL GUIDES ================= //
+
+    private static readonly Color GuideColor = Color.FromRgb(0xFF, 0x98, 0x00);
+    private static readonly IBrush GuideFill = new SolidColorBrush(GuideColor, 0.14);
+    private static readonly Pen GuidePen = new(new SolidColorBrush(GuideColor), 2, new DashStyle(new double[] { 4, 3 }, 0));
+    private static readonly Pen GuideSolidPen = new(new SolidColorBrush(GuideColor), 2);
+
+    private void OnGuidesChanged() => InvalidateVisual();
+
+    /// <summary>Main-layer level point to screen (the inverse of <see cref="ScreenToLevel"/>).</summary>
+    private Point LevelToScreen(Point level) => new((level.X - _center.X) * _zoom + Bounds.Width / 2, (level.Y - _center.Y) * _zoom + Bounds.Height / 2);
+
+    /// <summary>Tutorial: where to place something (a ringed cross) and how big it should be (a dashed box).</summary>
+    private void RenderTutorialGuides(DrawingContext context)
+    {
+        foreach (var guide in Services.Tutorial.SceneGuides.Current)
+        {
+            if (guide.Box is { } box)
+            {
+                var r = new Rect(LevelToScreen(box.TopLeft), LevelToScreen(box.BottomRight)).Normalize();
+                context.DrawRectangle(GuideFill, GuidePen, r);
+            }
+            if (guide.Point is { } point)
+            {
+                var c = LevelToScreen(point);
+                const double radius = 14, arm = 22;
+                context.DrawEllipse(GuideFill, GuidePen, c, radius, radius);
+                context.DrawLine(GuideSolidPen, new Point(c.X - arm, c.Y), new Point(c.X - 5, c.Y));
+                context.DrawLine(GuideSolidPen, new Point(c.X + 5, c.Y), new Point(c.X + arm, c.Y));
+                context.DrawLine(GuideSolidPen, new Point(c.X, c.Y - arm), new Point(c.X, c.Y - 5));
+                context.DrawLine(GuideSolidPen, new Point(c.X, c.Y + 5), new Point(c.X, c.Y + arm));
+            }
+        }
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Services.Tutorial.SceneGuides.Changed += OnGuidesChanged;
+    }
+
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        Services.Tutorial.SceneGuides.Changed -= OnGuidesChanged;
         if (_animating)
         {
             AnimationClock.Tick -= OnAnimationTick;

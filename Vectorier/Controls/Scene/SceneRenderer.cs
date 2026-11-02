@@ -763,6 +763,9 @@ public sealed class SceneRenderer
     /// Drawn after the visuals of the gameplay layer (and every layer behind it) and before the Overlay layer and
     /// the layers in front of it (the Move Visualizer's silhouette).
     /// </param>
+    /// <summary>The green level-origin marker (hidden during the tutorial, where it only confuses).</summary>
+    public bool ShowOriginMarker { get; set; } = true;
+
     public void Render(DrawingContext context, SceneViewport viewport, Action<DrawingContext>? afterGameplay = null)
         => Render(context, viewport, SceneRenderMode.Editor, afterGameplay);
 
@@ -817,7 +820,7 @@ public sealed class SceneRenderer
             matrices[i] = viewport.LevelToScreen(_groups[i]);
 
         // Origin marker under everything (editor only, not an element).
-        if (mode == SceneRenderMode.Editor)
+        if (mode == SceneRenderMode.Editor && ShowOriginMarker)
             DrawMarker(context, viewport.LevelToScreen(new LayerGroup(GameplayFactor, -1)), new Point(0, 0), Colors.LimeGreen);
 
         bool inserted = afterGameplay == null;

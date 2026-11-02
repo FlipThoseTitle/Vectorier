@@ -218,6 +218,9 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         var item = TagFrom<PwItem>(e.Source);
         _pressedItem = item;
         _pressPoint = e.GetPosition(this);
+        // A drag swallows the release (InternalDrag handles it), so a tile remembered by the previous press would
+        // otherwise be re-selected on the next click (the selection seemed to deselect itself after a drop).
+        _clickReplaces = null;
         _vm.LastClickInFolders = false;
         Focus();
         var point = e.GetCurrentPoint(TileRows);

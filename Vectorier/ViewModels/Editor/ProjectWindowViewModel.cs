@@ -653,12 +653,29 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         return string.Join(" ", words);
     }
 
+    /// <summary>The models the Project window lists: files that cannot be rendered cannot be placed either.</summary>
+    private async Task<List<string>> ListedModelNamesAsync()
+    {
+        var files = await Assets.Models.GetModelFilesAsync();
+        var names = files.Select(f => VPath.GetFileNameWithoutExtension(f))
+            .Where(n => !ModelLibrary.IsSkipped(n))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var checks = await Task.WhenAll(names.Select(async n =>
+        {
+            try { return (await Assets.Models.GetAsync(n)) is { IsSelfContained: true } ? n : null; }
+            catch { return null; }
+        }));
+        return checks.Where(n => n != null).Select(n => n!).ToList();
+    }
+
     private async Task<List<string>> AllItemKeysAsync() => Context switch
     {
         PwContext.Textures => TextureItems().Select(i => i.Key).ToList(),
         PwContext.Triggers => Cache.Data.Triggers.Select(t => t.Id).ToList(),
         PwContext.Areas => Cache.Data.Areas.Select(a => a.Id).ToList(),
-        PwContext.Models => (await Assets.Models.GetModelFilesAsync()).Select(VPath.GetFileNameWithoutExtension).ToList(),
+        // Only the models that are listed: a hidden file must not make an Unorganized folder appear.
+        PwContext.Models => await ListedModelNamesAsync(),
         _ => new List<string>(),
     };
 
@@ -719,18 +736,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     break;
                 case PwContext.Models:
                 {
-                    // Files that cannot be rendered cannot be placed either: they are not listed.
-                    var files = await Assets.Models.GetModelFilesAsync();
-                    var names = files.Select(f => VPath.GetFileNameWithoutExtension(f))
-                        .Where(n => !ModelLibrary.IsSkipped(n))
-                        .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-                    var checks = await Task.WhenAll(names.Select(async n =>
-                    {
-                        try { return (await Assets.Models.GetAsync(n)) is { IsSelfContained: true } ? n : null; }
-                        catch { return null; }
-                    }));
-                    var all = checks.Where(n => n != null).Select(n => new PwItem(n!, n!) { ModelName = n, CanPlace = false, Status = "Loading..." });
+                    var all = (await ListedModelNamesAsync()).Select(n => new PwItem(n, n) { ModelName = n, CanPlace = false, Status = "Loading..." });
                     items.AddRange(InFolders(all, folders));
                     break;
                 }
@@ -1434,11 +1440,15 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
 
     // ================= SAVING ELEMENTS FROM THE HIERARCHY ================= //
 
+    /// <summary>The elements of one kind among those dragged from the Hierarchy, including inside dragged groups.</summary>
+    private static List<T> Dragged<T>(IReadOnlyList<SceneElement> elements) where T : SceneElement =>
+        elements.SelectMany(SceneDocument.Walk).OfType<T>().Distinct().ToList();
+
     public bool CanAcceptElements(IReadOnlyList<SceneElement> elements) => Context switch
     {
         PwContext.Objects => SelectedFolder?.FileName != null && elements.Count > 0,
-        PwContext.Triggers => elements.Count == 1 && elements[0] is TriggerElement,
-        PwContext.Areas => elements.Count == 1 && elements[0] is AreaElement,
+        PwContext.Triggers => Dragged<TriggerElement>(elements).Count > 0,
+        PwContext.Areas => Dragged<AreaElement>(elements).Count > 0,
         _ => false,
     };
 
@@ -1460,35 +1470,47 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                     await RevealNewAsync(saved.Select(x => x.Name).ToList(), file);
                     return;
                 }
-                case PwContext.Triggers when elements.Count == 1 && elements[0] is TriggerElement trigger:
+                case PwContext.Triggers:
                 {
-                    var stored = new StoredTrigger { Name = trigger.Name, Width = trigger.Width, Height = trigger.Height, Content = trigger.ContentXml };
-                    Cache.Data.Triggers.Add(stored);
-                    if (SelectedFolder is { IsUserFolder: true } folder)
-                        Cache.AssignToFolder(TriggersKey, stored.Id, folder.Name);
-                    await Cache.SaveAsync();
-                    _editor.StatusText = Loc.F("Stored Trigger '{0}'", trigger.Name);
-                    await RevealNewAsync(new[] { stored.Id });
-                    return;
-                }
-                case PwContext.Areas when elements.Count == 1 && elements[0] is AreaElement area:
-                {
-                    var stored = new StoredArea
+                    // Every trigger dragged (also those inside dragged groups) is stored on its own.
+                    var ids = new List<string>();
+                    foreach (var trigger in Dragged<TriggerElement>(elements))
                     {
-                        Name = area.Name, Width = area.Width, Height = area.Height, AreaType = area.AreaType, Distance = area.Distance,
-                        ItemName = area.ItemName, Score = area.Score, Key = area.Key, Description = area.Description,
-                    };
-                    Cache.Data.Areas.Add(stored);
-                    if (SelectedFolder is { IsUserFolder: true } folder)
-                        Cache.AssignToFolder(AreasKey, stored.Id, folder.Name);
+                        var stored = new StoredTrigger { Name = trigger.Name, Width = trigger.Width, Height = trigger.Height, Content = trigger.ContentXml };
+                        Cache.Data.Triggers.Add(stored);
+                        if (SelectedFolder is { IsUserFolder: true } folder)
+                            Cache.AssignToFolder(TriggersKey, stored.Id, folder.Name);
+                        ids.Add(stored.Id);
+                    }
+                    if (ids.Count == 0)
+                        return;
                     await Cache.SaveAsync();
-                    _editor.StatusText = Loc.F("Stored Area '{0}'", area.Name);
-                    await RevealNewAsync(new[] { stored.Id });
+                    _editor.StatusText = ids.Count == 1 ? Loc.F("Stored Trigger '{0}'", Cache.Data.Triggers.First(t => t.Id == ids[0]).Name) : Loc.F("Stored {0} Triggers", ids.Count);
+                    await RevealNewAsync(ids);
                     return;
                 }
-                case PwContext.Triggers or PwContext.Areas:
-                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Project Window"), Loc.F("Drag exactly one {0} here.", (Context == PwContext.Triggers ? "Trigger" : "Area")), MessageKind.Info);
+                case PwContext.Areas:
+                {
+                    var ids = new List<string>();
+                    foreach (var area in Dragged<AreaElement>(elements))
+                    {
+                        var stored = new StoredArea
+                        {
+                            Name = area.Name, Width = area.Width, Height = area.Height, AreaType = area.AreaType, Distance = area.Distance,
+                            ItemName = area.ItemName, Score = area.Score, Key = area.Key, Description = area.Description,
+                        };
+                        Cache.Data.Areas.Add(stored);
+                        if (SelectedFolder is { IsUserFolder: true } folder)
+                            Cache.AssignToFolder(AreasKey, stored.Id, folder.Name);
+                        ids.Add(stored.Id);
+                    }
+                    if (ids.Count == 0)
+                        return;
+                    await Cache.SaveAsync();
+                    _editor.StatusText = ids.Count == 1 ? Loc.F("Stored Area '{0}'", Cache.Data.Areas.First(a => a.Id == ids[0]).Name) : Loc.F("Stored {0} Areas", ids.Count);
+                    await RevealNewAsync(ids);
                     return;
+                }
                 default:
                     return;
             }

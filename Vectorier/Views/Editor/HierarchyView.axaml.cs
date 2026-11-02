@@ -91,6 +91,29 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         UpdateAllLock();
     }
 
+    /// <summary>
+    /// L key: locks the selected elements, or unlocks them when they all are already locked. Without a selection it
+    /// does what the lock button above the list does (unlock all, or lock all).
+    /// </summary>
+    public void ToggleLockFromKey()
+    {
+        if (_vm == null)
+            return;
+        var selected = _vm.GetTopmostSelection();
+        if (selected.Count == 0)
+        {
+            OnToggleAllLock(null, new RoutedEventArgs());
+        }
+        else
+        {
+            bool lockThem = selected.Any(x => !x.IsLocked);
+            foreach (var element in selected)
+                element.IsLocked = lockThem;
+            _vm.StatusText = lockThem ? Loc.T("Locked") : Loc.T("Unlocked");
+            UpdateAllLock();
+        }
+    }
+
     private void UpdateAllLock()
     {
         if (_vm == null || Application.Current == null)
