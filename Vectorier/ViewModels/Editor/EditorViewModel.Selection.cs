@@ -41,9 +41,18 @@ public sealed partial class EditorViewModel
         Select(new[] { element }, mode);
     }
 
+    /// <summary>
+    /// Live Collaboration: true for elements someone else is editing in their Dynamic Editor (their whole top-level
+    /// hierarchy cannot be selected here meanwhile).
+    /// </summary>
+    public Func<SceneElement, bool>? IsSelectionBlocked { get; set; }
+
     public void Select(IEnumerable<SceneElement> elements, SelectMode mode = SelectMode.Replace)
     {
-        var list = elements.Distinct().ToList();
+        var requested = elements.Distinct().ToList();
+        var list = IsSelectionBlocked is { } blocked ? requested.Where(e => !blocked(e)).ToList() : requested;
+        if (list.Count == 0 && requested.Count > 0)
+            return;
         if (mode == SelectMode.Replace)
         {
             if (list.Count == _selection.Count && list.SequenceEqual(_selection))

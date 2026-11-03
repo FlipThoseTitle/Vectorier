@@ -21,6 +21,10 @@ public static class ViewRegistry
         ViewLocator.Register<MessageDialogViewModel>(() => new MessageDialogView());
         ViewLocator.Register<TutorialWelcomeViewModel>(() => new TutorialWelcomeView());
         ViewLocator.Register<ImportDialogViewModel>(() => new ImportDialogView());
+        ViewLocator.Register<CollabStartViewModel>(() => new CollabStartView());
+        ViewLocator.Register<CollabCodeViewModel>(() => new CollabCodeView());
+        ViewLocator.Register<CollabProgressViewModel>(() => new CollabProgressView());
+        ViewLocator.Register<CollabUsersViewModel>(() => new CollabUsersView());
         ViewLocator.Register<ProjectManagerViewModel>(() => new ProjectManager.ProjectManagerView());
         ViewLocator.Register<LevelsPageViewModel>(() => new ProjectManager.LevelsPageView());
         ViewLocator.Register<LocationsPageViewModel>(() => new ProjectManager.LocationsPageView());

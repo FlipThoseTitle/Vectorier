@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
+using Vectorier.Services.Collab;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 using Vectorier.Services.Xml;
@@ -579,7 +580,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     [RelayCommand]
     private async Task NewLevel()
     {
-        if (!await ConfirmDiscardAsync())
+        if (!await ConfirmLeaveCollabAsync() || !await ConfirmDiscardAsync())
             return;
         var doc = new SceneDocument { LevelName = NewLevelName };
         await ResolveDefinitionsAsync(doc.Settings);
@@ -593,7 +594,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         var topLevel = AppServices.Shell.CurrentTopLevel;
         if (topLevel == null)
             return;
-        if (!await ConfirmDiscardAsync())
+        if (!await ConfirmLeaveCollabAsync() || !await ConfirmDiscardAsync())
             return;
 
         var start = await AppServices.FileSystem.GetStorageFolderAsync(Project.LevelsFolder, topLevel.StorageProvider);
@@ -845,7 +846,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     [RelayCommand]
     private async Task Quit()
     {
-        if (!await ConfirmDiscardAsync())
+        if (!await ConfirmLeaveCollabAsync() || !await ConfirmDiscardAsync())
             return;
         _closingConfirmed = true;
         string? select = Document.FilePath != null ? Document.LevelName : null;
@@ -858,11 +859,15 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     {
         if (_closingConfirmed)
             return true;
-        return await ConfirmDiscardAsync();
+        return await ConfirmLeaveCollabAsync() && await ConfirmDiscardAsync();
     }
+
+    /// <summary>The session ended from the host's side: this editor closes without asking anything more.</summary>
+    internal void CloseForCollabEnd(bool confirmed = true) => _closingConfirmed = confirmed;
 
     public void OnClosed()
     {
+        CollabSession.Current.EditorClosed(this);
         MoveVisualizer.Stop();
         Dynamics.StopPreview();
     }

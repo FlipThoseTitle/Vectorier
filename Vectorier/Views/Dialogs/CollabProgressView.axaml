@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             xmlns:c="using:Vectorier.Services.Collab"
+             x:Class="Vectorier.Views.Dialogs.CollabProgressView"
+             x:DataType="vm:CollabProgressViewModel"
+             Width="460">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="{l:Tr 'Cancel'}" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding CancelJoinCommand}" IsCancel="True" />
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="18,16" Spacing="12">
+            <TextBlock TextWrapping="Wrap" Text="{Binding Text}" MinHeight="36" />
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding Fraction}" IsIndeterminate="{Binding IsIndeterminate}" Height="6" />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

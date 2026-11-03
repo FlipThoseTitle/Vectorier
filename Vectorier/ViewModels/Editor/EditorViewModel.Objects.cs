@@ -125,6 +125,13 @@ public sealed partial class EditorViewModel
     /// </summary>
     public async Task EnterObjectEditAsync(ObjectDefinition definition)
     {
+        if (Collab.IsActive)
+        {
+            // The Object tab swaps the scene for another document; in a session everyone shares this level.
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Edit Object"),
+                Loc.T("Edit Object is not available during Live Collaboration. Leave the session to edit objects."), MessageKind.Info);
+            return;
+        }
         var previous = ObjectEdit;
         if (previous != null)
         {

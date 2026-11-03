@@ -21,7 +21,16 @@ public sealed partial class EditorViewModel
 {
     private const int MaxUndo = 100;
 
-    private sealed record HistoryEntry(SceneDocument.Snapshot State, int Version, int[] Selection, object? Dynamics);
+    private sealed record HistoryEntry(SceneDocument.Snapshot State, int Version, int[] Selection, object? Dynamics, int RemoteMark = 0);
+
+    /// <summary>
+    /// Live Collaboration: how many edits from other people have been applied so far, and how to apply again those
+    /// made after a given count. Undo / redo restores a snapshot of the level, then re-applies the others' edits made
+    /// since that snapshot: undo only takes back your own changes.
+    /// </summary>
+    public Func<int>? RemoteEditCount { get; set; }
+
+    public Action<int>? ReapplyRemoteEditsSince { get; set; }
 
     private readonly List<HistoryEntry> _undo = new();
     private readonly List<HistoryEntry> _redo = new();
@@ -63,7 +72,7 @@ public sealed partial class EditorViewModel
         // contain a pose previewed by the Dynamic Editor.
         var dynamics = Dynamics.CaptureState();
         using (Dynamics.SuspendPreview())
-            return new(Document.CreateSnapshot(), _version, Selection.Select(e => e.Id).ToArray(), dynamics);
+            return new(Document.CreateSnapshot(), _version, Selection.Select(e => e.Id).ToArray(), dynamics, RemoteEditCount?.Invoke() ?? 0);
     }
 
     /// <summary>
@@ -290,6 +299,13 @@ public sealed partial class EditorViewModel
                     if (locked.Contains(element.Id))
                         element.IsLocked = true;
                 }
+            }
+            // Others' edits made after this snapshot stay (only your own changes are undone).
+            if (ReapplyRemoteEditsSince != null && RemoteEditCount != null && RemoteEditCount() > entry.RemoteMark)
+            {
+                using (SuppressTracking())
+                    ReapplyRemoteEditsSince(entry.RemoteMark);
+                entry = entry with { RemoteMark = RemoteEditCount() };
             }
             _baseline = entry;
             _version = entry.Version;

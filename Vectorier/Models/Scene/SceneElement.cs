@@ -58,6 +58,12 @@ public abstract partial class SceneElement : ObservableObject
     /// <summary>Stable identity used by undo/redo and selection. Cloning keeps the id.</summary>
     public int Id { get; private set; }
 
+    /// <summary>
+    /// Live Collaboration: the same element on every participant's computer has the same SyncId (0 = not given one
+    /// yet). Kept by undo snapshots, new for duplicates. Never written to files.
+    /// </summary>
+    public long SyncId { get; set; }
+
     public abstract ElementType Type { get; }
 
     [ObservableProperty] private string _name = string.Empty;
@@ -250,11 +256,20 @@ public abstract partial class SceneElement : ObservableObject
         var copy = CreateEmpty();
         CopyTo(copy);
         if (keepIds)
+        {
             copy.Id = Id;
+            copy.SyncId = SyncId;
+        }
         return copy;
     }
 
     protected abstract SceneElement CreateEmpty();
+
+    /// <summary>
+    /// Takes another element's properties (Live Collaboration applying someone's edit). The source has no children,
+    /// so an Object keeps its own.
+    /// </summary>
+    public void CopyPropertiesFrom(SceneElement source) => source.CopyTo(this);
 
     protected virtual void CopyTo(SceneElement target)
     {

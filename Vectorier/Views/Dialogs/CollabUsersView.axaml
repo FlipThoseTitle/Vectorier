@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             xmlns:c="using:Vectorier.Services.Collab"
+             x:Class="Vectorier.Views.Dialogs.CollabUsersView"
+             x:DataType="vm:CollabUsersViewModel"
+             Width="420">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Classes="accent" Content="{l:Tr 'Close'}" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding CloseDialogCommand}" IsDefault="True" IsCancel="True" />
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="18,16" Spacing="8">
+            <TextBlock Classes="dim" TextWrapping="Wrap" IsVisible="{Binding IsAlone}" Text="{l:Tr 'No one else has joined yet.'}" />
+            <ScrollViewer MaxHeight="360">
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CollabUserRow">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,3" MinHeight="28">
+                                <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="2" Classes="danger" Content="{l:Tr 'Kick'}" IsVisible="{Binding CanKick}" MinWidth="64" HorizontalContentAlignment="Center"
+                                        Command="{Binding $parent[UserControl].((vm:CollabUsersViewModel)DataContext).KickCommand}" CommandParameter="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </DockPanel>
+</UserControl>

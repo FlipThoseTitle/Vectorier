@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             xmlns:c="using:Vectorier.Services.Collab"
+             x:Class="Vectorier.Views.Dialogs.CollabStartView"
+             x:DataType="vm:CollabStartViewModel"
+             Width="500">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="{l:Tr 'Cancel'}" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding CancelDialogCommand}" IsCancel="True" />
+                <Button Classes="accent" Content="{l:Tr 'Start'}" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding StartCommand}" IsDefault="True" IsEnabled="{Binding CanStart}" />
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="18,16" Spacing="12">
+            <Grid ColumnDefinitions="90,*" RowDefinitions="Auto" >
+                <TextBlock Text="{l:Tr 'Username'}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding UserName}" MaxLength="32" />
+            </Grid>
+
+            <!-- VPN found: its address goes into the Session ID. -->
+            <Border IsVisible="{Binding HasVpn}" Background="{DynamicResource AppPanelAltBackground}" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                    <TextBlock TextWrapping="Wrap" Text="{l:Tr 'Others join through your VPN network. Make sure they are in the same Radmin VPN network as you.'}" />
+                    <TextBlock IsVisible="{Binding !HasSeveral}" FontWeight="SemiBold" Text="{Binding SelectedAddress}" />
+                    <ComboBox IsVisible="{Binding HasSeveral}" HorizontalAlignment="Stretch" ItemsSource="{Binding Addresses}" SelectedItem="{Binding SelectedAddress}" />
+                </StackPanel>
+            </Border>
+
+            <!-- No VPN yet: how to get one. -->
+            <Border IsVisible="{Binding !HasVpn}" Background="{DynamicResource AppPanelAltBackground}" BorderBrush="{DynamicResource AppWarning}" BorderThickness="1" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="8">
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Text="{l:Tr 'Radmin VPN was not found on this computer.'}" />
+                    <TextBlock TextWrapping="Wrap" Text="{l:Tr 'Live Collaboration connects through Radmin VPN (free). Install it, create a network, and ask the others to join that network. Then click Check Again.'}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{l:Tr 'Get Radmin VPN'}" Command="{Binding OpenRadminSiteCommand}" />
+                        <Button Content="{l:Tr 'Check Again'}" Command="{Binding DetectCommand}" />
+                    </StackPanel>
+                    <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'On macOS or Linux, use Tailscale or ZeroTier instead (also free).'}" />
+                </StackPanel>
+            </Border>
+
+            <Expander Header="{l:Tr 'Advanced'}" HorizontalAlignment="Stretch">
+                <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="{l:Tr 'Address'}" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1" Text="{Binding AddressText}" Watermark="{l:Tr 'Your address in the VPN network'}" />
+                    <TextBlock Grid.Row="1" Text="{l:Tr 'Port'}" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PortText}" Width="90" HorizontalAlignment="Left" />
+                </Grid>
+            </Expander>
+            <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Error}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

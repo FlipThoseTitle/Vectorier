@@ -41,14 +41,27 @@ public partial class EditorView : UserControl
         _infoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) => UpdateInfo());
     }
 
+    /// <summary>File › Live Collaboration opens the toolbar button's dropdown.</summary>
+    private void OpenCollabDropdown()
+    {
+        if (CollabButton.IsEffectivelyVisible)
+            CollabButton.Flyout?.ShowAt(CollabButton);
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
         if (_vm != null)
+        {
             _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.CollabDropdownRequested -= OpenCollabDropdown;
+        }
         _vm = DataContext as EditorViewModel;
         if (_vm != null)
+        {
             _vm.PropertyChanged += OnVmPropertyChanged;
+            _vm.CollabDropdownRequested += OpenCollabDropdown;
+        }
         UpdateToolButtons();
     }
 

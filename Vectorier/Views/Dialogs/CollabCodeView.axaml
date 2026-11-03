@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             xmlns:c="using:Vectorier.Services.Collab"
+             x:Class="Vectorier.Views.Dialogs.CollabCodeView"
+             x:DataType="vm:CollabCodeViewModel"
+             Width="520">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Classes="accent" Content="{l:Tr 'OK'}" MinWidth="80" HorizontalContentAlignment="Center" Command="{Binding OkCommand}" IsDefault="True" IsCancel="True" />
+            </StackPanel>
+        </Border>
+        <StackPanel Margin="18,16" Spacing="10">
+            <TextBlock Classes="title" Text="{l:Tr 'The session has started'}" />
+            <TextBlock TextWrapping="Wrap" Text="{l:Tr 'Send this Session ID to the people you want to invite. They need to be in your Radmin VPN network, then choose Join Collaboration and paste it. You accept or decline each request.'}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBox IsReadOnly="True" Text="{Binding Session.Code}" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Content="{Binding CopyText}" Command="{Binding CopyCommand}" VerticalAlignment="Top" MinWidth="80" HorizontalContentAlignment="Center" />
+            </Grid>
+            <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'The Session ID is also in the Live Collaboration dropdown while the session runs.'}" />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

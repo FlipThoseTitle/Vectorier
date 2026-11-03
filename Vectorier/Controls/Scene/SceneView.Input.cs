@@ -135,6 +135,8 @@ public sealed partial class SceneView
     {
         base.OnPointerExited(e);
         _pointerInside = false;
+        if (_editor != null)
+            _editor.ScenePointer = null;
         if (!_ghostFromDrag)
             ClearGhost();
         if (_hoverHandle != GizmoHandle.None)
@@ -473,6 +475,7 @@ public sealed partial class SceneView
         _lastPointer = pos;
         if (_editor == null || _renderer == null)
             return;
+        _editor.ScenePointer = ScreenToLevel(pos);
 
         if (_mode == InteractionMode.Paint || Tool == EditorTool.Brush)
         {

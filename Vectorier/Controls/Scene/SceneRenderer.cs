@@ -1483,8 +1483,9 @@ public sealed class SceneRenderer
     // ================= SELECTION ================= //
 
     /// <summary>Green outlines of the selected elements (culled like everything else).</summary>
-    public void RenderSelection(DrawingContext context, SceneViewport viewport, IReadOnlyList<SceneElement> selection)
+    public void RenderSelection(DrawingContext context, SceneViewport viewport, IReadOnlyList<SceneElement> selection, Pen? pen = null)
     {
+        pen ??= SelectionPen;
         var screen = new Rect(viewport.Size).Inflate(DecorationMarginPixels);
         foreach (var element in selection)
         {
@@ -1517,10 +1518,10 @@ public sealed class SceneRenderer
                 continue;
             if (maxX - minX < 4 && maxY - minY < 4)
             {
-                context.DrawEllipse(null, SelectionPen, new Point((minX + maxX) / 2, (minY + maxY) / 2), 5, 5);
+                context.DrawEllipse(null, pen, new Point((minX + maxX) / 2, (minY + maxY) / 2), 5, 5);
                 continue;
             }
-            DrawPolygon(context, null, SelectionPen, pts);
+            DrawPolygon(context, null, pen, pts);
         }
     }
 

@@ -369,11 +369,14 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             _renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
             RenderMoveVisualizer(context, viewport);
             RenderPaintCanvas(context, viewport);
+            // Others' selections first: this user's own outline stays on top.
+            RenderCollabSelections(context, viewport);
             if (!_editor.Paint.IsActive)
                 _renderer.RenderSelection(context, viewport, _editor.Selection);
             RenderToolOverlay(context, viewport);
             RenderBrushCursor(context, viewport);
             RenderTutorialGuides(context);
+            RenderCollabPresence(context);
         }
 
         UpdateAnimationClock();
@@ -430,12 +433,14 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     {
         base.OnAttachedToVisualTree(e);
         Services.Tutorial.SceneGuides.Changed += OnGuidesChanged;
+        Services.Collab.CollabSession.Current.PresenceChanged += OnGuidesChanged;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         Services.Tutorial.SceneGuides.Changed -= OnGuidesChanged;
+        Services.Collab.CollabSession.Current.PresenceChanged -= OnGuidesChanged;
         if (_animating)
         {
             AnimationClock.Tick -= OnAnimationTick;

@@ -52,6 +52,10 @@
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Tune}" /></MenuItem.Icon>
                 </MenuItem>
                 <Separator />
+                <MenuItem Header="{l:Tr 'Live _Collaboration'}" Command="{Binding OpenCollabDropdownCommand}" IsVisible="{Binding CanCollaborateHere}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Collab}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator IsVisible="{Binding CanCollaborateHere}" />
                 <MenuItem Header="{l:Tr '_Quit'}" Command="{Binding QuitCommand}" />
             </MenuItem>
             <MenuItem Header="{l:Tr '_Edit'}">
@@ -225,6 +229,36 @@
                             <PathIcon Data="{StaticResource Icon.Tune}" />
                             <TextBlock Text="{l:Tr 'Level Settings'}" />
                         </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" IsVisible="{Binding CanCollaborateHere}" />
+                    <Button x:Name="CollabButton" Classes="tool" ToolTip.Tip="{l:Tr 'Live Collaboration'}" IsVisible="{Binding CanCollaborateHere}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Panel>
+                                <PathIcon Data="{StaticResource Icon.Collab}" />
+                                <!-- Green dot: a session is running. -->
+                                <Ellipse Width="7" Height="7" Fill="#2EBD4E" Stroke="{DynamicResource AppToolbarBackground}" StrokeThickness="1"
+                                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-2" IsVisible="{Binding Collab.IsActive}" />
+                            </Panel>
+                            <TextBlock Text="{l:Tr 'Live Collaboration'}" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Header="{l:Tr 'Start Collaboration'}" Command="{Binding StartCollabCommand}" IsVisible="{Binding Collab.IsIdle}" />
+                                <MenuItem Header="{l:Tr 'Stop Collaboration'}" Command="{Binding StopCollabCommand}" IsVisible="{Binding Collab.IsHost}" />
+                                <MenuItem Command="{Binding CopyCollabCodeCommand}" IsVisible="{Binding Collab.IsActive}" ToolTip.Tip="{l:Tr 'Click to copy the Session ID'}">
+                                    <MenuItem.Header>
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Classes="dim" FontSize="11" Text="{l:Tr 'Session ID (click to copy)'}" />
+                                            <TextBlock Text="{Binding Collab.Code}" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" />
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator IsVisible="{Binding Collab.IsActive}" />
+                                <MenuItem Header="{l:Tr 'Join Collaboration'}" Command="{Binding JoinCollabCommand}" IsVisible="{Binding Collab.IsIdle}" />
+                                <MenuItem Header="{l:Tr 'Leave Collaboration'}" Command="{Binding LeaveCollabCommand}" IsVisible="{Binding Collab.IsParticipant}" />
+                                <MenuItem Header="{l:Tr 'Manage Users'}" Command="{Binding ManageCollabUsersCommand}" IsVisible="{Binding Collab.IsHost}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
                     </Button>
 
                     <!-- Brush options (Brush tool only) -->
