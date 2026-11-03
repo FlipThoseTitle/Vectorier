@@ -45,7 +45,7 @@
             <Expander Header="{l:Tr 'Advanced'}" HorizontalAlignment="Stretch">
                 <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto" RowSpacing="8">
                     <TextBlock Text="{l:Tr 'Address'}" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding AddressText}" Watermark="{l:Tr 'Your address in the VPN network'}" />
+                    <TextBox Grid.Column="1" Text="{Binding AddressText}" PlaceholderText="{l:Tr 'Your address in the VPN network'}" />
                     <TextBlock Grid.Row="1" Text="{l:Tr 'Port'}" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PortText}" Width="90" HorizontalAlignment="Left" />
                 </Grid>
