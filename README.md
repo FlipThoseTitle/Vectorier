@@ -71,7 +71,7 @@ On macOS the app isn't signed by Apple, so the first time it may say it can't be
 - Download the [Vectorier Project](https://github.com/FlipThoseTitle/Vectorier/archive/refs/heads/main.zip)
 - Put the `Editor`, `Game` and `Projects` folders from a release into a `Data` folder at the root of the project
 - Open the folder in VS Code and run the `Build Debug` or `Publish` task, or build `Vectorier.Desktop` with `dotnet build`
-- Publishing also makes the release zip in the `publish` folder (`Vectorier-1.0.0-<OS>.zip`), with the macOS `.app` and the execute permissions already set
+- Publishing also makes the release zip in the `publish` folder (`Vectorier-x.x.x-<OS>.zip`), with the macOS `.app` and the execute permissions already set
 
 # Getting Started
 Tutorial and Documentation is available on the [Vectorier Documentation Wiki](https://example.com/placeholder-wiki)
