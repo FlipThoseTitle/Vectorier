@@ -45,6 +45,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     {
         TextureLoadedHandler = _ => InvalidateVisual();
         DoubleTapped += OnSceneDoubleTapped;
+        AddHandler(PointerTouchPadGestureMagnifyEvent, OnTouchPadMagnify);
     }
 
     public EditorViewModel? Editor

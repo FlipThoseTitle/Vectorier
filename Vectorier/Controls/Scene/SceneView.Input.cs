@@ -154,7 +154,28 @@ public sealed partial class SceneView
         base.OnPointerWheelChanged(e);
         if (IsGameView)
             return;
-        ZoomAt(e.GetPosition(this), Math.Pow(1.15, e.Delta.Y));
+        // Mouse wheel zooms; a touchpad pans with two fingers and zooms with a pinch (Ctrl + wheel), see TouchpadInput.
+        if (!TouchpadInput.IsPinch(e) && TouchpadInput.IsTouchpadScroll(e))
+        {
+            StopFrameAnimation();
+            double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
+            _center -= e.Delta * TouchpadInput.PixelsPerUnit / _zoom * speed;
+            UpdateEditorCenter();
+            InvalidateVisual();
+        }
+        else
+        {
+            ZoomAt(e.GetPosition(this), TouchpadInput.WheelZoomFactor(e));
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>macOS touchpad pinch.</summary>
+    private void OnTouchPadMagnify(object? sender, PointerDeltaEventArgs e)
+    {
+        if (IsGameView)
+            return;
+        ZoomAt(e.GetPosition(this), TouchpadInput.MagnifyFactor(e));
         e.Handled = true;
     }
 

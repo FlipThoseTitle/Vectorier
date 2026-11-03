@@ -21,6 +21,7 @@ public sealed partial class PreferencesViewModel : DialogViewModel
         _showAreaType = EditorPreferences.ShowAreaType;
         _textAnchor = EditorPreferences.TextAnchor;
         _renameDuplicate = EditorPreferences.RenameDuplicate;
+        _scrollNavigation = (int)EditorPreferences.ScrollNavigation;
         _language = Services.Localization.Loc.CurrentLanguage;
     }
 
@@ -45,6 +46,8 @@ public sealed partial class PreferencesViewModel : DialogViewModel
     [ObservableProperty] private bool _showAreaType;
     [ObservableProperty] private LabelAnchor _textAnchor;
     [ObservableProperty] private bool _renameDuplicate;
+    /// <summary>Index of <see cref="Services.ScrollNavigation"/> (the combo box lists them in order).</summary>
+    [ObservableProperty] private int _scrollNavigation;
 
     // Changes apply immediately, like Unity's preference window.
     partial void OnIsDarkChanged(bool value) => EditorPreferences.Theme = value ? "Dark" : "Light";
@@ -55,6 +58,11 @@ public sealed partial class PreferencesViewModel : DialogViewModel
     partial void OnShowAreaTypeChanged(bool value) => EditorPreferences.ShowAreaType = value;
     partial void OnTextAnchorChanged(LabelAnchor value) => EditorPreferences.TextAnchor = value;
     partial void OnRenameDuplicateChanged(bool value) => EditorPreferences.RenameDuplicate = value;
+    partial void OnScrollNavigationChanged(int value)
+    {
+        if (value >= 0)
+            EditorPreferences.ScrollNavigation = (Services.ScrollNavigation)value;
+    }
 
     [RelayCommand]
     private void Done() => Close(true);

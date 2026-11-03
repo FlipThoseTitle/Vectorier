@@ -19,13 +19,19 @@ public sealed class CharacterPreviewCanvas : Control
     public CharacterPreviewCanvas()
     {
         Focusable = true;
+        AddHandler(PointerTouchPadGestureMagnifyEvent, (_, e) =>
+        {
+            _zoom = Math.Clamp(_zoom * TouchpadInput.MagnifyFactor(e), 0.1, 20);
+            InvalidateVisual();
+            e.Handled = true;
+        });
     }
 
-    /// <summary>Mouse wheel zooms the view (around its center).</summary>
+    /// <summary>Mouse wheel (or a touchpad scroll / pinch) zooms the view (around its center); there is nothing to pan.</summary>
     protected override void OnPointerWheelChanged(Avalonia.Input.PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
-        _zoom = Math.Clamp(_zoom * Math.Pow(1.15, e.Delta.Y), 0.1, 20);
+        _zoom = Math.Clamp(_zoom * TouchpadInput.WheelZoomFactor(e), 0.1, 20);
         InvalidateVisual();
         e.Handled = true;
     }

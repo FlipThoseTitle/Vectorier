@@ -25,6 +25,18 @@
             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:PreferencesViewModel.Anchors}" SelectedItem="{Binding TextAnchor}" />
         </Grid>
 
+        <TextBlock Classes="label" Text="{l:Tr 'Navigation'}" Margin="0,6,0,0" />
+        <Grid ColumnDefinitions="110,*">
+            <TextBlock Text="{l:Tr 'Scrolling'}" />
+            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding ScrollNavigation}">
+                <ComboBoxItem Content="{l:Tr 'Auto (detect touchpad)'}" />
+                <ComboBoxItem Content="{l:Tr 'Mouse: wheel zooms'}" />
+                <ComboBoxItem Content="{l:Tr 'Touchpad: scroll pans'}" />
+            </ComboBox>
+        </Grid>
+        <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"
+                   Text="{l:Tr 'On a touchpad, scroll with two fingers to pan the Scene and pinch to zoom. Ctrl + scroll always zooms.'}" />
+
         <TextBlock Classes="section" Text="{l:Tr 'Hierarchy'}" Margin="0,10,0,0" />
         <CheckBox Content="{l:Tr 'Rename Duplicate'}" IsChecked="{Binding RenameDuplicate}"
                   ToolTip.Tip="{l:Tr 'Duplicates keep the original name instead of getting a suffix such as (1)'}" />

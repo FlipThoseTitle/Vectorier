@@ -10,7 +10,7 @@ namespace Vectorier.Controls.Scene;
 
 /// <summary>
 /// The thumbnail frame of <see cref="ThumbnailCaptureViewModel"/>: the level seen through a 512 × 340 frame.
-/// Drag with the left or right mouse button to pan, wheel to zoom.
+/// Drag with the left or right mouse button to pan, wheel to zoom (touchpad: two-finger scroll pans, pinch zooms).
 /// </summary>
 public sealed class ThumbnailCaptureView : Control
 {
@@ -31,6 +31,7 @@ public sealed class ThumbnailCaptureView : Control
     public ThumbnailCaptureView()
     {
         Cursor = new Cursor(StandardCursorType.SizeAll);
+        AddHandler(PointerTouchPadGestureMagnifyEvent, OnTouchPadMagnify);
     }
 
     public ThumbnailCaptureViewModel? Capture
@@ -137,7 +138,19 @@ public sealed class ThumbnailCaptureView : Control
     {
         base.OnPointerWheelChanged(e);
         if (Capture is { } vm)
-            vm.FrameHeight /= Math.Pow(1.15, e.Delta.Y);
+        {
+            if (!TouchpadInput.IsPinch(e) && TouchpadInput.IsTouchpadScroll(e))
+                vm.Center -= e.Delta * TouchpadInput.PixelsPerUnit / (FrameRect().Height / vm.FrameHeight);
+            else
+                vm.FrameHeight /= TouchpadInput.WheelZoomFactor(e);
+        }
+        e.Handled = true;
+    }
+
+    private void OnTouchPadMagnify(object? sender, PointerDeltaEventArgs e)
+    {
+        if (Capture is { } vm)
+            vm.FrameHeight /= TouchpadInput.MagnifyFactor(e);
         e.Handled = true;
     }
 }

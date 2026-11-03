@@ -17,6 +17,14 @@ public enum LabelAnchor
     LowerRight
 }
 
+/// <summary>What scrolling does in the Scene: Auto tells a touchpad (pans) from a mouse wheel (zooms).</summary>
+public enum ScrollNavigation
+{
+    Auto,
+    Mouse,
+    Touchpad
+}
+
 /// <summary>Editor preferences (Unity's Preference window plus the theme), persisted in the settings store.</summary>
 public static class EditorPreferences
 {
@@ -27,6 +35,7 @@ public static class EditorPreferences
     private const string KeyShowAreaType = "Pref.ShowAreaType";
     private const string KeyTextAnchor = "Pref.TextAnchor";
     private const string KeyRenameDuplicate = "Pref.RenameDuplicate";
+    private const string KeyScrollNavigation = "Pref.ScrollNavigation";
 
     public static event EventHandler? Changed;
 
@@ -95,6 +104,12 @@ public static class EditorPreferences
     {
         get => GetBool(KeyRenameDuplicate, true);
         set => SetBool(KeyRenameDuplicate, value);
+    }
+
+    public static ScrollNavigation ScrollNavigation
+    {
+        get => Enum.TryParse<ScrollNavigation>(Get(KeyScrollNavigation), out var n) ? n : ScrollNavigation.Auto;
+        set => Set(KeyScrollNavigation, value.ToString());
     }
 
     public static double GetDouble(string key, double fallback) =>

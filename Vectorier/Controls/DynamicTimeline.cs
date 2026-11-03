@@ -41,6 +41,15 @@ public sealed class DynamicTimeline : Control
     {
         ClipToBoundsProperty.OverrideDefaultValue<DynamicTimeline>(true);
         FocusableProperty.OverrideDefaultValue<DynamicTimeline>(true);
+        // macOS touchpad pinch zooms like Ctrl + wheel (Windows and browsers already send a pinch as Ctrl + wheel).
+        PointerTouchPadGestureMagnifyEvent.AddClassHandler<DynamicTimeline>((t, e) =>
+        {
+            if (t.Editor is { } editor)
+            {
+                editor.Zoom = Math.Clamp(editor.Zoom * TouchpadInput.MagnifyFactor(e), 0.2, 8);
+                e.Handled = true;
+            }
+        });
     }
 
     public DynamicTrack? Track
