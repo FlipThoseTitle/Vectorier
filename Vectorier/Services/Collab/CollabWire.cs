@@ -116,7 +116,8 @@ internal partial class CollabJsonContext : JsonSerializerContext
 /// <summary>Length-prefixed frames: [JSON length][bytes length][JSON][bytes], with size limits against abuse.</summary>
 public static class CollabWire
 {
-    public const int Protocol = 1;
+    // 2: elements carry their Layer and Order in Layer; Dynamic Editor playback is no longer sent.
+    public const int Protocol = 2;
     public const int MaxJson = 4 * 1024 * 1024;
     public const int MaxBytes = 32 * 1024 * 1024;
 

@@ -83,7 +83,8 @@ public sealed class CollabLevelSync : IDisposable
 
     private void OnElementChanged(SceneElement element, string? property)
     {
-        if (_applying)
+        // Dynamic Editor playback / scrubbing poses stay on this computer (sending them flooded the connection).
+        if (_applying || _editor.Dynamics.IsPosing)
             return;
         _dirty.Add(element);
         _anyDirty = true;
@@ -104,12 +105,29 @@ public sealed class CollabLevelSync : IDisposable
         bool settingsDue = DateTime.UtcNow - _lastSettingsCheck > TimeSpan.FromSeconds(1);
         if (!_anyDirty && !settingsDue)
             return;
-        var ops = Diff(settingsDue || _anyDirty);
+        List<LevelOp> ops;
+        // Elements bound in the Dynamic Editor are shared at their rest pose, never at a previewed one.
+        using (NeedsRestPose() ? _editor.Dynamics.SuspendPreview() : null)
+            ops = Diff(settingsDue || _anyDirty);
         _anyDirty = false;
         _structureDirty = false;
         _dirty.Clear();
         if (ops.Count > 0)
             _send(ops);
+    }
+
+    /// <summary>The next pass serializes an element the Dynamic Editor is previewing (a full pass looks at every element).</summary>
+    private bool NeedsRestPose()
+    {
+        var dynamics = _editor.Dynamics;
+        if (!dynamics.IsBound)
+            return false;
+        if (_structureDirty || _known.Count == 0)
+            return true;
+        foreach (var element in _dirty)
+            if (dynamics.IsTracked(element))
+                return true;
+        return false;
     }
 
     private List<LevelOp> Diff(bool checkSettings)
@@ -184,19 +202,46 @@ public sealed class CollabLevelSync : IDisposable
 
     // ================= SERIALIZING ================= //
 
-    /// <summary>One element without its children (an Object's children are elements of their own); a platform's surface settings ride along.</summary>
+    /// <summary>
+    /// Collaboration-only marker sent after an element's XML: its Layer and Order in Layer. Neither is part of the
+    /// element's own XML (in a level file the layer is the &lt;Track&gt; Object holding it and the order is the write
+    /// order), so without it both were lost on the way. Never written to files.
+    /// </summary>
+    private const string SyncTag = "VectorierSync";
+
+    /// <summary>
+    /// One element without its children (an Object's children are elements of their own); a platform's surface
+    /// settings, the layer and the order in layer ride along.
+    /// </summary>
     private static string Serialize(Xml.SceneXmlWriter writer, SceneElement element)
     {
         var node = writer.WriteElement(element);
+        string xml;
         if (node is XElement x)
         {
             if (element is ObjectElement)
                 x.Element("Content")?.Remove();
             if (element is PlatformElement { Surface: { } surface })
                 x.SetAttributeValue("vectorierSurface", $"{surface.Type},{surface.Floor},{surface.LeftWall},{surface.RightWall},{surface.Seed}");
-            return x.ToString(SaveOptions.DisableFormatting);
+            xml = x.ToString(SaveOptions.DisableFormatting);
         }
-        return node?.ToString(SaveOptions.DisableFormatting) ?? string.Empty;
+        else
+        {
+            xml = node?.ToString(SaveOptions.DisableFormatting) ?? string.Empty;
+        }
+
+        // A separate marker (not an attribute) so comments and unknown elements carry them too.
+        bool defaultLayer = string.IsNullOrEmpty(element.Layer) || element.Layer == Layers.Default;
+        if (!defaultLayer || element.Order != 0)
+        {
+            var sync = new XElement(SyncTag);
+            if (!defaultLayer)
+                sync.SetAttributeValue("Layer", element.Layer);
+            if (element.Order != 0)
+                sync.SetAttributeValue("Order", element.Order.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            xml += sync.ToString(SaveOptions.DisableFormatting);
+        }
+        return xml;
     }
 
     private static string SerializeSettings(Xml.SceneXmlWriter writer, LevelSettings settings)
@@ -214,7 +259,14 @@ public sealed class CollabLevelSync : IDisposable
         try
         {
             var wrapper = XElement.Parse("<Content>" + op.Xml + "</Content>");
+            var sync = wrapper.Element(SyncTag);
+            sync?.Remove();
             var element = _editor.CollabReader.ReadContent(wrapper).FirstOrDefault();
+            if (element == null)
+                return null;
+            // No marker: the default layer and order (the reader already gave the element those).
+            element.Layer = sync?.Attribute("Layer")?.Value is { Length: > 0 } layer ? layer : Layers.Default;
+            element.Order = Num.ParseInt(sync?.Attribute("Order")?.Value);
             if (element is PlatformElement platform && wrapper.Elements().FirstOrDefault()?.Attribute("vectorierSurface")?.Value is { } surface)
             {
                 var parts = surface.Split(',');
@@ -239,6 +291,8 @@ public sealed class CollabLevelSync : IDisposable
     public List<LevelOp> Snapshot()
     {
         Flush();
+        // A joining participant gets the elements the Dynamic Editor is previewing at their rest pose.
+        using var rest = _editor.Dynamics.SuspendPreview();
         var writer = _editor.CollabWriter();
         var ops = new List<LevelOp> { new("settings", 0, 0, 0, SerializeSettings(writer, _editor.Document.Settings)) };
         void Walk(IList<SceneElement> list, long parent)

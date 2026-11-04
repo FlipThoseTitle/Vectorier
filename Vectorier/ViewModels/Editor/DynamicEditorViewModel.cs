@@ -279,7 +279,10 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         ApplyFrameToAll();
         RaiseTimeline();
         if (edit)
+        {
+            Share(track);
             _editor.MarkChanged();
+        }
     }
 
     /// <summary>A continuous edit (dragging keys or the support handle) is a single undo step.</summary>
@@ -307,29 +310,60 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         return key;
     }
 
+    private int _posing;
+
+    /// <summary>
+    /// True while the editor is writing a previewed pose (playback, scrubbing, the rest pose for saving...). Those
+    /// changes are local to this computer: Live Collaboration does not send them.
+    /// </summary>
+    public bool IsPosing => _posing > 0;
+
+    /// <summary>The element is bound to a timeline here, so its pose may be a preview.</summary>
+    public bool IsTracked(SceneElement element)
+    {
+        foreach (var track in Tracks)
+            if (ReferenceEquals(track.Element, element))
+                return true;
+        return false;
+    }
+
+    /// <summary>
+    /// The element's shared data changed (keys that may move its rest pose, or its transformations): Live
+    /// Collaboration compares it again, at its rest pose. Previewed poses are never sent.
+    /// </summary>
+    private void Share(DynamicTrack track) => _editor.NotifyElementChanged(track.Element, nameof(SceneElement.Dynamics));
+
     private void Apply(SceneElement e, DynamicKey pose)
     {
-        using (_editor.SuppressTracking())
+        _posing++;
+        try
         {
-            e.X = pose.X;
-            e.Y = pose.Y;
-            if (e.HasSize)
+            using (_editor.SuppressTracking())
             {
-                if (e is ImageElement { AutoSize: true } auto && Math.Abs(auto.Width - pose.Width) < 1e-9 && Math.Abs(auto.Height - pose.Height) < 1e-9)
+                e.X = pose.X;
+                e.Y = pose.Y;
+                if (e.HasSize)
                 {
-                    // unchanged: keep it auto-sized
+                    if (e is ImageElement { AutoSize: true } auto && Math.Abs(auto.Width - pose.Width) < 1e-9 && Math.Abs(auto.Height - pose.Height) < 1e-9)
+                    {
+                        // unchanged: keep it auto-sized
+                    }
+                    else if (Math.Abs(e.Width - pose.Width) > 1e-9 || Math.Abs(e.Height - pose.Height) > 1e-9)
+                    {
+                        e.Width = pose.Width;
+                        e.Height = pose.Height;
+                    }
                 }
-                else if (Math.Abs(e.Width - pose.Width) > 1e-9 || Math.Abs(e.Height - pose.Height) > 1e-9)
+                if (e is ImageElement image)
                 {
-                    e.Width = pose.Width;
-                    e.Height = pose.Height;
+                    image.Rotation = pose.Rotation;
+                    image.Color = pose.Color;
                 }
             }
-            if (e is ImageElement image)
-            {
-                image.Rotation = pose.Rotation;
-                image.Color = pose.Color;
-            }
+        }
+        finally
+        {
+            _posing--;
         }
     }
 
@@ -1068,6 +1102,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         track.TransformationName = name;
         RefreshNames(track);
         track.IsModified = false;
+        Share(track);
         _editor.MarkChanged();
         _editor.StatusText = Loc.F("Saved transformation '{0}' on {1}", name, track.Header);
         RaiseTimeline();
@@ -1119,6 +1154,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         LoadTransformation(track, name);
         track.IsModified = false;
         KeysChanged(track, edit: false);
+        Share(track);
         _editor.MarkChanged();
     }
 
@@ -1136,6 +1172,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         LoadTransformation(track, track.TransformationName);
         track.IsModified = false;
         KeysChanged(track, edit: false);
+        Share(track);
         _editor.MarkChanged();
     }
 
@@ -1148,6 +1185,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         if (existing != null)
         {
             existing.Name = unique;
+            Share(track);
             _editor.MarkChanged();
         }
         track.TransformationName = unique;
@@ -1360,6 +1398,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
             track.TransformationName = ts.Name;
             RefreshNames(track);
             track.IsModified = ts.Modified;
+            Share(track);
             restored.Add((track, ts.Pose));
         }
         int frame = Math.Clamp(s.Frame, 0, MaxEnd);
@@ -1421,6 +1460,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
             Upsert(track, now);
             track.Sort();
             track.IsModified = true;
+            Share(track);
             any = true;
         }
         if (!any)

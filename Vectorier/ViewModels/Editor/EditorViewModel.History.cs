@@ -414,4 +414,10 @@ public sealed partial class EditorViewModel
         MarkChanged();
         SceneInvalidated?.Invoke();
     }
+
+    /// <summary>
+    /// Reports a change to element data that has no property notification of its own (the Dynamic Editor's
+    /// transformations and keys), so Live Collaboration sends it.
+    /// </summary>
+    public void NotifyElementChanged(SceneElement element, string? property) => ElementChanged?.Invoke(element, property);
 }
