@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
 #nullable disable warnings
 #pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
 using System;
@@ -253,6 +253,16 @@ namespace Vectorier.Gameplay.Models
 
         public List<int[]> BothNodeList => _BothNodeList;
 
+        /// <summary>
+        /// A model from files the editor has already read (models/0.xml + skins, runner.xml...), each a parsed
+        /// &lt;Scene&gt; document, in the order the game would load them.
+        /// </summary>
+        public ModelObject(IEnumerable<KeyValuePair<string, XmlNode>> files) : this(new List<string>())
+        {
+            ParseDocuments(files);
+            CreateBothNodeList();
+        }
+
         public ModelObject(List<string> skins)
         {
             _botIconPosition = null;
@@ -276,6 +286,28 @@ namespace Vectorier.Gameplay.Models
 
         public void Parse(List<string> skins)
         {
+            ParseAll(() =>
+            {
+                foreach (string s in skins)
+                {
+                    ParseFile(s);
+                }
+            });
+        }
+
+        private void ParseDocuments(IEnumerable<KeyValuePair<string, XmlNode>> files)
+        {
+            ParseAll(() =>
+            {
+                foreach (var file in files)
+                {
+                    ParseFile(file.Key, file.Value);
+                }
+            });
+        }
+
+        private void ParseAll(Action parseFiles)
+        {
             _NodesAll.Clear();
             _Renders.Clear();
             CenterOfMass.Clear();
@@ -290,10 +322,7 @@ namespace Vectorier.Gameplay.Models
             CollisibleEdges.Clear();
             Capsules.Clear();
             Triangles.Clear();
-            foreach (string s in skins)
-            {
-                ParseFile(s);
-            }
+            parseFiles();
             CameraNode = null;
             PivotNode = GetNode();
             DetectorHorizontalNode = GetNode("DetectorH");
@@ -352,10 +381,14 @@ namespace Vectorier.Gameplay.Models
 
         private void ParseFile(string file)
         {
+            ParseFile(file, XmlUtils.OpenXMLDocument(VectorPaths.Models, file, XmlUtils.OpenXmlType.Normal, true, false));
+        }
+
+        private void ParseFile(string file, XmlNode xmlNode)
+        {
             ModelRender modelRender = new ModelRender();
             modelRender.Name = "[Skins] " + file;
             ModelRender modelRender2 = modelRender;
-            XmlNode xmlNode = XmlUtils.OpenXMLDocument(VectorPaths.Models, file, XmlUtils.OpenXmlType.Normal, true, false);
             if (xmlNode == null)
             {
                 return;
@@ -668,6 +701,15 @@ namespace Vectorier.Gameplay.Models
             foreach (var node in _NodesAll)
             {
                 node.Reset();
+            }
+        }
+
+        /// <summary>Every file's capsules and triangles, in load order (the game's ModelRender.Draw for each skin).</summary>
+        public void Draw(ModelCanvas canvas)
+        {
+            foreach (var render in _Renders)
+            {
+                render.Draw(canvas);
             }
         }
 

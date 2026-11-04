@@ -10,83 +10,65 @@ using Vectorier.Services.Assets;
 namespace Vectorier.Services.MoveVisualizer;
 
 /// <summary>
-/// The Move Visualizer's character model (port of Unity's Vectorier.Model.ModelData): every element of
-/// &lt;Nodes&gt; in file order (the animation bins store one position per node in the same order), the edges,
-/// and the capsules drawn as the silhouette. Positions are in model space with Y pointing up.
+/// The Move Visualizer's character: Editor/MoveVisualizer/runner.xml loaded as the game loads a model (see
+/// <see cref="ModelView"/>), used by both Spawn Modes. The animation bins store one position per node for the first
+/// nodes, in file order; the others (macro nodes, cloth) follow as in the game. <see cref="PreviewPose"/> is in the
+/// animation space (Y up).
 /// </summary>
 public sealed class MoveModel
 {
-    public readonly record struct Edge(int A, int B, string Name, string? Type);
-    public readonly record struct Capsule(string Name, string EdgeName, int A, int B, float Radius1, float Radius2, float Margin1, float Margin2);
+    private MoveModel(byte[] data, ModelView view)
+    {
+        Data = data;
+        Placed = view;
+        Ghost = ModelView.Load(new[] { (FileName, data) });
+        foreach (var node in view.Object.NodesAll)
+        {
+            NodeIndexByName[node.Name] = NodeNamesOrdered.Count;
+            NodeNamesOrdered.Add(node.Name);
+        }
+        PreviewPose = view.RestPose.Select(ToSpace).ToArray();
+        MaxRadius = view.MaxRadius;
+    }
+
+    public const string FileName = "runner.xml";
+
+    /// <summary>runner.xml as read (the Gameplay character is made from it too).</summary>
+    public byte[] Data { get; }
+
+    /// <summary>The placed character (Animation mode): posed by the move, its cloth by physics.</summary>
+    public ModelView Placed { get; }
+
+    /// <summary>The placement ghost: a still pose.</summary>
+    public ModelView Ghost { get; }
 
     public List<string> NodeNamesOrdered { get; } = new();
     public Dictionary<string, int> NodeIndexByName { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public List<Edge> Connections { get; } = new();
-    public List<Capsule> Capsules { get; } = new();
-    public Vector3[] PreviewPose { get; private set; } = Array.Empty<Vector3>();
+    public Vector3[] PreviewPose { get; }
     public int NodeCount => NodeNamesOrdered.Count;
 
     /// <summary>Largest capsule radius (for bounds).</summary>
-    public float MaxRadius { get; private set; }
+    public float MaxRadius { get; }
 
     public bool TryGetNodeIndex(string name, out int index) => NodeIndexByName.TryGetValue(name, out index);
 
+    /// <summary>The game's node (level units, Y down) ↔ the animation space (Y up, Z toward the viewer).</summary>
+    public static Vector3 ToSpace(Vector3 game) => new(game.X, -game.Y, -game.Z);
+
     public static MoveModel Parse(byte[] data)
     {
-        var doc = XDocument.Parse(ModelData.DecodeText(data));
-        var scene = doc.Root;
-        if (scene == null || scene.Name.LocalName != "Scene")
-            throw new FormatException("Invalid XML: missing <Scene> root.");
-        var nodes = scene.Element("Nodes") ?? throw new FormatException("Invalid XML: missing <Nodes>.");
-
-        var model = new MoveModel();
-        var pose = new List<Vector3>();
-        foreach (var node in nodes.Elements())
+        ModelView view;
+        try
         {
-            string name = node.Name.LocalName;
-            model.NodeIndexByName[name] = model.NodeNamesOrdered.Count;
-            model.NodeNamesOrdered.Add(name);
-            pose.Add(new Vector3(F(node, "X", 0), F(node, "Y", 0), -F(node, "Z", 0)));
+            view = ModelView.Load(new[] { (FileName, data) });
         }
-        if (model.NodeCount <= 0)
+        catch (ModelLoadException ex)
+        {
+            throw new FormatException(FileName + ": " + ex.Message);
+        }
+        if (view.NodeCount <= 0)
             throw new FormatException("XML <Nodes> is empty.");
-        model.PreviewPose = pose.ToArray();
-
-        foreach (var edge in scene.Element("Edges")?.Elements() ?? Enumerable.Empty<XElement>())
-        {
-            string end1 = (string?)edge.Attribute("End1") ?? string.Empty;
-            string end2 = (string?)edge.Attribute("End2") ?? string.Empty;
-            if (!model.NodeIndexByName.TryGetValue(end1, out int a) || !model.NodeIndexByName.TryGetValue(end2, out int b))
-                continue;
-            model.Connections.Add(new Edge(a, b, edge.Name.LocalName, (string?)edge.Attribute("Type")));
-        }
-
-        foreach (var figure in scene.Element("Figures")?.Elements() ?? Enumerable.Empty<XElement>())
-        {
-            if (!string.Equals((string?)figure.Attribute("Type"), "Capsule", StringComparison.OrdinalIgnoreCase))
-                continue;
-            string edgeName = (string?)figure.Attribute("Edge") ?? string.Empty;
-            int edgeIndex = model.Connections.FindIndex(x => string.Equals(x.Name, edgeName, StringComparison.OrdinalIgnoreCase));
-            if (edgeIndex < 0)
-                continue;
-            var e = model.Connections[edgeIndex];
-            float r1 = F(figure, "Radius1", 1f);
-            float r2 = F(figure, "Radius2", r1);
-            model.Capsules.Add(new Capsule(figure.Name.LocalName, edgeName, e.A, e.B, r1, r2,
-                Math.Clamp(F(figure, "Margin1", 0f), 0f, 1f), Math.Clamp(F(figure, "Margin2", 0f), 0f, 1f)));
-            model.MaxRadius = Math.Max(model.MaxRadius, Math.Max(r1, r2));
-        }
-        return model;
-    }
-
-    private static float F(XElement e, string name, float fallback)
-    {
-        string? text = (string?)e.Attribute(name);
-        if (string.IsNullOrWhiteSpace(text))
-            return fallback;
-        if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float v))
-            return v;
-        return float.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? v : fallback;
+        return new MoveModel(data, view);
     }
 }
 
@@ -116,6 +98,9 @@ public sealed class MoveAnimation
     private double _lastPlaybackTime;
 
     public MoveModel? Model { get; private set; }
+
+    /// <summary>How many nodes the loaded move animates (the first ones of the model).</summary>
+    public int AnimatedNodeCount => AnimationFrames.Count > 0 ? AnimationFrames[0].Length : 0;
     private bool _isPlaying = true;
     private bool _resumePending;
 
@@ -326,9 +311,10 @@ public sealed class MoveAnimation
         {
             reader.ReadByte();
             int nodeCount = reader.ReadInt32();
-            if (expectedNodeCount > 0 && nodeCount != expectedNodeCount)
+            // The game moves the first nodes of the model, one per entry: a frame cannot list more nodes than it has.
+            if (expectedNodeCount > 0 && nodeCount > expectedNodeCount)
                 throw new InvalidDataException(string.Format(CultureInfo.InvariantCulture,
-                    "Animation node count mismatch. Model expects {0}, but frame {1} contains {2} nodes.", expectedNodeCount, f, nodeCount));
+                    "Animation node count mismatch. Model has {0} nodes, but frame {1} contains {2}.", expectedNodeCount, f, nodeCount));
             var frame = new Vector3[nodeCount];
             for (int n = 0; n < nodeCount; n++)
             {

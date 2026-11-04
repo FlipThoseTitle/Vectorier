@@ -23,7 +23,6 @@
     "Vertex snap: drag the selection by the highlighted corner onto another element (hold A to scale).": "Vertex snap: drag the selection by the highlighted corner onto another element (hold A to scale).",
     "Scale snap {0:0.###} × {1:0.###}": "Scale snap {0:0.###} × {1:0.###}",
     "Model file not found: models/{0}.xml": "Model file not found: models/{0}.xml",
-    "models/{0}.xml could not be read: {1}": "models/{0}.xml could not be read: {1}",
     "The animation file is truncated.": "The animation file is truncated.",
     "The animation has no frames.": "The animation has no frames.",
     "'{0}{1}' already exists.": "'{0}{1}' already exists.",
@@ -1533,7 +1532,9 @@
     "The player starts facing left (adds |1 to the Animation, e.g. JumpOff|18|1)": "The player starts facing left (adds |1 to the Animation, e.g. JumpOff|18|1)",
     "Game View: following the runner's Camera node": "Game View: following the runner's Camera node",
     "moves.xml not found: {0}": "moves.xml not found: {0}",
-    "The runner's physics model was not found: {0} (copy models/0.xml from the project template).": "The runner's physics model was not found: {0} (copy models/0.xml from the project template).",
-    "moves.xml has no '{0}' move (the spawn move).": "moves.xml has no '{0}' move (the spawn move)."
+    "moves.xml has no '{0}' move (the spawn move).": "moves.xml has no '{0}' move (the spawn move).",
+    "{0} could not be read: {1}": "{0} could not be read: {1}",
+    "Play run.bin on models/0.xml + 1.xml with this gear attached": "Play run.bin on models/0.xml + 1.xml with this gear attached",
+    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character."
   }
 }

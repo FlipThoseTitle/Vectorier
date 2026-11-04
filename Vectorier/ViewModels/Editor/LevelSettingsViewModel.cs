@@ -295,8 +295,7 @@ public sealed partial class ModelDefinitionViewModel : ObservableObject
             return;
         await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Owner.Project, Loc.F("Preview - {0}", Summary),
             Services.Assets.CharacterModel.SkinsFrom(Skins),
-            ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(Owner.Project, ViewModels.Preview.CharacterPreviewViewModel.RunAnimation),
-            ViewModels.Preview.PreviewCamera.FixedOnPivot);
+            ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(Owner.Project, ViewModels.Preview.CharacterPreviewViewModel.RunAnimation));
     }
 
     [RelayCommand]

@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
 // Only what the movement uses: the position (level coordinates, Y down) and how far it moved this tick. Dynamic
 // transformations (moving platforms) run from triggers in the game, which are not part of the editor's gameplay.
 #nullable disable warnings

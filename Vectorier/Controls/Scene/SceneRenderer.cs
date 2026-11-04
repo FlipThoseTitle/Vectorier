@@ -1056,7 +1056,7 @@ public sealed class SceneRenderer
         {
             var data = await _editor.Context.Models.GetAsync(name);
             if (data != null && data.IsSelfContained)
-                geometry = data.BuildSilhouette(null, out bounds);
+                geometry = data.BuildSilhouette(out bounds);
         }
         catch (Exception ex)
         {

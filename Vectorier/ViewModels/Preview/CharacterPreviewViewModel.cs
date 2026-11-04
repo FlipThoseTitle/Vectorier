@@ -17,20 +17,14 @@ using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Preview;
 
-public enum PreviewCamera
-{
-    /// <summary>Centered on NPivot once; the camera does not move afterwards.</summary>
-    FixedOnPivot,
-    /// <summary>Follows the "Camera" node every frame.</summary>
-    FollowCameraNode,
-}
-
 /// <summary>Result of a preview opened with an Apply button.</summary>
 public sealed record CharacterPreviewResult(int StartFrame, int EndFrame);
 
 /// <summary>
 /// Character preview: plays a .bin animation in a loop on 0.xml + skins, with start / end trimming (playback only;
-/// the file is never changed). Used by Level Settings (Models), Project Manager (Animations) and the Trigger Editor.
+/// the file is never changed). The character is the game's model: it ticks 60 times a second like the game, so its
+/// cloth moves (also while paused), and the view follows its Camera node. Used by Level Settings (Models), Project
+/// Manager (Animations, Gears), the Inspector (Spawn) and the Trigger Editor.
 /// </summary>
 public sealed partial class CharacterPreviewViewModel : DialogViewModel
 {
@@ -41,29 +35,36 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
     private readonly DispatcherTimer _timer;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private double _lastTick;
-    private Vector3 _fixedOrigin;
+    private double _accumulator;
 
-    private CharacterPreviewViewModel(string title, CharacterModel character, List<Vector3[]> frames, PreviewCamera camera, int startFrame, bool showApply, string? applyText)
+    /// <summary>The view is centered this far from the model's Camera node (level units): on the character.</summary>
+    public const float CameraOffsetX = -150;
+
+    /// <summary>The game's tick and the animations' frame rate.</summary>
+    private const double TickSeconds = 1.0 / 60, AnimationFps = 20;
+
+    private CharacterPreviewViewModel(string title, CharacterModel character, List<Vector3[]> frames, int startFrame, bool showApply, string? applyText)
     {
         Title = title;
         _character = character;
         _frames = frames;
-        Camera = camera;
         ShowApply = showApply;
         ApplyText = applyText ?? Loc.T("Apply");
         MaxFrame = frames.Count - 1;
         _trimEnd = MaxFrame;
         _trimStart = startFrame >= 0 && startFrame <= MaxFrame ? startFrame : 0;
         _frame = _trimStart;
-        _fixedOrigin = OriginFor(_character.Pose(_frames, _trimStart));
+        // The start pose, its cloth already hanging.
+        var view = _character.View;
+        view.Set(_character.Pose(_frames, _trimStart), _character.AnimatedNodeCount);
+        view.Settle(60);
         ComputeScale();
-        _timer = new DispatcherTimer(TimeSpan.FromSeconds(1.0 / 60), DispatcherPriority.Render, (_, _) => Tick());
+        _timer = new DispatcherTimer(TimeSpan.FromSeconds(TickSeconds / 2), DispatcherPriority.Render, (_, _) => Tick());
         _lastTick = _clock.Elapsed.TotalSeconds;
         _timer.Start();
         UpdatePose();
     }
 
-    public PreviewCamera Camera { get; }
     public bool ShowApply { get; }
     public string ApplyText { get; }
     public int MaxFrame { get; }
@@ -72,10 +73,10 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
     public override double PreferredWidth => 820;
     public override double PreferredHeight => 620;
 
-    /// <summary>Silhouette in model units, relative to the camera point (Y down).</summary>
+    /// <summary>The character in level units, relative to the point the view is centered on (Y down).</summary>
     [ObservableProperty] private Geometry? _silhouette;
 
-    /// <summary>Model units → view: a size that keeps the whole base pose about 60 % of the view's height.</summary>
+    /// <summary>Level units → view: a size that keeps the start pose about 60 % of the view's height.</summary>
     public double ModelHeight { get; private set; } = 200;
 
     [ObservableProperty] private double _frame;
@@ -88,6 +89,7 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
 
     public event Action? Redraw;
 
+    // The model takes the new frame at its next tick (scrubbing moves it like the game would).
     partial void OnFrameChanged(double value)
     {
         OnPropertyChanged(nameof(FrameText));
@@ -118,45 +120,57 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
         OnPropertyChanged(nameof(FrameText));
     }
 
+    /// <summary>Game ticks due since the last time: the frame advances (when playing), then the model ticks.</summary>
     private void Tick()
     {
         double now = _clock.Elapsed.TotalSeconds;
-        double dt = now - _lastTick;
+        _accumulator += Math.Min(now - _lastTick, 0.25);
         _lastTick = now;
-        if (!IsPlaying)
+        if (_accumulator < TickSeconds)
             return;
-        if (TrimEnd <= TrimStart)
+        double frame = Frame;
+        while (_accumulator >= TickSeconds)
         {
-            // A single frame: the static pose.
-            if (Math.Abs(Frame - TrimStart) > 1e-9) Frame = TrimStart;
-            return;
+            _accumulator -= TickSeconds;
+            if (IsPlaying)
+                frame = Advance(frame);
+            _character.View.Tick(_character.Pose(_frames, frame), _character.AnimatedNodeCount);
         }
-        // The source runs at 20 fps; the range loops.
-        double next = Frame + Math.Min(dt, 0.25) * MoveVisualizerFps;
+        if (Math.Abs(frame - Frame) > 1e-9)
+            Frame = frame; // redraws
+        else
+            UpdatePose();
+    }
+
+    /// <summary>One tick of the 20 fps animation; the trimmed range loops (a single frame stays still).</summary>
+    private double Advance(double frame)
+    {
+        if (TrimEnd <= TrimStart)
+            return TrimStart;
+        double next = frame + TickSeconds * AnimationFps;
         double length = TrimEnd - TrimStart;
         if (next > TrimEnd)
             next = TrimStart + (next - TrimEnd) % length;
-        Frame = next;
+        return next;
     }
 
-    private const double MoveVisualizerFps = 20;
-
-    private Vector3 OriginFor(Vector3[] pose) => Camera == PreviewCamera.FollowCameraNode
-        ? _character.NodePosition(pose, "Camera") ?? _character.NodePosition(pose, "NPivot") ?? Vector3.Zero
-        : _character.NodePosition(pose, "NPivot") ?? Vector3.Zero;
+    /// <summary>The point the view is centered on: the Camera node, offset onto the character.</summary>
+    private Vector3 Origin()
+    {
+        var view = _character.View;
+        var camera = view.Node("Camera") ?? view.Node("NPivot") ?? Vector3.Zero;
+        return camera + new Vector3(CameraOffsetX, 0, 0);
+    }
 
     private void ComputeScale()
     {
-        var pose = _character.Pose(_frames, TrimStart);
-        _character.Model.BuildSilhouette(pose, OriginFor(pose), out var bounds);
+        _character.View.Draw(Origin(), out var bounds);
         ModelHeight = Math.Max(50, bounds.Height);
     }
 
     private void UpdatePose()
     {
-        var pose = _character.Pose(_frames, Frame);
-        var origin = Camera == PreviewCamera.FollowCameraNode ? OriginFor(pose) : _fixedOrigin;
-        Silhouette = _character.Model.BuildSilhouette(pose, origin, out _);
+        Silhouette = _character.View.Draw(Origin(), out _);
         Redraw?.Invoke();
     }
 
@@ -204,7 +218,7 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
     /// reported and nothing opens. Returns the trim when Apply was pressed.
     /// </summary>
     public static async Task<CharacterPreviewResult?> ShowAsync(ProjectInfo project, string title, IEnumerable<string> skins, string animationPath,
-        PreviewCamera camera, int startFrame = 0, bool showApply = false, string? applyText = null)
+        int startFrame = 0, bool showApply = false, string? applyText = null)
     {
         CharacterPreviewViewModel vm;
         try
@@ -213,7 +227,7 @@ public sealed partial class CharacterPreviewViewModel : DialogViewModel
             if (!await AppServices.FileSystem.FileExistsAsync(animationPath))
                 throw new CharacterPreviewException(Loc.F("Animation not found: {0}", VPath.GetFileName(animationPath)));
             var frames = character.ReadAnimation(await AppServices.FileSystem.ReadAllBytesAsync(animationPath));
-            vm = new CharacterPreviewViewModel(title, character, frames, camera, startFrame, showApply, applyText);
+            vm = new CharacterPreviewViewModel(title, character, frames, startFrame, showApply, applyText);
         }
         catch (Exception ex)
         {

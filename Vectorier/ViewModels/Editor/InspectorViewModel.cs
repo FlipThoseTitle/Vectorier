@@ -154,8 +154,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         }
         var project = _editor.Project;
         var result = await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(project, Loc.F("Preview - {0} ({1})", move, file),
-            new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(project, file),
-            ViewModels.Preview.PreviewCamera.FollowCameraNode, spawn.StartFrame, showApply: true, applyText: Loc.T("Set Start Frame"));
+            new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(project, file), spawn.StartFrame, showApply: true, applyText: Loc.T("Set Start Frame"));
         if (result != null && ReferenceEquals(_target, spawn))
             spawn.StartFrame = result.StartFrame;
     }

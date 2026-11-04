@@ -29,11 +29,11 @@ namespace Vectorier.Services.MoveVisualizer;
 public sealed record GameplaySpawn(System.Numerics.Vector2 Position, string Animation, string PivotNode = "NPivot");
 
 /// <summary>
-/// Move Visualizer, Gameplay spawn mode: the game's player movement (ported from Vector-Raylib-For-Vectorier, see
-/// Gameplay/README.md) running on the open level. The character stands on the level's Platforms and Trapezoids and
+/// Move Visualizer, Gameplay spawn mode: the game's player movement (ported from Vector-Raylib-For-Vectorier, in
+/// the Gameplay folder) running on the open level. The character stands on the level's Platforms and Trapezoids and
 /// reacts to its Areas (Animation and Trick); it is controlled with the arrow keys and advances in the game's fixed
-/// 1/60 s ticks. moves.xml and the animation bins come from the active project's animations folder, the runner's
-/// physics (masses, edges) from its models/0.xml; the editor draws it with runner.xml.
+/// 1/60 s ticks. moves.xml and the animation bins come from the active project's animations folder; the character is
+/// Editor/MoveVisualizer/runner.xml (its physics, its drawing and its cloth), as the Animation mode's.
 /// </summary>
 public sealed class GameplaySession
 {
@@ -54,7 +54,6 @@ public sealed class GameplaySession
     private LevelMainController? _controller;
     private LocationCamera? _camera;
     private ModelHuman? _model;
-    private int[]? _drawMap;
 
     /// <summary>The last spawn (Restart and Reverse spawn there again).</summary>
     public GameplaySpawn? LastSpawn { get; private set; }
@@ -72,16 +71,16 @@ public sealed class GameplaySession
     // ================= LOADING ================= //
 
     /// <summary>
-    /// Reads moves.xml, every move's .bin and the runner's models/0.xml from the project (again when one of them
-    /// changed since the last time), then parses the moves as the game does.
+    /// Reads moves.xml and every move's .bin from the project and takes runner.xml (again when one of them changed
+    /// since the last time), then parses the moves as the game does.
     /// </summary>
-    public static async Task LoadAsync(ProjectInfo project)
+    public static async Task LoadAsync(ProjectInfo project, byte[] runner)
     {
         // One load at a time: the moves are the game's shared tables, rebuilt in place.
         await LoadLock.WaitAsync();
         try
         {
-            await LoadCoreAsync(project);
+            await LoadCoreAsync(project, runner);
         }
         finally
         {
@@ -95,18 +94,13 @@ public sealed class GameplaySession
     /// <summary>True while the moves are being rebuilt: a runner must not tick then.</summary>
     public static bool IsLoading { get; private set; }
 
-    private static async Task LoadCoreAsync(ProjectInfo project)
+    private static async Task LoadCoreAsync(ProjectInfo project, byte[] runner)
     {
         var fs = AppServices.FileSystem;
         string movesPath = VPath.Combine(project.AnimationsFolder, "moves.xml");
         if (!await fs.FileExistsAsync(movesPath))
             throw new System.IO.FileNotFoundException(Services.Localization.Loc.F("moves.xml not found: {0}", movesPath));
         byte[] moves = await fs.ReadAllBytesAsync(movesPath);
-
-        string modelPath = VPath.Combine(project.ModelsFolder, "0.xml");
-        if (!await fs.FileExistsAsync(modelPath))
-            throw new System.IO.FileNotFoundException(Services.Localization.Loc.F(
-                "The runner's physics model was not found: {0} (copy models/0.xml from the project template).", modelPath));
 
         // The move bins named in moves.xml, found whatever their casing (as the game's PathCase does).
         string dataFolder = VPath.Combine(project.AnimationsFolder, "data");
@@ -121,7 +115,7 @@ public sealed class GameplaySession
         // Same files as last time: nothing to read again.
         var signature = new System.Text.StringBuilder();
         signature.Append(Convert.ToHexString(SHA256.HashData(moves)));
-        signature.Append('|').Append(await fs.GetLastWriteTimeAsync(modelPath));
+        signature.Append('|').Append(Convert.ToHexString(SHA256.HashData(runner)));
         foreach (var bin in bins)
             signature.Append('|').Append(bin).Append('@').Append(await fs.GetLastWriteTimeAsync(onDisk[bin]));
         string sig = signature.ToString();
@@ -131,7 +125,7 @@ public sealed class GameplaySession
         IsLoading = true;
         GameplayFiles.Clear();
         GameplayFiles.Set("animations/moves.xml", moves);
-        GameplayFiles.Set("models/0.xml", await fs.ReadAllBytesAsync(modelPath));
+        GameplayFiles.Set(VectorPaths.Models + "/" + MoveModel.FileName, runner);
         foreach (var bin in bins)
             GameplayFiles.Set("animations/data/" + bin, await fs.ReadAllBytesAsync(onDisk[bin]));
 
@@ -164,22 +158,6 @@ public sealed class GameplaySession
             if ((string?)move.Attribute("FileName") is { Length: > 0 } file)
                 yield return file;
         }
-    }
-
-    /// <summary>
-    /// The runner's rest pose (models/0.xml, level coordinates with its NPivot at 0, 0) in the order of the drawn
-    /// model: a spawn starts from it, so the placement preview shows it.
-    /// </summary>
-    public static System.Numerics.Vector3[]? RestPose(MoveModel drawModel)
-    {
-        if (!GameplayFiles.Contains("models/0.xml"))
-            return null;
-        var model = new ModelObject(new List<string> { "0.xml" });
-        var origin = model.GetNode("NPivot")?.Start ?? Vector3.Zero;
-        var pose = new Vector3[drawModel.NodeCount];
-        for (int i = 0; i < pose.Length; i++)
-            pose[i] = model.GetNode(drawModel.NodeNamesOrdered[i]) is { } node ? node.Start - origin : default;
-        return pose;
     }
 
     // ================= THE LEVEL ================= //
@@ -273,7 +251,7 @@ public sealed class GameplaySession
     /// is now. A click puts the picked pivot node of the move's first frame on the cursor; a Spawn element puts the
     /// model's NPivot on it, as the game does.
     /// </summary>
-    public void Spawn(GameplaySpawn spawn, Func<ObjectDefinition, IEnumerable<SceneElement>> content, IEnumerable<SceneElement> roots, MoveModel drawModel)
+    public void Spawn(GameplaySpawn spawn, Func<ObjectDefinition, IEnumerable<SceneElement>> content, IEnumerable<SceneElement> roots)
     {
         LastSpawn = spawn;
         _location = BuildLocation(content, roots);
@@ -294,6 +272,8 @@ public sealed class GameplaySession
             LiveTime = 1e7f,
         };
         user.Init();
+        // The player's model is the Move Visualizer's runner.xml alone (the game's 0.xml + skins in one file).
+        user.Skins = new List<string> { MoveModel.FileName };
         _model = new ModelHuman(user);
         _location.Models.Add(_model);
         _model.Reset();
@@ -314,7 +294,6 @@ public sealed class GameplaySession
         _camera.StartPosition(_model.ModelObject.CameraNode.Start);
         _camera.Node = _model.ModelObject.CameraNode;
 
-        _drawMap = drawModel.NodeNamesOrdered.Select(name => _model.ModelObject.GetNode(name)?.Id ?? -1).ToArray();
         _lastTime = _clock.Elapsed.TotalSeconds;
         _accumulator = 0;
     }
@@ -324,7 +303,6 @@ public sealed class GameplaySession
         _model = null;
         _location = null;
         _camera = null;
-        _drawMap = null;
         LastSpawn = null;
         if (LevelMainController.current == _controller)
             LevelMainController.current = null!;
@@ -376,20 +354,8 @@ public sealed class GameplaySession
 
     // ================= DRAWING ================= //
 
-    /// <summary>The character's nodes in level coordinates, in the order of the drawn model (runner.xml).</summary>
-    public Vector3[]? DrawNodes()
-    {
-        if (_model == null || _drawMap == null)
-            return null;
-        var nodes = _model.ModelObject.NodesAll;
-        var result = new Vector3[_drawMap.Length];
-        for (int i = 0; i < _drawMap.Length; i++)
-        {
-            int id = _drawMap[i];
-            result[i] = id >= 0 && id < nodes.Count ? nodes[id].Start : default;
-        }
-        return result;
-    }
+    /// <summary>The character (runner.xml as the game holds it, level coordinates), drawn by the game's ModelRender.</summary>
+    public ModelObject? Character => _model?.ModelObject;
 
     /// <summary>Where the game's camera looks (it follows the model's Camera node smoothly), in level coordinates.</summary>
     public Avalonia.Point? CameraPosition => _camera == null ? null : new Avalonia.Point(_camera.X, _camera.Y);

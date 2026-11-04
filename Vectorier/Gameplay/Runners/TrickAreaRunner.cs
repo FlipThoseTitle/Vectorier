@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
 // The trick's idle / active sprites and its track image are not part of the editor's gameplay: only what the
 // character's movement uses is kept.
 #nullable disable warnings

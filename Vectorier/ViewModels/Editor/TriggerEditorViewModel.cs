@@ -332,8 +332,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
             return null;
         }
         return await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(_editor.Project, Loc.F("Preview - {0} ({1})", move, file),
-            new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(_editor.Project, file),
-            ViewModels.Preview.PreviewCamera.FollowCameraNode, startFrame, showApply: true, applyText: Loc.F("Apply {0}", move));
+            new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(_editor.Project, file), startFrame, showApply: true, applyText: Loc.F("Apply {0}", move));
     }
 
     public IList<string> ModelChoices => Models.Count > 0 ? Models : new[] { VTypes.NoModel };

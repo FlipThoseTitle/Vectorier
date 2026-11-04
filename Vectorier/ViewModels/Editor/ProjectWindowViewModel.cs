@@ -875,12 +875,12 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         }
         if (!model.IsSelfContained)
         {
-            item.Status = Loc.T("Not rendered: references outside the file (") + string.Join(", ", model.MissingReferences.Take(3)) + ")";
+            item.Status = model.Problem;
             return;
         }
         try
         {
-            item.Silhouette = model.BuildSilhouette(null, out _);
+            item.Silhouette = model.BuildSilhouette(out _);
             item.CanPlace = true;
             item.Status = null;
             if (ReferenceEquals(SelectedItem, item))

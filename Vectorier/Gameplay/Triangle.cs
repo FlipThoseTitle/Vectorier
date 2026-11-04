@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
 #nullable disable warnings
 #pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
 using System;
@@ -21,9 +21,16 @@ namespace Vectorier.Gameplay
 
         public bool IsVisible;
 
-        public void Draw(Color color)
+        /// <summary>The game's Triangle.Draw: the three nodes filled (both faces).</summary>
+        public void Draw(Models.ModelCanvas canvas)
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            if (!IsVisible) return;
+
+            var a = canvas.Transform(Node0.Start);
+            var b = canvas.Transform(Node1.Start);
+            var c = canvas.Transform(Node2.Start);
+
+            canvas.Polygon(a, b, c);
         }
     }
 }

@@ -23,7 +23,6 @@
     "Vertex snap: drag the selection by the highlighted corner onto another element (hold A to scale).": "Привязка к вершине: потяните выделение за подсвеченный угол к другому элементу (с зажатой A — масштабирование).",
     "Scale snap {0:0.###} × {1:0.###}": "Привязка масштаба {0:0.###} × {1:0.###}",
     "Model file not found: models/{0}.xml": "Файл модели не найден: models/{0}.xml",
-    "models/{0}.xml could not be read: {1}": "Не удалось прочитать models/{0}.xml: {1}",
     "The animation file is truncated.": "Файл анимации обрезан.",
     "The animation has no frames.": "В анимации нет кадров.",
     "'{0}{1}' already exists.": "«{0}{1}» уже существует.",
@@ -1533,7 +1532,9 @@
     "The player starts facing left (adds |1 to the Animation, e.g. JumpOff|18|1)": "Игрок начинает лицом влево (добавляет |1 к анимации, например JumpOff|18|1)",
     "Game View: following the runner's Camera node": "Игровой вид: следует за узлом Camera бегуна",
     "moves.xml not found: {0}": "moves.xml не найден: {0}",
-    "The runner's physics model was not found: {0} (copy models/0.xml from the project template).": "Физическая модель бегуна не найдена: {0} (скопируйте models/0.xml из шаблона проекта).",
-    "moves.xml has no '{0}' move (the spawn move).": "В moves.xml нет движения «{0}» (движение появления)."
+    "moves.xml has no '{0}' move (the spawn move).": "В moves.xml нет движения «{0}» (движение появления).",
+    "{0} could not be read: {1}": "Не удалось прочитать {0}: {1}",
+    "Play run.bin on models/0.xml + 1.xml with this gear attached": "Проиграть run.bin на models/0.xml + 1.xml с этим снаряжением",
+    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Конфликт: «{0}» в <{1}> определён и в {2}, и в {3}.\nУдалите одно из определений, чтобы просмотреть персонажа."
   }
 }

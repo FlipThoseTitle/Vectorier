@@ -46,45 +46,48 @@ public partial class SceneView
     }
 
     /// <summary>
-    /// The black silhouettes (placed character and placement ghost). Drawn by the renderer right after the
-    /// gameplay layer, so the model sits above the level's gameplay art and below the Overlay layer and the
-    /// layers in front of it (no z-fighting with gameplay art).
+    /// The black silhouettes (placed character, gameplay character and placement ghost), drawn by the game's model
+    /// drawing (runner.xml). Drawn by the renderer right after the gameplay layer, so the model sits above the level's
+    /// gameplay art and below the Overlay layer and the layers in front of it (no z-fighting with gameplay art).
     /// </summary>
     private void RenderMoveVisualizerModel(DrawingContext context, SceneViewport viewport)
     {
         if (_editor == null) return;
         var mv = _editor.MoveVisualizer;
-        var anim = mv.Animation;
-        if (anim.Model is not { } model || !mv.RenderModel) return;
+        if (mv.Animation.Model is null || !mv.RenderModel) return;
         var screen = new Rect(viewport.Size);
 
-        if (mv.IsPlaced && anim.IsOffsetInitialized && anim.AnimationNodes is { } nodes)
-        {
-            var m = MoveVisualizerMatrix(viewport, mv.Host);
-            double k = m.M11;
-            var pts = Project(nodes, p => mv.ToLevel(p), m);
-            if (ScreenBounds(pts, model.MaxRadius * k + 2).Intersects(screen))
-                context.DrawGeometry(MvSilhouette, null, BuildSilhouette(model, nodes, pts, k));
-        }
+        // Animation mode: the move, in the level coordinates of its host's layer.
+        if (mv.PlacedCharacter is { } placed)
+            DrawModel(context, placed.Object, MoveVisualizerMatrix(viewport, mv.Host), screen, MvSilhouette);
 
         // Gameplay: the character (level coordinates, gameplay layer).
-        if (mv.GameplayNodes is { } gameplay)
-        {
-            var m = MoveVisualizerMatrix(viewport, null);
-            double k = m.M11;
-            var pts = Project(gameplay, LevelPoint, m);
-            if (ScreenBounds(pts, model.MaxRadius * k + 2).Intersects(screen))
-                context.DrawGeometry(MvSilhouette, null, BuildSilhouette(model, gameplay, pts, k));
-        }
+        if (mv.GameplayCharacter is { } gameplay)
+            DrawModel(context, gameplay, MoveVisualizerMatrix(viewport, null), screen, MvSilhouette);
 
-        if (mv.IsPlacementActive && PreviewNodes(mv) is { } preview)
+        if (mv.IsPlacementActive && PreviewNodes(mv) is { } preview && mv.GhostAt(LevelNodes(preview)) is { } ghost)
+            DrawModel(context, ghost.Object, MoveVisualizerMatrix(viewport, null), screen, MvGhost);
+    }
+
+    /// <summary>A model in level coordinates, through the layer's level → screen matrix (skipped when off screen).</summary>
+    private static void DrawModel(DrawingContext context, Vectorier.Gameplay.Models.ModelObject model, Matrix m, Rect screen, IBrush brush)
+    {
+        var geometry = Services.Assets.ModelView.Draw(model, p => new Point(p.X, p.Y).Transform(m), m.M11, out var bounds);
+        if (bounds.Inflate(2).Intersects(screen))
+            context.DrawGeometry(brush, null, geometry);
+    }
+
+    /// <summary>The preview's nodes as the game's (level coordinates, Z as in the files).</summary>
+    private static Vector3[] LevelNodes((Vector3[] Nodes, Func<Vector3, Point> ToLevel) preview)
+    {
+        var nodes = new Vector3[preview.Nodes.Length];
+        bool gameplay = preview.ToLevel == (Func<Vector3, Point>)LevelPoint;
+        for (int i = 0; i < nodes.Length; i++)
         {
-            var m = MoveVisualizerMatrix(viewport, null);
-            double k = m.M11;
-            var pts = Project(preview.Nodes, preview.ToLevel, m);
-            if (ScreenBounds(pts, model.MaxRadius * k + 2).Intersects(screen))
-                context.DrawGeometry(MvGhost, null, BuildSilhouette(model, preview.Nodes, pts, k));
+            var p = preview.ToLevel(preview.Nodes[i]);
+            nodes[i] = new Vector3((float)p.X, (float)p.Y, gameplay ? preview.Nodes[i].Z : -preview.Nodes[i].Z);
         }
+        return nodes;
     }
 
     private static Point LevelPoint(Vector3 p) => new(p.X, p.Y);
@@ -165,58 +168,6 @@ public partial class SceneView
         }
         return new Rect(minX - inflate, minY - inflate, maxX - minX + inflate * 2, maxY - minY + inflate * 2);
     }
-
-    /// <summary>
-    /// Unity ModelRenderer.UpdateCapsules seen from the front: spheres of Radius1 / Radius2 at the trimmed ends
-    /// and a cylinder of their average radius between them.
-    /// </summary>
-    private static Geometry BuildSilhouette(MoveModel model, Vector3[] nodes, Point[] pts, double k)
-    {
-        var geometry = new StreamGeometry();
-        using var ctx = geometry.Open();
-        ctx.SetFillRule(FillRule.NonZero);
-        foreach (var c in model.Capsules)
-        {
-            if ((uint)c.A >= (uint)nodes.Length || (uint)c.B >= (uint)nodes.Length)
-                continue;
-            float t0 = Math.Clamp(c.Margin1, 0, 1), t1 = Math.Clamp(1 - c.Margin2, 0, 1);
-            if (t1 < t0) (t0, t1) = (t1, t0);
-            // Hidden like Unity when the trimmed capsule has no length (in 3D).
-            if ((Vector3.Lerp(nodes[c.A], nodes[c.B], t1) - Vector3.Lerp(nodes[c.A], nodes[c.B], t0)).Length() < 1e-4f)
-                continue;
-
-            var a = pts[c.A];
-            var b = pts[c.B];
-            var p0 = a + (b - a) * t0;
-            var p1 = a + (b - a) * t1;
-            double ra = Math.Max(0.0001, c.Radius1) * k;
-            double rb = Math.Max(0.0001, c.Radius2) * k;
-            double rc = Math.Max(0.0001, (c.Radius1 + c.Radius2) * 0.5) * k;
-
-            AddCircle(ctx, p0, ra);
-            AddCircle(ctx, p1, rb);
-            var d = p1 - p0;
-            double len = Math.Sqrt(d.X * d.X + d.Y * d.Y);
-            if (len < 1e-6)
-            {
-                AddCircle(ctx, p0, rc); // pointing at the viewer: the cylinder is a disc
-                continue;
-            }
-            var n = new Avalonia.Vector(-d.Y / len * rc, d.X / len * rc);
-            Services.Assets.FillPolygon.Add(ctx, p0 + n, p1 + n, p1 - n, p0 - n);
-        }
-        return geometry;
-    }
-
-    private static void AddCircle(StreamGeometryContext ctx, Point c, double r)
-    {
-        if (r <= 0) return;
-        ctx.BeginFigure(new Point(c.X + r, c.Y), true);
-        ctx.ArcTo(new Point(c.X - r, c.Y), new Size(r, r), 0, false, SweepDirection.Clockwise);
-        ctx.ArcTo(new Point(c.X + r, c.Y), new Size(r, r), 0, false, SweepDirection.Clockwise);
-        ctx.EndFigure(true);
-    }
-
 
     /// <summary>Node spheres (2 units across; the Camera node 12).</summary>
     private static void DrawNodes(DrawingContext context, MoveModel model, Point[] pts, double k, IBrush normal, IBrush camera)

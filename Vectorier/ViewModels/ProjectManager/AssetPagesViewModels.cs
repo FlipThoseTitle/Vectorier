@@ -245,7 +245,7 @@ public sealed partial class AnimationsPageViewModel : PmPageViewModel
             return;
         string name = SelectedItems[0];
         await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Project, Loc.F("Preview - {0}", name),
-            new[] { Services.Assets.CharacterModel.DefaultSkin }, VPath.Combine(DataFolder, name), ViewModels.Preview.PreviewCamera.FollowCameraNode);
+            new[] { Services.Assets.CharacterModel.DefaultSkin }, VPath.Combine(DataFolder, name));
     }
 
     public override bool HasSearch => true;
@@ -903,7 +903,42 @@ public sealed partial class TricksPageViewModel : ShopPageViewModel
 
 public sealed partial class GearsPageViewModel : ShopPageViewModel
 {
-    public GearsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Gears"), "Gears") { }
+    public GearsPageViewModel(ProjectManagerViewModel owner) : base(owner, Loc.T("Gears"), "Gears")
+    {
+        // Preview needs the selected gear's model file (found in the background).
+        ShopItemViewModel? watched = null;
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(SelectedItem))
+                return;
+            if (watched != null) watched.PropertyChanged -= OnItemChanged;
+            watched = SelectedItem;
+            if (watched != null) watched.PropertyChanged += OnItemChanged;
+            OnPropertyChanged(nameof(CanPreview));
+        };
+    }
+
+    private void OnItemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ShopItemViewModel.HasModel))
+            OnPropertyChanged(nameof(CanPreview));
+    }
+
+    /// <summary>One gear is selected and its model file exists.</summary>
+    public bool CanPreview => SelectedItem is { HasModel: true };
+
+    /// <summary>
+    /// Like the Level Settings skin preview: run.bin on models/0.xml with 1.xml and the gear's own model XML attached.
+    /// </summary>
+    [RelayCommand]
+    private async Task PreviewAsync()
+    {
+        if (SelectedItem is not { HasModel: true } item)
+            return;
+        await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(Project, Loc.F("Preview - {0}", item.Name),
+            new[] { Services.Assets.CharacterModel.DefaultSkin, item.Name },
+            ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(Project, ViewModels.Preview.CharacterPreviewViewModel.RunAnimation));
+    }
 
     protected override string Group => ShopService.ClothingGroup;
     protected override string Prefix => "GEAR_";

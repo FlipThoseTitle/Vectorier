@@ -597,6 +597,10 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             Host = host;
             _lastPlacedPosition = space;
             IsPlaced = true;
+            // The start pose, its cloth already hanging.
+            model.Placed.ResetToRest();
+            SyncPlacedModel(tick: false);
+            model.Placed.Settle(60);
             StatusMessage = string.Empty;
             SyncFrames();
             UpdateTimer();
@@ -885,11 +889,11 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     partial void OnHasFramesChanged(bool value) => OnPropertyChanged(nameof(CanRestart));
 
-    /// <summary>The placement preview in Gameplay mode: the runner's rest pose (what spawns), in level coordinates.</summary>
+    /// <summary>The placement preview in Gameplay mode: runner.xml's rest pose (what spawns), in level coordinates.</summary>
     public Vector3[]? GameplayPreviewNodes { get; private set; }
 
-    /// <summary>The gameplay character's nodes in level coordinates (drawn with runner.xml), or null.</summary>
-    public Vector3[]? GameplayNodes => IsGameplaySpawned ? Gameplay.DrawNodes() : null;
+    /// <summary>The gameplay character (runner.xml as the game holds it, level coordinates), or null.</summary>
+    public Vectorier.Gameplay.Models.ModelObject? GameplayCharacter => IsGameplaySpawned ? Gameplay.Character : null;
 
     /// <summary>Game View: while a gameplay character is in the level, the camera follows its Camera node (the game's camera).</summary>
     public Point? GameViewCenter => IsGameplaySpawned ? Gameplay.CameraPosition : null;
@@ -911,8 +915,8 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             IsBusy = true;
             if (await EnsureModelAsync() is not { } model)
                 return false;
-            await GameplaySession.LoadAsync(_editor.Project);
-            _gameplayRestPose = GameplaySession.RestPose(model);
+            await GameplaySession.LoadAsync(_editor.Project, model.Data);
+            _gameplayRestPose = model.Placed.RestPose.ToArray();
             return true;
         }
         catch (Exception ex)
@@ -953,7 +957,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             {
                 _editor.BuildDefinition(def);
                 return def.Content;
-            }, _editor.Document.Roots, _model);
+            }, _editor.Document.Roots);
             IsGameplaySpawned = true;
             GameplayStateText = Gameplay.StateText;
             StatusMessage = IsPlacementActive
@@ -1098,9 +1102,59 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     // ================= PLAYBACK ================= //
 
+    private Vector3[] _placedLevel = Array.Empty<Vector3>();
+
+    /// <summary>
+    /// The placed character (runner.xml) takes the move's pose: its animated nodes in level coordinates, then (a game
+    /// tick) its cloth and macro nodes. Without a tick it is only put there.
+    /// </summary>
+    private void SyncPlacedModel(bool tick)
+    {
+        if (_model == null || !IsPlaced || Animation.AnimationNodes is not { } nodes)
+            return;
+        int n = Math.Min(Animation.AnimatedNodeCount, nodes.Length);
+        if (_placedLevel.Length != n)
+            _placedLevel = new Vector3[n];
+        for (int i = 0; i < n; i++)
+        {
+            var p = ToLevel(nodes[i]);
+            _placedLevel[i] = new Vector3((float)p.X, (float)p.Y, -nodes[i].Z);
+        }
+        if (tick)
+            _model.Placed.Tick(_placedLevel, n);
+        else
+            _model.Placed.Set(_placedLevel, n);
+    }
+
+    /// <summary>
+    /// The placed character to draw (Animation mode), or null. Not ticking (paused, no cloth), it is put where the move
+    /// is now, so it follows its host when the host is moved.
+    /// </summary>
+    public ModelView? PlacedCharacter
+    {
+        get
+        {
+            if (!IsPlaced || !Animation.IsOffsetInitialized || _model == null)
+                return null;
+            if (!_timer.IsEnabled)
+                SyncPlacedModel(tick: false);
+            return _model.Placed;
+        }
+    }
+
+    /// <summary>The placement ghost, posed at <paramref name="nodes"/> (every node, level coordinates).</summary>
+    public ModelView? GhostAt(IReadOnlyList<Vector3> nodes)
+    {
+        if (_model == null)
+            return null;
+        _model.Ghost.Set(nodes);
+        return _model.Ghost;
+    }
+
     private void UpdateTimer()
     {
-        bool run = IsPlaced && Animation.IsOffsetInitialized && Animation.IsPlaying;
+        // Paused, a model with cloth still ticks (its cloth settles).
+        bool run = IsPlaced && Animation.IsOffsetInitialized && (Animation.IsPlaying || _model is { Placed.HasCloth: true });
         if (run && !_timer.IsEnabled)
         {
             _timer.Start();
@@ -1114,7 +1168,16 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     private void UpdatePlayback()
     {
         if (!Animation.TryAdvancePlayback(Now))
+        {
+            // Paused: the cloth still moves.
+            if (IsPlaced && _model is { Placed.HasCloth: true } && !Animation.IsPlaying)
+            {
+                SyncPlacedModel(tick: true);
+                Changed?.Invoke();
+            }
             return;
+        }
+        SyncPlacedModel(tick: true);
         _syncingFrame = true;
         Frame = Animation.CurrentFrameIndex;
         _syncingFrame = false;
@@ -1124,6 +1187,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     private void AfterFrameApplied()
     {
+        SyncPlacedModel(tick: _model is { Placed.HasCloth: true });
         _syncingFrame = true;
         Frame = Animation.CurrentFrameIndex;
         _syncingFrame = false;

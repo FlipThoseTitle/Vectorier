@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
 #nullable disable warnings
 #pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
 using System;
@@ -36,6 +36,17 @@ namespace Vectorier.Gameplay.Animation
             {
                 return new Provider(0);
             }
+            var provider = Parse(bytes);
+            if (useCache)
+            {
+                CachedBinary.TryAdd(fileName, provider);
+            }
+            return provider;
+        }
+
+        /// <summary>An animation .bin read beforehand (frames of nodes, Y turned down like the models).</summary>
+        public static Provider Parse(byte[] bytes)
+        {
             // Read straight from the bytes (little-endian, like BinaryReader) without a stream per value.
             var span = new ReadOnlySpan<byte>(bytes);
             int pos = 0;
@@ -56,10 +67,6 @@ namespace Vectorier.Gameplay.Animation
                     pos += 12;
                 }
                 provider.Add(array, i);
-            }
-            if (useCache)
-            {
-                CachedBinary.TryAdd(fileName, provider);
             }
             return provider;
         }

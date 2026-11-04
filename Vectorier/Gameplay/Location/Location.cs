@@ -1,4 +1,4 @@
-// Ported from Vector-Raylib-For-Vectorier (Core/Location/Location.cs), see Gameplay/README.md.
+// Ported from Vector-Raylib-For-Vectorier (Core/Location/Location.cs).
 // The game builds its level from the level XML; in the editor the Platforms, Trapezoids and Areas come from the
 // open level (GameplayWorld builds them). Only the parts of a tick that move the player are kept: no triggers,
 // items, primitives, transformations or other models.
