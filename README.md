@@ -64,7 +64,7 @@ A Discord server is open for the project : https://discord.com/invite/pVRuFBVwC2
 
 On Windows, a blue "Windows protected your PC" window may show up the first time. This is because the app is not signed, not because it's a virus. Click More info, then Run anyway.
 
-On macOS the app isn't signed by Apple, so the first time it may say it can't be opened. Right-click the app and choose Open, or go to System Settings > Privacy & Security and press Open Anyway. If it asks where the Vectorier folder is, pick the folder you extracted.
+On macOS the app isn't signed by Apple, so the first time it may say it can't be opened. So go to System Settings > Privacy & Security and press Open Anyway. If it asks where the Vectorier folder is, pick the folder you extracted.
 
 ### Building from source
 - Install the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
