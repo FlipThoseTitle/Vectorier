@@ -537,8 +537,31 @@ public sealed partial class InspectorViewModel : ObservableObject
     {
         if (entry == null)
             return;
+        var mode = await AskPreviewModeAsync();
+        if (mode == null)
+            return;
         _editor.IsMoveVisualizerTab = true;
-        await _editor.MoveVisualizer.PreviewAreaAsync(entry.Target);
+        if (mode == MoveSpawnMode.Gameplay)
+            await _editor.MoveVisualizer.PreviewAreaGameplayAsync(entry.Target);
+        else
+            await _editor.MoveVisualizer.PreviewAreaAsync(entry.Target);
+    }
+
+    /// <summary>
+    /// "Preview Animation" on a Spawn or an Area asks how to preview it: play the move (Animation) or spawn a
+    /// runner to play with the arrow keys (Gameplay). Null when cancelled. The tutorial always uses Animation.
+    /// </summary>
+    private static async System.Threading.Tasks.Task<MoveSpawnMode?> AskPreviewModeAsync()
+    {
+        if (Services.Tutorial.TutorialGuide.IsActive)
+            return MoveSpawnMode.Animation;
+        var dialog = new ViewModels.Dialogs.MessageDialogViewModel(Loc.T("Preview Animation"),
+            Loc.T("How do you want to preview it?\n\nAnimation plays the move. Gameplay spawns a runner you control with the arrow keys."),
+            MessageKind.Question);
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Animation"), MoveSpawnMode.Animation, isDefault: true));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Gameplay"), MoveSpawnMode.Gameplay));
+        dialog.Buttons.Add(new ViewModels.Dialogs.DialogButton(Loc.T("Cancel"), null, isCancel: true));
+        return await AppServices.Dialogs.ShowAsync(dialog) is MoveSpawnMode mode ? mode : null;
     }
 
     // ================= TRIGGER: PREVIEW ANIMATION ================= //
@@ -597,15 +620,28 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private async System.Threading.Tasks.Task PreviewMove()
     {
-        switch (_target)
+        if (_target is not (SpawnElement or AreaElement { AreaType: "Trick" }))
+            return;
+        var target = _target;
+        var mode = await AskPreviewModeAsync();
+        if (mode == null)
+            return;
+        bool gameplay = mode == MoveSpawnMode.Gameplay;
+        switch (target)
         {
             case SpawnElement spawn:
                 _editor.IsMoveVisualizerTab = true;
-                await _editor.MoveVisualizer.PreviewSpawnAsync(spawn);
+                if (gameplay)
+                    await _editor.MoveVisualizer.PreviewSpawnGameplayAsync(spawn);
+                else
+                    await _editor.MoveVisualizer.PreviewSpawnAsync(spawn);
                 break;
-            case AreaElement { AreaType: "Trick" } area:
+            case AreaElement area:
                 _editor.IsMoveVisualizerTab = true;
-                await _editor.MoveVisualizer.PreviewAreaAsync(area);
+                if (gameplay)
+                    await _editor.MoveVisualizer.PreviewAreaGameplayAsync(area);
+                else
+                    await _editor.MoveVisualizer.PreviewAreaAsync(area);
                 break;
         }
     }

@@ -39,10 +39,16 @@ public sealed partial class SceneView
     {
         if (_renderer == null)
             return;
-        var camera = GameCamera();
+        // A Gameplay runner: the view follows its model's Camera node, like the game (never the level's Camera).
+        var follow = _editor?.MoveVisualizer.GameViewCenter;
+        var camera = follow == null ? GameCamera() : null;
         var view = CameraElement.ViewSize;
         Point center;
-        if (camera != null)
+        if (follow is { } runner)
+        {
+            center = runner;
+        }
+        else if (camera != null)
         {
             var parent = camera.ParentWorldPosition;
             center = new Point(parent.X + camera.X, parent.Y + camera.Y);
@@ -68,7 +74,8 @@ public sealed partial class SceneView
         context.FillRectangle(LetterboxBrush, new Rect(frame.Right, frame.Top, Math.Max(0, size.Width - frame.Right), frame.Height));
         context.DrawRectangle(null, CameraFramePen, frame);
 
-        string label = camera == null ? Loc.T("No Camera in this level: showing the Scene's center") : Loc.T("Game View (read-only)");
+        string label = follow != null ? Loc.T("Game View: following the runner's Camera node")
+            : camera == null ? Loc.T("No Camera in this level: showing the Scene's center") : Loc.T("Game View (read-only)");
         var text = new FormattedText(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, 11, Brushes.White);
         context.DrawRectangle(new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0)), null, new Rect(6, 6, text.Width + 12, text.Height + 6), 3, 3);
         context.DrawText(text, new Point(12, 9));

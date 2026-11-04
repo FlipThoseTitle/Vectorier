@@ -503,7 +503,7 @@ public sealed partial class SpawnElement : PointElement
         {
             // A dropdown losing its item (moves not loaded yet) pushes null: keep the move.
             if (!string.IsNullOrWhiteSpace(value))
-                Animation = Compose(value, StartFrame);
+                Animation = Compose(value, StartFrame, Reverse);
         }
     }
 
@@ -511,26 +511,43 @@ public sealed partial class SpawnElement : PointElement
     public int StartFrame
     {
         get => Split().Frame;
-        set => Animation = Compose(MoveName, Math.Max(0, value));
+        set => Animation = Compose(MoveName, Math.Max(0, value), Reverse);
     }
 
-    private (string Move, int Frame) Split()
+    /// <summary>
+    /// The optional third part of <see cref="Animation"/>: the game plays the spawn's move reversed (to the left) when
+    /// it is above 0 ("JumpOff|18|1").
+    /// </summary>
+    public bool Reverse
     {
-        var text = Animation ?? string.Empty;
-        int bar = text.IndexOf('|');
-        if (bar < 0)
-            return (text.Trim(), 0);
-        int.TryParse(text[(bar + 1)..].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int f);
-        return (text[..bar].Trim(), Math.Max(0, f));
+        get => Split().Reverse;
+        set
+        {
+            if (value != Reverse)
+                Animation = Compose(MoveName, StartFrame, value);
+        }
     }
 
-    private static string Compose(string? move, int frame)
-        => (move ?? string.Empty).Trim() + "|" + frame.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    private (string Move, int Frame, bool Reverse) Split()
+    {
+        var parts = (Animation ?? string.Empty).Split('|');
+        string move = parts[0].Trim();
+        int frame = 0;
+        if (parts.Length > 1)
+            int.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out frame);
+        bool reverse = parts.Length > 2 && int.TryParse(parts[2].Trim(), System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out int r) && r > 0;
+        return (move, Math.Max(0, frame), reverse);
+    }
+
+    private static string Compose(string? move, int frame, bool reverse)
+        => (move ?? string.Empty).Trim() + "|" + frame.ToString(System.Globalization.CultureInfo.InvariantCulture) + (reverse ? "|1" : string.Empty);
 
     partial void OnAnimationChanged(string value)
     {
         OnPropertyChanged(nameof(MoveName));
         OnPropertyChanged(nameof(StartFrame));
+        OnPropertyChanged(nameof(Reverse));
     }
 
     protected override SceneElement CreateEmpty() => new SpawnElement();

@@ -356,6 +356,23 @@ public partial class EditorView : UserControl
             return;
         }
 
+        // A Gameplay runner in the level: the arrow keys play it (one press per tap, like the game) instead of nudging.
+        if (_vm.MoveVisualizer.IsGameplaySpawned && mods == KeyModifiers.None && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
+        {
+            if (_heldKeys.Add(e.Key))
+            {
+                _vm.MoveVisualizer.PressGameplayKey(e.Key switch
+                {
+                    Key.Left => Vectorier.Gameplay.KeyboardKey.Left,
+                    Key.Right => Vectorier.Gameplay.KeyboardKey.Right,
+                    Key.Up => Vectorier.Gameplay.KeyboardKey.Up,
+                    _ => Vectorier.Gameplay.KeyboardKey.Down,
+                });
+            }
+            e.Handled = true;
+            return;
+        }
+
         // Move Visualizer placement: hold C to stick to platforms, Esc stops placing.
         if (_vm.MoveVisualizer.IsPlacementActive)
         {

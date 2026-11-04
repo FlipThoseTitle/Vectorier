@@ -23,7 +23,11 @@ using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
-public enum MovePlacementMode { Movement, Tricks, Custom }
+/// <summary>
+/// Animation: plays one of the editor's movement bins where you click. Gameplay: spawns a character you control with
+/// the arrow keys (the game's movement, see <see cref="GameplaySession"/>).
+/// </summary>
+public enum MoveSpawnMode { Animation, Gameplay }
 
 public enum MovementType
 {
@@ -42,35 +46,14 @@ public enum MovementType
     FlyCollision,
 }
 
-/// <summary>A trick of the active project's TrickGroup whose bin exists.</summary>
-public sealed partial class TrickEntry : ObservableObject
-{
-    public TrickEntry(string identifier, string fileName)
-    {
-        Identifier = identifier;
-        FileName = fileName;
-        string[] parts = Path.GetFileNameWithoutExtension(fileName).Split('_', StringSplitOptions.RemoveEmptyEntries);
-        DisplayName = string.Join(" ", parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant()));
-        ImageName = "TRACK_TRICK_" + Path.GetFileNameWithoutExtension(fileName).Replace("_", string.Empty).ToUpperInvariant();
-    }
-
-    public string Identifier { get; }
-    public string FileName { get; }
-    public string DisplayName { get; }
-    public string ImageName { get; }
-
-    [ObservableProperty] private Bitmap? _icon;
-    public bool HasIcon => Icon != null;
-    partial void OnIconChanged(Bitmap? value) => OnPropertyChanged(nameof(HasIcon));
-}
-
 /// <summary>Where the placement preview snapped to (drawn as a line and a dot in the Scene).</summary>
 public readonly record struct MoveSnapIndicator(Point Cursor, Point Target, bool IsCorner);
 
 /// <summary>
 /// Move Visualizer (port of Unity's EditorScripts/Tools/MoveVisualizer.cs): places the runner model in the
-/// Scene and plays a move on it, to check jump distances and trick timing while building the level.
-/// The character is always drawn as a black silhouette, and stays in the Scene after placement stops.
+/// Scene and plays a move on it, to check jump distances and trick timing while building the level (Animation spawn
+/// mode), or spawns a character that runs on the level with the game's movement and is controlled with the arrow
+/// keys (Gameplay spawn mode). The character is drawn as a black silhouette and stays after spawning stops.
 /// </summary>
 public sealed partial class MoveVisualizerViewModel : ObservableObject
 {
@@ -78,7 +61,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     public const string MovementFolder = "Editor/MoveVisualizer/animations";
     private const string MovesRelativePath = "animations/moves.xml";
     private const string BinsRelativeFolder = "animations/data";
-    private const string TrickIconsRelativeFolder = "icons/tricks";
     private const string DefaultProject = "Vector";
 
     // Platform snapping while C is held (Unity TransformSnap constants).
@@ -102,7 +84,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         { MovementType.FlyCollision, "fly_collision.bin" },
     };
 
-    public static IReadOnlyList<MovePlacementMode> PlacementModes { get; } = Enum.GetValues<MovePlacementMode>();
+    public static IReadOnlyList<MoveSpawnMode> SpawnModes { get; } = Enum.GetValues<MoveSpawnMode>();
     public static IReadOnlyList<MovementType> MovementTypes { get; } = Enum.GetValues<MovementType>();
     public static IReadOnlyList<string> PivotNodePresets { get; } = new[] { "NPivot", "DetectorH", "DetectorV" };
 
@@ -113,8 +95,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     private readonly DispatcherTimer _timer;
     private MoveModel? _model;
     private Task<MoveModel?>? _modelLoad;
-    private byte[]? _customBinData;
-    private string? _customBinName;
     private Vector3 _lastPlacedPosition; // animation space
     private bool _syncingFrame;
 
@@ -122,6 +102,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     {
         _editor = editor;
         _timer = new DispatcherTimer(TimeSpan.FromSeconds(1.0 / MoveAnimation.TargetFps), DispatcherPriority.Render, (_, _) => UpdatePlayback());
+        _gameplayTimer = new DispatcherTimer(TimeSpan.FromSeconds(GameplaySession.TickSeconds / 2), DispatcherPriority.Render, (_, _) => UpdateGameplay());
         editor.SelectionChanged += RefreshSelectedArea;
     }
 
@@ -139,23 +120,16 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     // ================= SETTINGS ================= //
 
     [ObservableProperty] private bool _renderModel = true;
-    [ObservableProperty] private bool _renderEdges;
     [ObservableProperty] private bool _renderTrajectory = true;
-    [ObservableProperty] private bool _renderDetector;
-    [ObservableProperty] private int _deltaDetectorH;
-    [ObservableProperty] private int _deltaDetectorV;
     [ObservableProperty] private bool _followCamera;
     [ObservableProperty] private bool _reverse;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMovementMode), nameof(IsTricksMode), nameof(IsCustomMode))]
-    private MovePlacementMode _placementMode = MovePlacementMode.Movement;
+    [NotifyPropertyChangedFor(nameof(IsAnimationMode), nameof(IsGameplayMode), nameof(MainButtonText), nameof(ShowsSelectedTrickArea))]
+    private MoveSpawnMode _spawnMode = MoveSpawnMode.Animation;
 
     [ObservableProperty] private MovementType _movementType = MovementType.Jump;
-    [ObservableProperty] private TrickEntry? _selectedTrick;
-    [ObservableProperty] private string _customBinPath = string.Empty;
     [ObservableProperty] private string _pivotNodeName = "DetectorH";
-    [ObservableProperty] private bool _stayInPlace;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MainButtonText))]
@@ -165,13 +139,8 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
 
-    public bool IsMovementMode => PlacementMode == MovePlacementMode.Movement;
-    public bool IsTricksMode => PlacementMode == MovePlacementMode.Tricks;
-    public bool IsCustomMode => PlacementMode == MovePlacementMode.Custom;
-
-    public ObservableCollection<TrickEntry> Tricks { get; } = new();
-    [ObservableProperty] private bool _tricksLoaded;
-    public bool HasTricks => Tricks.Count > 0;
+    public bool IsAnimationMode => SpawnMode == MoveSpawnMode.Animation;
+    public bool IsGameplayMode => SpawnMode == MoveSpawnMode.Gameplay;
 
     /// <summary>Hold C while placing: the pivot sticks to the nearest platform corner or edge.</summary>
     public bool PlatformSnapHeld { get; set; }
@@ -181,13 +150,17 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     // ================= SELECTED TRICK AREA ================= //
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedTrickArea), nameof(MainButtonText), nameof(SelectedAreaName))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedTrickArea), nameof(ShowsSelectedTrickArea), nameof(MainButtonText), nameof(SelectedAreaName))]
     private AreaElement? _selectedArea;
 
     public bool HasSelectedTrickArea => SelectedArea is { AreaType: "Trick" };
+
+    /// <summary>Animation mode with a Trick Area selected: the main button previews its trick.</summary>
+    public bool ShowsSelectedTrickArea => HasSelectedTrickArea && IsAnimationMode;
+
     public string SelectedAreaName => SelectedArea?.Name ?? string.Empty;
 
-    public string MainButtonText => HasSelectedTrickArea ? Loc.T("Preview Animation") : IsPlacementActive ? Loc.T("Stop Placement") : Loc.T("Start Placement");
+    public string MainButtonText => ShowsSelectedTrickArea ? Loc.T("Preview Animation") : IsPlacementActive ? Loc.T("Stop") : Loc.T("Spawn");
 
     /// <summary>An Area to preview, with where its parent sits (it may come from an Object's referenced content).</summary>
     public sealed record AreaTarget(AreaElement Area, Point Origin, SceneElement Host, string? ParentName);
@@ -231,7 +204,10 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         if (!ReferenceEquals(area0, SelectedArea))
             SelectedArea = area0;
         else
+        {
             OnPropertyChanged(nameof(HasSelectedTrickArea));
+            OnPropertyChanged(nameof(ShowsSelectedTrickArea));
+        }
     }
 
     private static AreaTarget TargetFor(AreaElement area) =>
@@ -311,38 +287,37 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     // ================= SETTING CHANGES ================= //
 
     partial void OnRenderModelChanged(bool value) => Changed?.Invoke();
-    partial void OnRenderEdgesChanged(bool value) => Changed?.Invoke();
     partial void OnRenderTrajectoryChanged(bool value) => Changed?.Invoke();
-    partial void OnRenderDetectorChanged(bool value) => Changed?.Invoke();
-    partial void OnDeltaDetectorHChanged(int value)
-    {
-        if (value < 0) DeltaDetectorH = 0;
-        Changed?.Invoke();
-    }
-    partial void OnDeltaDetectorVChanged(int value)
-    {
-        if (value < 0) DeltaDetectorV = 0;
-        Changed?.Invoke();
-    }
     partial void OnFollowCameraChanged(bool value) => Follow();
 
-    partial void OnPlacementModeChanged(MovePlacementMode value)
+    /// <summary>One character at a time: changing the mode stops spawning and removes the other mode's character.</summary>
+    partial void OnSpawnModeChanged(MoveSpawnMode value)
     {
-        if (value == MovePlacementMode.Tricks && !TricksLoaded)
-            _ = DiscoverTricksAsync();
-    }
-
-    partial void OnCustomBinPathChanged(string value)
-    {
-        if (value != _customBinName)
+        StopPlacement();
+        if (value == MoveSpawnMode.Gameplay)
         {
-            _customBinData = null;
-            _customBinName = null;
+            if (IsPlaced)
+                ResetAll();
         }
+        else
+        {
+            ClearGameplay();
+        }
+        StatusMessage = string.Empty;
+        Changed?.Invoke();
     }
 
     async partial void OnReverseChanged(bool value)
     {
+        // Gameplay: the character spawns again where it last spawned, with the move reversed (|1) or not.
+        if (IsGameplayMode)
+        {
+            if (_suppressReverseRespawn)
+                return;
+            if (Gameplay.LastSpawn is { } last)
+                await SpawnGameplayAsync(last with { Animation = WithReverse(last.Animation, value) });
+            return;
+        }
         Animation.Reverse = value;
         if (_model != null)
             Animation.EnsureModelLoadedForPreview(_model);
@@ -363,7 +338,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     [RelayCommand]
     private async Task MainButton()
     {
-        if (HasSelectedTrickArea && _selectedTarget != null)
+        if (ShowsSelectedTrickArea && _selectedTarget != null)
         {
             await PreviewAreaAsync(_selectedTarget);
             return;
@@ -373,10 +348,12 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         SnapIndicator = null;
         if (IsPlacementActive)
         {
-            if (await EnsureModelAsync() == null)
+            if (await EnsureModelAsync() == null || (IsGameplayMode && !await EnsureGameplayAsync()))
                 IsPlacementActive = false;
             else
-                StatusMessage = Loc.T("Click in the Scene to place the runner. Hold C to stick to platforms.");
+                StatusMessage = IsGameplayMode
+                    ? Loc.T("Click in the Scene to spawn the runner, then play it with the arrow keys. Hold C to stick to platforms.")
+                    : Loc.T("Click in the Scene to place the runner. Hold C to stick to platforms.");
         }
         else
         {
@@ -394,6 +371,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         PlatformSnapHeld = false;
         SnapIndicator = null;
         Animation.ClearPreview();
+        GameplayPreviewNodes = null;
         StatusMessage = string.Empty;
         Changed?.Invoke();
     }
@@ -402,6 +380,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     private void Clear()
     {
         ResetAll();
+        ClearGameplay();
         StatusMessage = string.Empty;
         Changed?.Invoke();
     }
@@ -413,8 +392,14 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Restart()
+    private async Task Restart()
     {
+        if (IsGameplayMode)
+        {
+            if (Gameplay.LastSpawn is { } last)
+                await SpawnGameplayAsync(last with { Animation = WithReverse(last.Animation, Reverse) });
+            return;
+        }
         if (!HasFrames) return;
         Animation.CurrentFrameIndex = Animation.StartFrame;
         Animation.ApplyFrame(Animation.StartFrame);
@@ -426,46 +411,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     {
         if (!string.IsNullOrEmpty(preset))
             PivotNodeName = preset;
-    }
-
-    [RelayCommand]
-    private void PickTrick(TrickEntry? trick)
-    {
-        if (trick != null)
-            SelectedTrick = trick;
-    }
-
-    [RelayCommand]
-    private Task RefreshTricks() => DiscoverTricksAsync();
-
-    /// <summary>"..." next to Bin Path: any .bin / .bytes file (read once, so it also works in the browser).</summary>
-    [RelayCommand]
-    private async Task BrowseCustomBin()
-    {
-        var topLevel = AppServices.Shell.CurrentTopLevel;
-        if (topLevel == null) return;
-        var start = await AppServices.FileSystem.GetStorageFolderAsync(_editor.Project.AnimationsFolder, topLevel.StorageProvider);
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = Loc.T("Select animation bin"),
-            AllowMultiple = false,
-            SuggestedStartLocation = start,
-            FileTypeFilter = new[] { new FilePickerFileType(Loc.T("Animation bin")) { Patterns = new[] { "*.bin", "*.bytes" } } },
-        });
-        if (files.Count == 0) return;
-        try
-        {
-            await using var stream = await files[0].OpenReadAsync();
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            _customBinData = ms.ToArray();
-            _customBinName = files[0].TryGetLocalPath() ?? files[0].Name;
-            CustomBinPath = _customBinName;
-        }
-        catch (Exception ex)
-        {
-            Report(Loc.T("Could not read the bin: ") + ex.Message);
-        }
     }
 
     // ================= SCENE INPUT ================= //
@@ -481,6 +426,12 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         {
             SnapIndicator = new MoveSnapIndicator(level, snapped, corner);
             target = snapped;
+        }
+        if (IsGameplayMode)
+        {
+            UpdateGameplayPreview(target);
+            Changed?.Invoke();
+            return;
         }
         try
         {
@@ -500,6 +451,17 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         var target = level;
         if (PlatformSnapHeld && TryGetPlatformSnapPoint(level, out var snapped, out _))
             target = snapped;
+        if (IsGameplayMode)
+        {
+            // The spawn move is always JumpOff from frame 18 (|1: reversed), as the game spawns the player.
+            string animation = WithReverse($"{GameplaySession.SpawnMove}|{GameplaySession.SpawnFrame}", Reverse);
+            if (await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)target.X, (float)target.Y), animation, PivotNodeName)))
+            {
+                GameplayPreviewNodes = null;
+                Changed?.Invoke();
+            }
+            return;
+        }
         if (await PlaceAtAsync(ToSpace(target, null), null))
         {
             Animation.ClearPreview();
@@ -622,16 +584,16 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         if (model == null) return false;
         var bin = await ResolvePlacementBinAsync();
         if (bin == null) return false;
-        return Place(space, host, model, bin, PivotNodeName, StayInPlace, Animation.StartFrame);
+        return Place(space, host, model, bin, PivotNodeName, Animation.StartFrame);
     }
 
-    private bool Place(Vector3 space, SceneElement? host, MoveModel model, byte[] bin, string pivot, bool stayInPlace, int startFrame, bool? reverse = null)
+    private bool Place(Vector3 space, SceneElement? host, MoveModel model, byte[] bin, string pivot, int startFrame, bool? reverse = null)
     {
         try
         {
             Animation.Reverse = reverse ?? Reverse;
             Animation.StartFrame = startFrame;
-            Animation.PlaceAt(space, model, bin, pivot, stayInPlace, Now);
+            Animation.PlaceAt(space, model, bin, pivot, false, Now);
             Host = host;
             _lastPlacedPosition = space;
             IsPlaced = true;
@@ -649,41 +611,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
     }
 
-    private async Task<byte[]?> ResolvePlacementBinAsync()
-    {
-        switch (PlacementMode)
-        {
-            case MovePlacementMode.Custom:
-            {
-                if (string.IsNullOrWhiteSpace(CustomBinPath))
-                {
-                    Report(Loc.T("Custom Bin Path is empty."));
-                    return null;
-                }
-                if (_customBinData != null && CustomBinPath == _customBinName)
-                    return _customBinData;
-                return await ReadAnyAsync(CustomBinPath.Trim());
-            }
-            case MovePlacementMode.Tricks:
-            {
-                if (!TricksLoaded) await DiscoverTricksAsync();
-                if (SelectedTrick == null)
-                {
-                    Report(Loc.T("No trick selected."));
-                    return null;
-                }
-                string? path = await ResolveProjectFileAsync($"{BinsRelativeFolder}/{SelectedTrick.FileName}");
-                if (path == null)
-                {
-                    Report(Loc.F("Animation bin not found: {0}", VPath.Combine(_editor.Project.Path, BinsRelativeFolder, SelectedTrick.FileName)));
-                    return null;
-                }
-                return await AppServices.FileSystem.ReadAllBytesAsync(path);
-            }
-            default:
-                return await ReadAnyAsync(VPath.Combine(MovementFolder, MovementBins[MovementType]));
-        }
-    }
+    private Task<byte[]?> ResolvePlacementBinAsync() => ReadAnyAsync(VPath.Combine(MovementFolder, MovementBins[MovementType]));
 
     /// <summary>A path inside the Vectorier folder, or (desktop) an absolute path.</summary>
     private async Task<byte[]?> ReadAnyAsync(string path)
@@ -777,11 +705,10 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             if (model == null) return;
             StopPlacement();
             var host = (SceneElement?)spawn.Parent ?? spawn;
-            if (Place(ToSpace(spawn.WorldPosition, host), host, model, bin, pivot, false, startFrame))
-            {
+            if (SpawnMode != MoveSpawnMode.Animation)
+                SpawnMode = MoveSpawnMode.Animation;
+            if (Place(ToSpace(spawn.WorldPosition, host), host, model, bin, pivot, startFrame, spawn.Reverse))
                 PivotNodeName = pivot;
-                StayInPlace = false;
-            }
         }
         catch (Exception ex)
         {
@@ -851,13 +778,14 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             var target = ToSpace(new Point(forced.OnExit ? bounds.Right : bounds.Left, bounds.Bottom), host);
 
             // Place once, measure the start frame's COM and DetectorH, then move it so they land exactly.
-            if (!Place(target, host, model, bin, pivot, false, startFrame, forced.Reversed) || Animation.AnimationNodes is not { } nodes)
+            if (SpawnMode != MoveSpawnMode.Animation)
+                SpawnMode = MoveSpawnMode.Animation;
+            if (!Place(target, host, model, bin, pivot, startFrame, forced.Reversed) || Animation.AnimationNodes is not { } nodes)
                 return;
             var shift = new Vector3(target.X - nodes[comIndex].X, target.Y - nodes[detectorIndex].Y, 0);
-            if (Place(target + shift, host, model, bin, pivot, false, startFrame, forced.Reversed))
+            if (Place(target + shift, host, model, bin, pivot, startFrame, forced.Reversed))
             {
                 PivotNodeName = pivot;
-                StayInPlace = false;
                 StatusMessage = Loc.F("{0} (frame {1}{2}), {3}", forced.Animation, startFrame,
                     forced.Reversed ? ", " + Loc.T("Reversed") : string.Empty,
                     forced.OnExit ? Loc.T("Model Leaves the Trigger") : Loc.T("Model Enters the Trigger"));
@@ -925,12 +853,11 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             double targetY = bounds.Bottom; // Unity bounds.min.y (Y up) = the bottom edge
 
             StopPlacement();
+            if (SpawnMode != MoveSpawnMode.Animation)
+                SpawnMode = MoveSpawnMode.Animation;
             var host = target.Host;
-            if (Place(ToSpace(new Point(targetX, targetY), host), host, model, bin, pivot, false, firstFrame))
-            {
+            if (Place(ToSpace(new Point(targetX, targetY), host), host, model, bin, pivot, firstFrame))
                 PivotNodeName = pivot;
-                StayInPlace = false;
-            }
         }
         catch (Exception ex)
         {
@@ -938,67 +865,207 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
     }
 
-    // ---------------- Tricks ----------------
+    // ================= GAMEPLAY ================= //
 
-    /// <summary>The TrickGroup reactions of moves.xml whose bin exists in animations/data.</summary>
-    private async Task DiscoverTricksAsync()
+    private readonly DispatcherTimer _gameplayTimer;
+    private Vector3[]? _gameplayRestPose;
+
+    /// <summary>The character of the Gameplay spawn mode (the game's player movement on this level).</summary>
+    public GameplaySession Gameplay { get; } = new();
+
+    /// <summary>A gameplay character is in the level (alive or in physics after a death).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRestart))]
+    private bool _isGameplaySpawned;
+
+    /// <summary>The character's move and frame, or its death.</summary>
+    [ObservableProperty] private string _gameplayStateText = string.Empty;
+
+    public bool CanRestart => IsGameplayMode ? IsGameplaySpawned : HasFrames;
+
+    partial void OnHasFramesChanged(bool value) => OnPropertyChanged(nameof(CanRestart));
+
+    /// <summary>The placement preview in Gameplay mode: the runner's rest pose (what spawns), in level coordinates.</summary>
+    public Vector3[]? GameplayPreviewNodes { get; private set; }
+
+    /// <summary>The gameplay character's nodes in level coordinates (drawn with runner.xml), or null.</summary>
+    public Vector3[]? GameplayNodes => IsGameplaySpawned ? Gameplay.DrawNodes() : null;
+
+    /// <summary>Game View: while a gameplay character is in the level, the camera follows its Camera node (the game's camera).</summary>
+    public Point? GameViewCenter => IsGameplaySpawned ? Gameplay.CameraPosition : null;
+
+    /// <summary>"JumpOff|18" → "JumpOff|18|1" (reversed) or back.</summary>
+    public static string WithReverse(string animation, bool reverse)
     {
-        string? previous = SelectedTrick?.Identifier;
-        Tricks.Clear();
+        var parts = (animation ?? string.Empty).Split('|');
+        string move = parts[0].Trim();
+        string frame = parts.Length > 1 && parts[1].Trim().Length > 0 ? parts[1].Trim() : "0";
+        return reverse ? $"{move}|{frame}|1" : $"{move}|{frame}";
+    }
+
+    /// <summary>Loads the project's moves, animations and runner physics (only again when they changed).</summary>
+    private async Task<bool> EnsureGameplayAsync()
+    {
         try
         {
-            var root = await LoadMovesRootAsync();
-            var group = TrickGroup(root!);
-            var moves = root!.Element("Moves");
-            if (group != null && moves != null)
-            {
-                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var reaction in group.Elements())
-                {
-                    var move = FindMove(root, reaction.Name.LocalName);
-                    string? fileName = (string?)move?.Attribute("FileName");
-                    if (string.IsNullOrWhiteSpace(fileName)) continue;
-                    if (await ResolveProjectFileAsync($"{BinsRelativeFolder}/{fileName}") == null) continue;
-                    string id = fileName.Equals("360_wall_hop.bin", StringComparison.OrdinalIgnoreCase)
-                        ? "Wall_Hop_360"
-                        : Path.GetFileNameWithoutExtension(fileName);
-                    if (!seen.Add(id))
-                    {
-                        // Later entries replace earlier ones (Unity dictionary assignment).
-                        var old = Tricks.First(t => string.Equals(t.Identifier, id, StringComparison.OrdinalIgnoreCase));
-                        Tricks[Tricks.IndexOf(old)] = new TrickEntry(id, fileName);
-                        continue;
-                    }
-                    Tricks.Add(new TrickEntry(id, fileName));
-                }
-            }
+            IsBusy = true;
+            if (await EnsureModelAsync() is not { } model)
+                return false;
+            await GameplaySession.LoadAsync(_editor.Project);
+            _gameplayRestPose = GameplaySession.RestPose(model);
+            return true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("[Move Visualizer] tricks: " + ex.Message);
+            Report(Loc.T("Gameplay could not start: ") + ex.Message);
+            return false;
         }
-        TricksLoaded = true;
-        OnPropertyChanged(nameof(HasTricks));
-        SelectedTrick = Tricks.FirstOrDefault(t => string.Equals(t.Identifier, previous, StringComparison.OrdinalIgnoreCase)) ?? Tricks.FirstOrDefault();
-        _ = LoadTrickIconsAsync(Tricks.ToList());
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
-    private async Task LoadTrickIconsAsync(List<TrickEntry> tricks)
+    private void UpdateGameplayPreview(Point target)
     {
-        foreach (var trick in tricks)
+        if (_gameplayRestPose is not { } rest || _model == null || !_model.TryGetNodeIndex(PivotNodeName, out int pivot) && !_model.TryGetNodeIndex("NPivot", out pivot))
         {
-            try
+            GameplayPreviewNodes = null;
+            return;
+        }
+        var offset = new Vector3((float)target.X, (float)target.Y, 0) - rest[pivot];
+        var nodes = new Vector3[rest.Length];
+        for (int i = 0; i < rest.Length; i++)
+            nodes[i] = rest[i] + offset;
+        GameplayPreviewNodes = nodes;
+    }
+
+    /// <summary>Spawns the gameplay character (again: there is only ever one) on the level as it is now.</summary>
+    private async Task<bool> SpawnGameplayAsync(GameplaySpawn spawn)
+    {
+        if (!await EnsureGameplayAsync() || _model == null)
+            return false;
+        try
+        {
+            if (IsPlaced)
+                ResetAll();
+            Gameplay.Spawn(spawn, def =>
             {
-                string? path = await ResolveProjectFileAsync($"{TrickIconsRelativeFolder}/{trick.ImageName}.png");
-                if (path != null)
-                    trick.Icon = await ImageLoader.LoadAsync(AppServices.FileSystem, path, 128);
-            }
-            catch
-            {
-                // Missing or broken images show "No Image".
-            }
+                _editor.BuildDefinition(def);
+                return def.Content;
+            }, _editor.Document.Roots, _model);
+            IsGameplaySpawned = true;
+            GameplayStateText = Gameplay.StateText;
+            StatusMessage = IsPlacementActive
+                ? Loc.T("Arrow keys play the runner. Click again to spawn it somewhere else, Esc to stop spawning.")
+                : Loc.T("Arrow keys play the runner.");
+            if (!_gameplayTimer.IsEnabled)
+                _gameplayTimer.Start();
+            Gameplay.Advance(); // starts its clock
+            Follow();
+            Changed?.Invoke();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Report(Loc.T("Gameplay could not start: ") + ex.Message);
+            return false;
         }
     }
+
+    /// <summary>The game's ticks due since the last frame, then the views follow.</summary>
+    private void UpdateGameplay()
+    {
+        if (!IsGameplaySpawned)
+        {
+            _gameplayTimer.Stop();
+            return;
+        }
+        if (GameplaySession.IsLoading)
+            return; // the moves are being reloaded
+        try
+        {
+            if (!Gameplay.Advance())
+                return;
+        }
+        catch (Exception ex)
+        {
+            // A move the port does not handle: the character stops where it is.
+            _gameplayTimer.Stop();
+            Report(Loc.T("Gameplay stopped: ") + ex.Message);
+            return;
+        }
+        string state = Gameplay.StateText;
+        if (state != GameplayStateText)
+            GameplayStateText = state;
+        Follow();
+        GameplayMoved?.Invoke();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Raised after each gameplay tick (the Game View follows the character's camera).</summary>
+    public event Action? GameplayMoved;
+
+    /// <summary>An arrow key pressed while a gameplay character is in the level: true when it was used.</summary>
+    public bool PressGameplayKey(Vectorier.Gameplay.KeyboardKey key)
+    {
+        if (!IsGameplaySpawned)
+            return false;
+        Gameplay.Press(key);
+        return true;
+    }
+
+    private void ClearGameplay()
+    {
+        _gameplayTimer.Stop();
+        Gameplay.Clear();
+        GameplayPreviewNodes = null;
+        IsGameplaySpawned = false;
+        GameplayStateText = string.Empty;
+    }
+
+    /// <summary>Spawn "Preview Animation" in Gameplay: the character spawns on the Spawn with its own move, as in the game.</summary>
+    public async Task PreviewSpawnGameplayAsync(SpawnElement spawn)
+    {
+        StopPlacement();
+        if (SpawnMode != MoveSpawnMode.Gameplay)
+            SpawnMode = MoveSpawnMode.Gameplay;
+        if (!await EnsureGameplayAsync())
+            return;
+        string animation = string.IsNullOrWhiteSpace(spawn.Animation) ? SpawnElement.DefaultAnimation : spawn.Animation.Trim();
+        // A move moves.xml does not have: the game's spawn move instead.
+        if (!Vectorier.Gameplay.Animation.Animations.Animation.ContainsKey(animation.Split('|')[0].Trim()))
+            animation = WithReverse($"{GameplaySession.SpawnMove}|{GameplaySession.SpawnFrame}", spawn.Reverse);
+        _suppressReverseRespawn = true;
+        Reverse = spawn.Reverse;
+        _suppressReverseRespawn = false;
+        var p = spawn.WorldPosition;
+        await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)p.X, (float)p.Y), animation));
+    }
+
+    /// <summary>
+    /// Trick Area "Preview Animation" in Gameplay: the character spawns a run-up before the Area, on its bottom edge,
+    /// running towards it (from its right side when Reverse is on); press the trick's key inside the Area.
+    /// </summary>
+    public async Task PreviewAreaGameplayAsync(AreaTarget target)
+    {
+        StopPlacement();
+        if (SpawnMode != MoveSpawnMode.Gameplay)
+            SpawnMode = MoveSpawnMode.Gameplay;
+        if (!await EnsureGameplayAsync())
+            return;
+        const double RunUp = 400;
+        var o = target.Origin;
+        var bounds = target.Area.GetLocalBounds().Translate(new Avalonia.Vector(o.X, o.Y));
+        double x = Reverse ? bounds.Right + RunUp : bounds.Left - RunUp;
+        string animation = WithReverse($"{GameplaySession.SpawnMove}|{GameplaySession.SpawnFrame}", Reverse);
+        if (await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)x, (float)bounds.Bottom), animation)))
+            StatusMessage = Loc.F("Run into '{0}' and press its trick key.", target.Area.Name);
+    }
+
+    public Task PreviewAreaGameplayAsync(AreaElement area) => PreviewAreaGameplayAsync(TargetFor(area));
+
+    private bool _suppressReverseRespawn;
 
     // ================= MODEL ================= //
 
@@ -1067,7 +1134,15 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     /// <summary>Follow Camera: keeps the Scene centered on the model's Camera node.</summary>
     private void Follow()
     {
-        if (!FollowCamera || !IsPlaced) return;
+        if (!FollowCamera) return;
+        if (IsGameplayMode)
+        {
+            // The game's camera, which follows the character's Camera node.
+            if (IsGameplaySpawned && Gameplay.CameraPosition is { } position)
+                FollowRequested?.Invoke(position);
+            return;
+        }
+        if (!IsPlaced) return;
         if (Animation.GetAnimationNode("Camera") is { } camera)
             FollowRequested?.Invoke(ToLevel(camera));
     }
@@ -1088,7 +1163,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     public void OnDocumentReplaced()
     {
         StopPlacement();
-        if (IsPlaced) Clear();
+        if (IsPlaced || IsGameplaySpawned) Clear();
         RefreshSelectedArea();
     }
 
@@ -1096,6 +1171,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     public void Stop()
     {
         _timer.Stop();
+        ClearGameplay();
         IsPlacementActive = false;
         _editor.SelectionChanged -= RefreshSelectedArea;
     }

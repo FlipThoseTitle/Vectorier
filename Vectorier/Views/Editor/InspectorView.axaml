@@ -287,6 +287,11 @@
                                         <TextBlock Text="{l:Tr 'Start Frame'}" />
                                         <NumericUpDown Grid.Column="1" Value="{Binding StartFrame, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0" />
                                     </Grid>
+                                    <Grid Classes="row" ColumnDefinitions="90,*">
+                                        <TextBlock Text="{l:Tr 'Reverse'}" />
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding Reverse}"
+                                                  ToolTip.Tip="{l:Tr 'The player starts facing left (adds |1 to the Animation, e.g. JumpOff|18|1)'}" />
+                                    </Grid>
                                     <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnPreviewMove">
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                             <PathIcon Data="{StaticResource Icon.Play}" />
