@@ -1518,6 +1518,25 @@
     "Advanced": "Advanced",
     "Your address in the VPN network": "Your address in the VPN network",
     "Session ID from the host (you need to be in the same Radmin VPN network as the host):": "Session ID from the host (you need to be in the same Radmin VPN network as the host):",
-    "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}": "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}"
+    "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}": "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}",
+    "Crop Image - {0}": "Crop Image - {0}",
+    "Image: {0} × {1} px   →   Saved as: {2} × {3} px": "Image: {0} × {1} px   →   Saved as: {2} × {3} px",
+    "Transparent": "Transparent",
+    "Black": "Black",
+    "White": "White",
+    "Zoom: {0:0}%": "Zoom: {0:0}%",
+    "Background:": "Background:",
+    "What fills the parts of the canvas the image does not cover": "What fills the parts of the canvas the image does not cover",
+    "Fit": "Fit",
+    "Fill": "Fill",
+    "Show the whole image inside the canvas": "Show the whole image inside the canvas",
+    "Cover the whole canvas (the edges that stick out are cut off)": "Cover the whole canvas (the edges that stick out are cut off)",
+    "Move the image to the middle of the canvas": "Move the image to the middle of the canvas",
+    "Project Thumbnail": "Project Thumbnail",
+    "Level Thumbnail": "Level Thumbnail",
+    "Location Image": "Location Image",
+    "'{0}' could not be read as an image.": "'{0}' could not be read as an image.",
+    "Drag to move, scroll to zoom.": "Drag to move, scroll to zoom.",
+    "Drag with the left or right mouse button to move the image, scroll to zoom around the pointer, arrow keys to nudge by one pixel (Shift: ten).": "Drag with the left or right mouse button to move the image, scroll to zoom around the pointer, arrow keys to nudge by one pixel (Shift: ten)."
   }
 }

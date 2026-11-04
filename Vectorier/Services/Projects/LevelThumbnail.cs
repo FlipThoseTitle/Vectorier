@@ -47,17 +47,7 @@ public sealed class LevelThumbnail
             await AppServices.FileSystem.DeleteFileAsync(VPath.Combine(Folder, _level + ext));
     }
 
-    /// <summary>Uses an image file picked by the user.</summary>
-    public async Task ReplaceAsync(IStorageFile file)
-    {
-        await AppServices.FileSystem.CreateDirectoryAsync(Folder);
-        await DeleteAllAsync();
-        string ext = VPath.GetExtension(file.Name).ToLowerInvariant();
-        if (ext is not (".png" or ".jpg" or ".jpeg")) ext = ".png";
-        await StorageImport.CopyFileAsync(AppServices.FileSystem, file, VPath.Combine(Folder, _level + ext));
-    }
-
-    /// <summary>Writes a rendered PNG.</summary>
+    /// <summary>Writes a rendered PNG (a capture, or an image picked and cropped by the user).</summary>
     public async Task SavePngAsync(byte[] png)
     {
         await AppServices.FileSystem.CreateDirectoryAsync(Folder);

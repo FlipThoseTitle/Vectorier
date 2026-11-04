@@ -522,9 +522,13 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         });
         if (files.Count == 0)
             return;
+        // The crop window always opens: the thumbnail is saved at exactly 512 × 340.
+        byte[]? png = await Services.Assets.ImageCrop.CropAsync(files[0], Services.Assets.ImageTarget.LevelThumbnail);
+        if (png == null)
+            return;
         try
         {
-            await Thumbnails.ReplaceAsync(files[0]);
+            await Thumbnails.SavePngAsync(png);
             await LoadThumbnailAsync();
         }
         catch (Exception ex)

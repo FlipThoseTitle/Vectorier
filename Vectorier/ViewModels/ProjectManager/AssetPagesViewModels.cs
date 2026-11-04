@@ -804,8 +804,11 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
         if (item == null) return;
         var file = await PickImageAsync(Loc.T("Select Shop Image (256 × 226 recommended)"));
         if (file == null) return;
+        // The crop window always opens: the image is saved at exactly 256 × 226.
+        byte[]? png = await ImageCrop.CropAsync(file, ImageTarget.ShopImage);
+        if (png == null) return;
         if (string.IsNullOrEmpty(item.Item.ShopImage)) item.Item.ShopImage = "SHOP_" + item.Name;
-        await ReplaceImageAsync(ShopIcons, item.Item.ShopImage, file);
+        await ReplaceImageAsync(ShopIcons, item.Item.ShopImage, png);
         await LoadImagesAsync(item);
         await SaveAsync();
     }
@@ -824,13 +827,13 @@ public abstract partial class ShopPageViewModel : PmPageViewModel
         return files.Count > 0 ? files[0] : null;
     }
 
-    protected async Task ReplaceImageAsync(string folder, string name, IStorageFile file)
+    /// <summary>Replaces an image with a cropped PNG (&lt;name&gt;.png; other extensions are removed).</summary>
+    protected async Task ReplaceImageAsync(string folder, string name, byte[] png)
     {
         foreach (var ext in new[] { ".png", ".jpg", ".jpeg" })
             await AppServices.FileSystem.DeleteFileAsync(VPath.Combine(folder, name + ext));
-        string extension = VPath.GetExtension(file.Name).ToLowerInvariant();
-        if (extension is not (".png" or ".jpg" or ".jpeg")) extension = ".png";
-        await StorageImport.CopyFileAsync(AppServices.FileSystem, file, VPath.Combine(folder, name + extension));
+        await AppServices.FileSystem.CreateDirectoryAsync(folder);
+        await AppServices.FileSystem.WriteAllBytesAsync(VPath.Combine(folder, name + ".png"), png);
     }
 
     protected async Task RenameImageAsync(string folder, string oldName, string newName)
@@ -888,8 +891,11 @@ public sealed partial class TricksPageViewModel : ShopPageViewModel
         if (item == null) return;
         var file = await PickImageAsync(Loc.T("Select Track Image (117 × 117)"));
         if (file == null) return;
+        // The crop window always opens: the image is saved at exactly 117 × 117.
+        byte[]? png = await ImageCrop.CropAsync(file, ImageTarget.TrackImage);
+        if (png == null) return;
         if (string.IsNullOrEmpty(item.Item.TrackImage)) item.Item.TrackImage = "TRACK_" + item.Name;
-        await ReplaceImageAsync(TrickIcons, item.Item.TrackImage, file);
+        await ReplaceImageAsync(TrickIcons, item.Item.TrackImage, png);
         await LoadImagesAsync(item);
         await SaveAsync();
     }

@@ -1518,6 +1518,25 @@
     "Advanced": "Дополнительно",
     "Your address in the VPN network": "Ваш адрес в VPN-сети",
     "Session ID from the host (you need to be in the same Radmin VPN network as the host):": "ID сеанса от хоста (вы должны быть в той же сети Radmin VPN, что и хост):",
-    "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}": "Не удалось подключиться к хосту {0}.\n\nУбедитесь, что Radmin VPN запущен на обоих компьютерах, вы в одной сети с хостом и ID сеанса актуален.\n\n{1}"
+    "Could not reach the host at {0}.\n\nMake sure Radmin VPN is running on both computers and that you are in the same network as the host, and that the Session ID is the current one.\n\n{1}": "Не удалось подключиться к хосту {0}.\n\nУбедитесь, что Radmin VPN запущен на обоих компьютерах, вы в одной сети с хостом и ID сеанса актуален.\n\n{1}",
+    "Crop Image - {0}": "Обрезка изображения - {0}",
+    "Image: {0} × {1} px   →   Saved as: {2} × {3} px": "Изображение: {0} × {1} пикс.   →   Сохраняется как: {2} × {3} пикс.",
+    "Transparent": "Прозрачный",
+    "Black": "Чёрный",
+    "White": "Белый",
+    "Zoom: {0:0}%": "Масштаб: {0:0}%",
+    "Background:": "Фон:",
+    "What fills the parts of the canvas the image does not cover": "Чем заполняются части холста, не покрытые изображением",
+    "Fit": "Вписать",
+    "Fill": "Заполнить",
+    "Show the whole image inside the canvas": "Показать изображение целиком внутри холста",
+    "Cover the whole canvas (the edges that stick out are cut off)": "Покрыть весь холст (выступающие края обрезаются)",
+    "Move the image to the middle of the canvas": "Переместить изображение в центр холста",
+    "Project Thumbnail": "Миниатюра проекта",
+    "Level Thumbnail": "Миниатюра уровня",
+    "Location Image": "Изображение локации",
+    "'{0}' could not be read as an image.": "Не удалось прочитать «{0}» как изображение.",
+    "Drag to move, scroll to zoom.": "Перетаскивайте — сдвиг, колесо — масштаб.",
+    "Drag with the left or right mouse button to move the image, scroll to zoom around the pointer, arrow keys to nudge by one pixel (Shift: ten).": "Перетаскивайте левой или правой кнопкой мыши, чтобы сдвинуть изображение; колесо — масштаб относительно указателя; стрелки — сдвиг на один пиксель (Shift — на десять)."
   }
 }

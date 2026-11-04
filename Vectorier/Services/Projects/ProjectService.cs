@@ -47,6 +47,10 @@ public sealed class ProjectService
     public const string DescriptionFile = "description.txt";
     public const string ThumbnailFile = "thumbnail.png";
 
+    /// <summary>Resolution project thumbnails are saved at (the crop window's canvas).</summary>
+    public const int ThumbnailWidth = 960;
+    public const int ThumbnailHeight = 540;
+
     private static readonly string[] ThumbnailExtensions = { ".png", ".jpg", ".jpeg" };
 
     // Folders whose .gitkeep placeholders are removed after copying the template (as in Unity).
@@ -245,17 +249,12 @@ public sealed class ProjectService
         return null;
     }
 
-    /// <summary>Replaces thumbnail.png with the picked image (other thumbnail extensions are removed).</summary>
-    public async Task SetThumbnailAsync(ProjectInfo project, IStorageFile file)
+    /// <summary>Replaces the thumbnail with a cropped PNG (thumbnail.png; other thumbnail extensions are removed).</summary>
+    public async Task SetThumbnailAsync(ProjectInfo project, byte[] png)
     {
-        byte[] data = await StorageImport.ReadAllBytesAsync(file);
         foreach (var ext in ThumbnailExtensions)
             await _fs.DeleteFileAsync(VPath.Combine(project.Path, "thumbnail" + ext));
-
-        string extension = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (extension is not (".png" or ".jpg" or ".jpeg"))
-            extension = ".png";
-        await _fs.WriteAllBytesAsync(VPath.Combine(project.Path, "thumbnail" + extension), data);
+        await _fs.WriteAllBytesAsync(VPath.Combine(project.Path, ThumbnailFile), png);
     }
 }
 

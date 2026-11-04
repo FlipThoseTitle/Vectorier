@@ -515,13 +515,14 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
         });
         if (files.Count == 0)
             return;
+        // The crop window always opens: the thumbnail is saved at exactly 512 × 340.
+        byte[]? png = await ImageCrop.CropAsync(files[0], ImageTarget.LevelThumbnail);
+        if (png == null)
+            return;
 
         await RunAsync(Loc.T("Thumbnail"), async () =>
         {
-            await Ops.DeleteImagesAsync(Ops.StoriesIconFolder, item.Name);
-            string ext = VPath.GetExtension(files[0].Name).ToLowerInvariant();
-            if (ext is not (".png" or ".jpg" or ".jpeg")) ext = ".png";
-            await StorageImport.CopyFileAsync(AppServices.FileSystem, files[0], VPath.Combine(Ops.StoriesIconFolder, item.Name + ext));
+            await Ops.SaveImageAsync(Ops.StoriesIconFolder, item.Name, png);
             await LoadItemThumbnailAsync(item);
             await RefreshSelectionDetailsAsync();
         });

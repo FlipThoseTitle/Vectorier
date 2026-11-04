@@ -233,9 +233,14 @@ public sealed partial class ProjectSelectionViewModel : ViewModelBase, IScreen
         if (files.Count == 0)
             return;
 
+        // The crop window always opens: the thumbnail is saved at exactly 960 × 540.
+        byte[]? png = await ImageCrop.CropAsync(files[0], ImageTarget.ProjectThumbnail);
+        if (png == null)
+            return;
+
         try
         {
-            await Projects.SetThumbnailAsync(item.Project, files[0]);
+            await Projects.SetThumbnailAsync(item.Project, png);
             string? thumb = await Projects.FindThumbnailAsync(item.Project);
             Thumbnail = thumb == null ? null : await ImageLoader.LoadAsync(AppServices.FileSystem, thumb, 960);
         }

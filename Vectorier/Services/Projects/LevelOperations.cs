@@ -49,6 +49,14 @@ public sealed class LevelOperations
             await _fs.DeleteFileAsync(VPath.Combine(folder, name + ext));
     }
 
+    /// <summary>Replaces a level's or location's image with a cropped PNG (&lt;name&gt;.png; other extensions are removed).</summary>
+    public async Task SaveImageAsync(string folder, string name, byte[] png)
+    {
+        await _fs.CreateDirectoryAsync(folder);
+        await DeleteImagesAsync(folder, name);
+        await _fs.WriteAllBytesAsync(VPath.Combine(folder, name + ".png"), png);
+    }
+
     public async Task SaveAllAsync()
     {
         await _list.SaveAsync();

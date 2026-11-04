@@ -338,12 +338,13 @@ public sealed partial class LocationsPageViewModel : PmPageViewModel
         });
         if (files.Count == 0)
             return;
+        // The crop window always opens: the image is saved at exactly 1329 × 512.
+        byte[]? png = await ImageCrop.CropAsync(files[0], ImageTarget.LocationImage);
+        if (png == null)
+            return;
         await RunAsync(Loc.T("Thumbnail"), async () =>
         {
-            await Ops.DeleteImagesAsync(Ops.LocationsIconFolder, item.Name);
-            string ext = VPath.GetExtension(files[0].Name).ToLowerInvariant();
-            if (ext is not (".png" or ".jpg" or ".jpeg")) ext = ".png";
-            await StorageImport.CopyFileAsync(AppServices.FileSystem, files[0], VPath.Combine(Ops.LocationsIconFolder, item.Name + ext));
+            await Ops.SaveImageAsync(Ops.LocationsIconFolder, item.Name, png);
             await LoadThumbnailAsync(item, 160);
             await LoadThumbnailAsync(item, 665);
         });
