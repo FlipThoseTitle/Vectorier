@@ -102,10 +102,15 @@ namespace Vectorier.Gameplay
 
                 Vectorier.Gameplay.Rl.Rectangle source = sprite.Source;
 
-                float u0 = source.X / texture.Width;
-                float v0 = source.Y / texture.Height;
-                float u1 = (source.X + source.Width) / texture.Width;
-                float v1 = (source.Y + source.Height) / texture.Height;
+                // The sheet's real size (a texture read mid-game had none when the atlas was made); no image yet: nothing.
+                var sheet = Raylib.TextureImage(texture.Id);
+                if (sheet == null) return;
+                float texW = sheet is Avalonia.Media.Imaging.Bitmap sb ? sb.PixelSize.Width : (float)sheet.Size.Width;
+                float texH = sheet is Avalonia.Media.Imaging.Bitmap sb2 ? sb2.PixelSize.Height : (float)sheet.Size.Height;
+                float u0 = source.X / texW;
+                float v0 = source.Y / texH;
+                float u1 = (source.X + source.Width) / texW;
+                float v1 = (source.Y + source.Height) / texH;
 
                 float realW = sprite.RealSize.X;
                 float realH = sprite.RealSize.Y;
@@ -227,7 +232,24 @@ namespace Vectorier.Gameplay
         private static Dictionary<string, Texture2D> atlasCache = new Dictionary<string, Texture2D>();
 
         /// <summary>The editor's addition: the textures of the previous game are gone.</summary>
-        public static void ClearCache() => atlasCache.Clear();
+        public static void ClearCache()
+        {
+            atlasCache.Clear();
+            lock (Pending) Pending.Clear();
+        }
+
+        private static readonly Dictionary<string, uint> Pending = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>A texture read while the game runs: atlases waiting for it get their image.</summary>
+        public static void Resolve(string name, Avalonia.Media.IImage image)
+        {
+            if (image == null) return;
+            lock (Pending)
+            {
+                if (Pending.Remove(name, out uint id))
+                    Raylib.SetTextureImage(id, image);
+            }
+        }
 
         public static Atlas Decode(string atlasPath, string imagePath)
         {
@@ -242,10 +264,19 @@ namespace Vectorier.Gameplay
             else
             {
                 // The atlas image is the editor's bitmap of the animated texture.
-                var image = GameFiles.TextureProvider?.Invoke(Path.GetFileNameWithoutExtension(imagePath));
+                string name = Path.GetFileNameWithoutExtension(imagePath);
+                var image = GameFiles.TextureProvider?.Invoke(name);
                 if (image == null)
-                    GameFiles.TextureMissing?.Invoke(Path.GetFileNameWithoutExtension(imagePath));
-                texture = Raylib.RegisterTexture(image);
+                {
+                    // Not loaded by the editor yet: drawn once it is (an effect started mid-game shows a moment later).
+                    texture = Raylib.RegisterPendingTexture();
+                    lock (Pending) Pending[name] = texture.Id;
+                    GameFiles.TextureMissing?.Invoke(name);
+                }
+                else
+                {
+                    texture = Raylib.RegisterTexture(image);
+                }
                 Raylib.SetTextureWrap(texture, TextureWrap.Clamp);
                 Raylib.SetTextureFilter(texture, TextureFilter.Bilinear);
 

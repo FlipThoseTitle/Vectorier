@@ -474,6 +474,7 @@ namespace Vectorier.Gameplay
                 else LevelMainController.current.ReloadMovesButton();
             });
             Add(KeyboardKey.H, "H", "Hide UI", () => hideDebugUi = !hideDebugUi);
+            Add(KeyboardKey.Z, "Z", "Force Blaster", ForceBlast, isEnabled: () => ForceBlastTarget() != null);
 
             // Display.
             y += sectionGap - gap;
@@ -481,6 +482,59 @@ namespace Vectorier.Gameplay
             Buttons[^1].DynamicText = () => "Anti-alias: " + AntiAliasNames[AntiAlias];
             Add(KeyboardKey.F11, "F11", "Full Screen", ToggleFullScreen, () => Raylib.IsWindowState(ConfigFlags.BorderlessWindowMode));
             Add(KeyboardKey.M, "M", "Mute Music", SoundsManager.ToggleMusicMute, () => SoundsManager.MusicMuted);
+        }
+
+        // ================= FORCE BLASTER ================= //
+
+        /// <summary>The game's GadgetKillBot: how near a bot must be (between the COMs).</summary>
+        const int ForceBlasterDistance = 300;
+
+        /// <summary>
+        /// GadgetKillBot.IsCanUse: the player is alive and the first bot that is alive and has started (its delay over)
+        /// is within reach. The editor's charges are unlimited (the game spends a GADGET_FORCEBLASTER from the shop).
+        /// </summary>
+        static ModelHuman ForceBlastTarget()
+        {
+            var controller = LevelMainController.current;
+            var location = controller?.Location;
+            var self = location?.GetUserModel();
+            if (location == null || self == null || controller.IsDeath || self.IsDeath)
+                return null;
+            foreach (var bot in location.GetAllBotModels())
+            {
+                if (bot != null && !bot.IsDeath && bot.IsDelayEnd)
+                {
+                    return ModelHuman.Distance(self, bot) < ForceBlasterDistance ? bot : null;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Z: GadgetKillBot.Play. The bot goes into physics and dies (murder), every edge gets an impulse of 20 away
+        /// from the player's COM, and the antibot wave plays on the player.
+        /// </summary>
+        static void ForceBlast()
+        {
+            var bot = ForceBlastTarget();
+            if (bot == null)
+                return;
+            var self = LevelMainController.current.Location.GetUserModel();
+            var com = self.GetNode("COM");
+            bot.StartPhysics();
+            bot.Death(GameEndType.GE_MURDER);
+            foreach (var edge in bot.ModelObject.EdgesAll)
+            {
+                var vector = edge.Center - com.Start;
+                if (vector.LengthSquared() > 0)
+                    vector = Vector3.Normalize(vector);
+                vector *= 20;
+                bot.Strike(edge, edge.Center, vector);
+            }
+            bot.ModelObject.RenderMacroNode();
+            bot.ControllerPhysics.Render();
+            bot.ModelObject.RenderMacroNode();
+            self.controllerModelEffect.RunAntibotEffect();
         }
 
         // ================= NOTICE ================= //

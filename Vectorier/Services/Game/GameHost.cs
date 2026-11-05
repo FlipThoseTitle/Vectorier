@@ -63,6 +63,9 @@ public sealed class GameHost
         GameFiles.TextureMissing = name =>
         {
             lock (_missingTextures) _missingTextures.Add(name);
+            // While playing (an effect started mid-game): read now, drawn once it is there.
+            if (IsRunning && _context is { } context)
+                _ = LoadMidGameAsync(context, name);
         };
         GameFiles.MusicMissing = name => _ = LoadMusicAsync(name);
     }
@@ -109,6 +112,11 @@ public sealed class GameHost
             // Textures the level uses that the editor had not loaded yet: loaded, then the level starts again with them.
             string[] missing;
             lock (_missingTextures) missing = _missingTextures.ToArray();
+            // The game's effects start mid-game (arrest, taser, Force Blaster): their sheets are read now too.
+            var effects = _context == null ? Array.Empty<string>()
+                : EffectTextures.Where(n => _context.Textures.TryGet(n) == null && !missing.Contains(n, StringComparer.OrdinalIgnoreCase)).ToArray();
+            if (effects.Length > 0 && _context != null)
+                await Task.WhenAll(effects.Select(async name => { try { await _context.Textures.GetAsync(name); } catch { } }));
             if (missing.Length > 0 && _context != null)
             {
                 await Task.WhenAll(missing.Select(name => _context.Textures.GetAsync(name)));
@@ -293,6 +301,22 @@ public sealed class GameHost
     }
 
     private bool _faulted;
+
+    private static readonly string[] EffectTextures = { "antibot", "lightning_expl_v2", "lightning_hands", "lightning_paraliz_v2" };
+
+    private static async Task LoadMidGameAsync(ProjectContext context, string name)
+    {
+        try
+        {
+            var texture = await context.Textures.GetAsync(name);
+            if (texture?.Bitmap is { } bitmap)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => Gameplay.AtlasDecoder.Resolve(name, bitmap));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Game texture {name}: {ex.Message}");
+        }
+    }
 
     /// <summary>The game stopped on an error (the message is shown to the user).</summary>
     public event Action<string>? Failed;

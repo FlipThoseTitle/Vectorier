@@ -403,6 +403,19 @@ namespace Vectorier.Gameplay.Rl
             return new Texture2D { Id = (uint)(_textures.Count - 1), Width = (int)size.Width, Height = (int)size.Height, Mipmaps = 1 };
         }
 
+        /// <summary>A texture whose image comes later (read while the game runs): nothing is drawn with it until then.</summary>
+        public static Texture2D RegisterPendingTexture()
+        {
+            _textures.Add(null);
+            return new Texture2D { Id = (uint)(_textures.Count - 1), Mipmaps = 1 };
+        }
+
+        public static void SetTextureImage(uint id, IImage image)
+        {
+            if (id > 0 && id < _textures.Count)
+                _textures[(int)id] = image;
+        }
+
         internal static IImage TextureImage(uint id) => id > 0 && id < _textures.Count ? _textures[(int)id] : null;
 
         /// <summary>The level was left: its textures are the editor's (cached there), only the handles go.</summary>
