@@ -649,11 +649,13 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     /// <summary>The target's &lt;Transformation&gt;s, each with a Preview button.</summary>
     public IReadOnlyList<DynamicEntry> DynamicEntries => _target is { SupportsDynamics: true } t
-        ? t.Dynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name, Loc.F("{0} frames", d.TotalFrames))).ToList()
+        ? t.Dynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name, Loc.F("{0} frames", d.TotalFrames)))
+            .Concat(t.InheritedDynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name,
+                Loc.F("{0} frames, from the object", d.TotalFrames)))).ToList()
         : Array.Empty<DynamicEntry>();
 
     /// <summary>The Dynamic section is only shown when the element has transformations.</summary>
-    public bool HasDynamics => _target is { SupportsDynamics: true } t && t.Dynamics.Count > 0;
+    public bool HasDynamics => _target is { SupportsDynamics: true } t && (t.Dynamics.Count > 0 || t.InheritedDynamics.Count > 0);
 
     private void RaiseDynamics()
     {

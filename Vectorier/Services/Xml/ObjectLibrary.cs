@@ -127,6 +127,36 @@ public sealed class ObjectLibrary
         return result;
     }
 
+    /// <summary>
+    /// The files named by the Sets of <paramref name="files"/> and of those files in turn (each once, cycles
+    /// ignored), deepest first; the ones in <paramref name="known"/> are left out.
+    /// </summary>
+    private async Task<List<string>> NestedAsync(IEnumerable<string> files, IEnumerable<string> known)
+    {
+        var seen = new HashSet<string>(known, StringComparer.OrdinalIgnoreCase);
+        var levels = new List<List<string>>();
+        var current = files.ToList();
+        for (int depth = 0; depth < 32 && current.Count > 0; depth++)
+        {
+            var next = new List<string>();
+            foreach (var file in current)
+            {
+                if (await LoadFileAsync(file) is not { } loaded)
+                    continue;
+                foreach (var nested in loaded.NestedSets)
+                {
+                    if (seen.Add(nested))
+                        next.Add(nested);
+                }
+            }
+            if (next.Count > 0)
+                levels.Add(next);
+            current = next;
+        }
+        levels.Reverse();
+        return levels.SelectMany(l => l).ToList();
+    }
+
     /// <summary>Builds the name → definition table for a level's sets.</summary>
     public async Task<DefinitionTable> ResolveSetsAsync(IEnumerable<string> groundFiles, IEnumerable<string> cityFiles)
     {
@@ -138,18 +168,25 @@ public sealed class ObjectLibrary
         }
 
         var cityLoaded = new List<CachedFile>();
+        var cityNames = new List<string>();
         foreach (var city in cityFiles)
         {
             var loaded = await LoadFileAsync(city);
             if (loaded == null)
                 continue;
             cityLoaded.Add(loaded);
+            cityNames.Add(city);
             foreach (var nested in loaded.NestedSets)
             {
                 if (!objectFiles.Contains(nested, StringComparer.OrdinalIgnoreCase))
                     objectFiles.Add(nested);
             }
         }
+
+        // Sets of sets, at any depth (buildings → buildings_techpark → objects_techpark): the files they name are
+        // read too, a deeper file below the ones that name it (a nearer definition wins).
+        var deeper = await NestedAsync(objectFiles.Concat(cityNames), objectFiles.Concat(cityNames));
+        objectFiles.InsertRange(0, deeper);
 
         var table = new DefinitionTable();
         foreach (var file in objectFiles)
@@ -182,7 +219,9 @@ public sealed class ObjectLibrary
         if (file == null)
             return table;
 
-        foreach (var nested in file.NestedSets)
+        var direct = file.NestedSets.ToList();
+        var all = (await NestedAsync(direct, direct.Append(fileName))).Concat(direct).ToList();
+        foreach (var nested in all)
         {
             var nestedFile = await LoadFileAsync(nested);
             if (nestedFile == null)

@@ -1535,6 +1535,9 @@
     "moves.xml has no '{0}' move (the spawn move).": "moves.xml has no '{0}' move (the spawn move).",
     "{0} could not be read: {1}": "{0} could not be read: {1}",
     "Play run.bin on models/0.xml + 1.xml with this gear attached": "Play run.bin on models/0.xml + 1.xml with this gear attached",
-    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character."
+    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.",
+    "{0} frames, from the object": "{0} frames, from the object",
+    "'{0}' is not in {1}.": "'{0}' is not in {1}.",
+    "Saved the transformations of object {0} to {1}": "Saved the transformations of object {0} to {1}"
   }
 }

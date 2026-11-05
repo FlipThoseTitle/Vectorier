@@ -484,7 +484,9 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     /// </summary>
     private static void RefreshNames(DynamicTrack track)
     {
-        var names = track.Element.Dynamics.Select(d => N(d.Name)).Distinct().ToList();
+        // Its own transformations, then its definition's (an Object instance runs both in the game).
+        var names = track.Element.Dynamics.Select(d => N(d.Name))
+            .Concat(track.Element.InheritedDynamics.Select(d => N(d.Name))).Distinct().ToList();
         var list = track.TransformationNames;
         for (int i = list.Count - 1; i >= 0; i--)
         {
@@ -887,7 +889,8 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         rest.Frame = 0;
         track.Keys.Add(rest);
 
-        var source = track.Element.Dynamics.FirstOrDefault(d => N(d.Name) == name);
+        var source = track.Element.Dynamics.FirstOrDefault(d => N(d.Name) == name)
+                     ?? track.Element.InheritedDynamics.FirstOrDefault(d => N(d.Name) == name);
         if (source == null)
             return;
 
@@ -1069,7 +1072,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         ActiveTrack = track;
         string current = N(track.TransformationName);
-        bool exists = track.Element.Dynamics.Any(d => N(d.Name) == current);
+        bool exists = track.Element.Dynamics.Any(d => N(d.Name) == current) || IsInherited(track, current);
         string initial = exists ? current : UniqueName(track, "Transform", null);
         string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Save Transformation"),
             Loc.F("Transformation name for '{0}':", track.Header), initial,
@@ -1085,7 +1088,7 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         string name = text.Trim();
         if (name.Length == 0)
             return Loc.T("Enter a name.");
-        if (name != current && track.Element.Dynamics.Any(d => N(d.Name) == name))
+        if (name != current && (track.Element.Dynamics.Any(d => N(d.Name) == name) || IsInherited(track, name)))
             return Loc.F("'{0}' already has a transformation named '{1}'.", track.Header, name);
         return null;
     }
@@ -1095,6 +1098,19 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
     {
         name = N(name);
         var baked = Bake(track, name);
+        // A transformation of the object's definition (not the instance's own): saved into the definition, in its
+        // Object XML, so every instance runs it (as the game does), instead of a second copy on this instance.
+        if (IsInherited(track, name) && track.Element is ObjectElement { Reference: { } definition })
+        {
+            int at = definition.Dynamics.FindIndex(d => N(d.Name) == name);
+            definition.Dynamics[at] = baked;
+            track.TransformationName = name;
+            RefreshNames(track);
+            track.IsModified = false;
+            _ = _editor.SaveDefinitionDynamicsAsync(definition);
+            RaiseTimeline();
+            return;
+        }
         var list = track.Element.Dynamics;
         int index = list.FindIndex(d => N(d.Name) == name);
         if (index >= 0) list[index] = baked;
@@ -1193,9 +1209,14 @@ public sealed partial class DynamicEditorViewModel : ObservableObject
         RaiseTimeline();
     }
 
+    /// <summary>The name is one of the definition's transformations, not the element's own.</summary>
+    private static bool IsInherited(DynamicTrack track, string name) =>
+        !track.Element.Dynamics.Any(d => N(d.Name) == name) && track.Element.InheritedDynamics.Any(d => N(d.Name) == name);
+
     private static string UniqueName(DynamicTrack track, string requested, string? exclude)
     {
-        var names = track.Element.Dynamics.Select(d => N(d.Name)).Where(n => n != exclude).ToHashSet();
+        var names = track.Element.Dynamics.Select(d => N(d.Name))
+            .Concat(track.Element.InheritedDynamics.Select(d => N(d.Name))).Where(n => n != exclude).ToHashSet();
         if (!names.Contains(requested)) return requested;
         string candidate = requested + "_copy";
         if (!names.Contains(candidate)) return candidate;

@@ -1535,6 +1535,9 @@
     "moves.xml has no '{0}' move (the spawn move).": "В moves.xml нет движения «{0}» (движение появления).",
     "{0} could not be read: {1}": "Не удалось прочитать {0}: {1}",
     "Play run.bin on models/0.xml + 1.xml with this gear attached": "Проиграть run.bin на models/0.xml + 1.xml с этим снаряжением",
-    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Конфликт: «{0}» в <{1}> определён и в {2}, и в {3}.\nУдалите одно из определений, чтобы просмотреть персонажа."
+    "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Конфликт: «{0}» в <{1}> определён и в {2}, и в {3}.\nУдалите одно из определений, чтобы просмотреть персонажа.",
+    "{0} frames, from the object": "{0} кадров, из объекта",
+    "'{0}' is not in {1}.": "«{0}» нет в {1}.",
+    "Saved the transformations of object {0} to {1}": "Трансформации объекта {0} сохранены в {1}"
   }
 }

@@ -41,6 +41,12 @@ public sealed class ObjectDefinition
         return new Point(Num.Parse((string?)Xml.Attribute(x)), Num.Parse((string?)Xml.Attribute(y)));
     }
 
+    /// <summary>
+    /// The definition's own Dynamic transformations (its &lt;Properties&gt;&lt;Dynamic&gt;): the game runs them on every
+    /// instance, with the instance's own (e.g. objects_techpark.xml's HighwayCargo, placed in a building).
+    /// </summary>
+    public List<DynamicTransformation> Dynamics { get; set; } = new();
+
     /// <summary>Resolved content (built lazily by the importer).</summary>
     public List<SceneElement> Content { get; set; } = new();
 
@@ -105,7 +111,10 @@ public sealed class LevelSettings
     public List<string> LibrarySets { get; set; } = new();
 
     public string MusicName { get; set; } = "music_dinamic";
-    public double MusicVolume { get; set; } = 0.3;
+    /// <summary>The music's volume: always the game's 0.3 (no longer set per level).</summary>
+    public const double FixedMusicVolume = 0.3;
+
+    public double MusicVolume { get; set; } = FixedMusicVolume;
 
     public List<LevelModelDefinition> CommonModels { get; set; } = ParseModels(DefaultCommonModels);
     public List<LevelModelDefinition> HunterModels { get; set; } = ParseModels(DefaultHunterModels);

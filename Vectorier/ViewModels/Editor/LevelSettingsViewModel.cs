@@ -329,7 +329,6 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         foreach (var f in autoGround) GroundSets.Add(new SetEntry(f));
         foreach (var f in settings.LibrarySets) LibrarySets.Add(new SetEntry(f));
         _musicName = settings.MusicName;
-        _musicVolume = settings.MusicVolume;
         _coinValue = settings.CoinValue;
         foreach (var m in settings.CommonModels) CommonModels.Add(new ModelDefinitionViewModel(m.Clone(), this, false));
         foreach (var m in settings.HunterModels) HunterModels.Add(new ModelDefinitionViewModel(m.Clone(), this, true));
@@ -422,7 +421,6 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
     [ObservableProperty] private string _musicName;
 
     partial void OnMusicNameChanged(string value) => StopMusicPreview();
-    [ObservableProperty] private double _musicVolume;
     [ObservableProperty] private int _coinValue;
     [ObservableProperty] private ModelDefinitionViewModel? _selectedModel;
     [ObservableProperty] private string? _fileToAdd;
@@ -644,7 +642,6 @@ public sealed partial class LevelSettingsViewModel : DialogViewModel
         _settings.GroundSets = GroundSets.Select(s => s.File.Trim()).Where(s => s.Length > 0).ToList();
         _settings.LibrarySets = LibrarySets.Select(s => s.File.Trim()).Where(s => s.Length > 0).ToList();
         _settings.MusicName = MusicName?.Trim() ?? string.Empty;
-        _settings.MusicVolume = Math.Clamp(MusicVolume, 0, 1);
         _settings.CoinValue = Math.Max(0, CoinValue);
         _settings.CommonModels = CommonModels.Select(m => m.Model).ToList();
         _settings.HunterModels = HunterModels.Select(m => m.Model).ToList();

@@ -143,6 +143,9 @@ public abstract partial class SceneElement : ObservableObject
     public virtual bool NameEditable => true;
     public virtual bool SupportsDynamics => true;
 
+    /// <summary>Transformations the element runs that are not its own (an Object instance: its definition's).</summary>
+    public virtual IReadOnlyList<DynamicTransformation> InheritedDynamics => Array.Empty<DynamicTransformation>();
+
     public string DisplayName => string.IsNullOrEmpty(Name) ? Type.ToString() : Name;
 
     partial void OnNameChanged(string value) => OnPropertyChanged(nameof(DisplayName));
@@ -316,6 +319,9 @@ public sealed partial class ObjectElement : SceneElement
     /// Null when the name does not match a definition.
     /// </summary>
     [ObservableProperty] private ObjectDefinition? _reference;
+
+    public override IReadOnlyList<DynamicTransformation> InheritedDynamics =>
+        (IReadOnlyList<DynamicTransformation>?)Reference?.Dynamics ?? Array.Empty<DynamicTransformation>();
 
     public bool IsReference => Reference != null;
 

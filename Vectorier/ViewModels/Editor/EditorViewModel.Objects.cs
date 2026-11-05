@@ -244,6 +244,9 @@ public sealed partial class EditorViewModel
                 if (writer.Errors.Count > 0)
                     await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save Object"), string.Join("\n", writer.Errors), MessageKind.Warning);
             }
+            // The definition's own Properties (its Dynamic transformations, run on every instance) are kept.
+            if (old?.Element("Properties") is { } properties)
+                definition.AddFirst(new XElement(properties));
             // Keep the definition's other attributes; In / Out / Box are recomputed for Buildings.
             if (old != null)
                 foreach (var attr in old.Attributes().Where(a => a.Name.LocalName != "Name" && !ObjectDefinition.BuildingAttributes.Contains(a.Name.LocalName)))
@@ -275,6 +278,38 @@ public sealed partial class EditorViewModel
         {
             await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save Object"), Loc.T("The object could not be saved:\n") + ex.Message, MessageKind.Error);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Writes a definition's own transformations (&lt;Properties&gt;&lt;Dynamic&gt;) to its Object XML, keeping the rest of it.
+    /// </summary>
+    public async Task SaveDefinitionDynamicsAsync(ObjectDefinition definition)
+    {
+        try
+        {
+            string path = VPath.Combine(Project.XmlRoot, definition.SourceFile);
+            var doc = await ObjectFileOps.ReadAsync(path);
+            var element = ObjectFileOps.FindDefinition(doc, definition.Name)
+                          ?? throw new InvalidOperationException(Loc.F("'{0}' is not in {1}.", definition.Name, definition.SourceFile));
+            var properties = element.Element("Properties");
+            if (properties == null)
+            {
+                properties = new XElement("Properties");
+                element.AddFirst(properties);
+            }
+            properties.Element("Dynamic")?.Remove();
+            if (definition.Dynamics.Count > 0)
+                properties.Add(new XElement("Dynamic", definition.Dynamics.Select(SceneXmlWriter.WriteTransformation)));
+            if (!properties.HasElements)
+                properties.Remove();
+            await ObjectFileOps.WriteAsync(path, doc);
+            Context.Objects.Invalidate(definition.SourceFile);
+            StatusText = Loc.F("Saved the transformations of object {0} to {1}", definition.Name, definition.SourceFile);
+        }
+        catch (Exception ex)
+        {
+            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Save Transformation"), Loc.T("The object could not be saved:\n") + ex.Message, MessageKind.Error);
         }
     }
 

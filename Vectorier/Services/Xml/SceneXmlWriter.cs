@@ -41,7 +41,7 @@ public sealed class SceneXmlWriter
         {
             root.Add(new XElement("Music",
                 new XAttribute("Name", settings.MusicName),
-                new XAttribute("Volume", Num.Format(settings.MusicVolume))));
+                new XAttribute("Volume", Num.Format(LevelSettings.FixedMusicVolume))));
         }
 
         if (settings.CommonModels.Count > 0)
