@@ -28,7 +28,6 @@ public sealed class DesktopPlatformServices : IPlatformServices
     }
 
     public bool IsBrowser => false;
-    public bool CanLaunchGame => true;
     public bool CanShowInExplorer => true;
     public ISettingsStore Settings { get; }
 
@@ -120,77 +119,10 @@ public sealed class DesktopPlatformServices : IPlatformServices
         }
     }
 
-    public static string GetGameRuntimeFolder()
-    {
-        if (OperatingSystem.IsWindows())
-            return "win-x64";
-        if (OperatingSystem.IsMacOS())
-            return RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64";
-        return "linux-x64";
-    }
+    // ================= GAME AUDIO ================= //
 
-    public static string GetGameExecutableName() => OperatingSystem.IsWindows() ? "Vector-Raylib.exe" : "Vector-Raylib";
-
-    private Process? _game;
-
-    public bool IsGameRunning
-    {
-        get
-        {
-            try
-            {
-                return _game is { HasExited: false };
-            }
-            catch
-            {
-                return false;
-            }
-        }
-    }
-
-    public string? LaunchGame(IFileSystem fileSystem, string projectName, string levelName, bool hunterMode)
-    {
-        string folder = VPath.Combine("Game", GetGameRuntimeFolder());
-        // A Mac with Apple Silicon can also run the Intel build (Rosetta), and the other way round is not possible.
-        if (OperatingSystem.IsMacOS() && fileSystem.GetNativePath(VPath.Combine(folder, GetGameExecutableName())) is { } preferred && !File.Exists(preferred)
-            && RuntimeInformation.OSArchitecture == Architecture.Arm64)
-            folder = VPath.Combine("Game", "osx-x64");
-        string? nativeFolder = fileSystem.GetNativePath(folder);
-        string? exe = fileSystem.GetNativePath(VPath.Combine(folder, GetGameExecutableName()));
-        if (nativeFolder == null || exe == null || !File.Exists(exe))
-            return $"The game executable was not found:\n{exe ?? folder}";
-
-        try
-        {
-            // Copied from another system (zip, Windows publish), the game may have lost its "executable" permission.
-            if (!OperatingSystem.IsWindows())
-            {
-                var mode = File.GetUnixFileMode(exe);
-                const UnixFileMode exec = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
-                if ((mode & UnixFileMode.UserExecute) == 0)
-                    File.SetUnixFileMode(exe, mode | exec);
-            }
-            var info = new ProcessStartInfo(exe)
-            {
-                WorkingDirectory = nativeFolder,
-                UseShellExecute = false
-            };
-            // The first values identify the project and level; -huntermode is optional.
-            info.ArgumentList.Add("-project");
-            info.ArgumentList.Add(projectName);
-            info.ArgumentList.Add("-level");
-            info.ArgumentList.Add(levelName);
-            if (hunterMode)
-                info.ArgumentList.Add("-huntermode");
-
-            _game = Process.Start(info);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            return "Failed to start the game:\n" + ex.Message;
-        }
-    }
+    /// <summary>The system's own audio: waveOut (Windows), PulseAudio or ALSA (Linux), Core Audio (macOS).</summary>
+    public Gameplay.Audio.IAudioOutput? CreateAudioOutput() => Audio.DesktopAudio.Create();
 
     // ================= SOUND PREVIEW ================= //
 

@@ -1,17 +1,20 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using System.Numerics;
 using Vectorier.Gameplay.Animation;
 using Vectorier.Gameplay.Animation.Events;
 using Vectorier.Gameplay.Camera;
 using Vectorier.Gameplay.Controllers;
 using Vectorier.Gameplay.Detector;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Node;
 using Vectorier.Gameplay.Runners;
 using Vectorier.Gameplay.User;
@@ -26,9 +29,15 @@ namespace Vectorier.Gameplay.Models
 
         private ControllerAnimations _controllerAnimations;
 
+        private ControllerTrigger _controllerTrigger;
+
+        private ControllerModelEffect _controllerModelEffect;
+
         private UserData _userData;
 
         private bool _IsGadget;
+
+        private List<ItemScoreRunner> _collectedBonuses = new List<ItemScoreRunner>();
 
         private List<TrickAreaRunner> _collectedTricks = new List<TrickAreaRunner>();
 
@@ -68,6 +77,10 @@ namespace Vectorier.Gameplay.Models
 
         public ControllerAnimations ControllerAnimations => _controllerAnimations;
 
+        public ControllerTrigger ControllerTrigger => _controllerTrigger;
+
+        public ControllerModelEffect controllerModelEffect => _controllerModelEffect;
+
         public UserData UserData => _userData;
 
         public bool IsGadget
@@ -78,6 +91,8 @@ namespace Vectorier.Gameplay.Models
 
         public override bool IsEnabled => _isDelayEnd ? base.IsEnabled : false;
 
+        public int collectedBonusesCount => _collectedBonuses.Count;
+
         public int collectedTricksCount => _collectedTricks.Count;
 
         public int CollectedPoints
@@ -85,6 +100,10 @@ namespace Vectorier.Gameplay.Models
             get
             {
                 int points = 0;
+                foreach (var item in _collectedBonuses)
+                {
+                    points += item.score;
+                }
                 foreach (var item in _collectedTricks)
                 {
                     points += item.score;
@@ -209,6 +228,8 @@ namespace Vectorier.Gameplay.Models
             base.Init();
             _controllerAnimations = new ControllerAnimations(this);
             _controllerKeys = new ControllerKeys(this);
+            _controllerTrigger = new ControllerTrigger(this);
+            _controllerModelEffect = new ControllerModelEffect(this);
             _controllerStatistics = new ControllerStatistics();
             _ModelObject.IsVisible = false;
         }
@@ -271,7 +292,10 @@ namespace Vectorier.Gameplay.Models
 
         public void Arrest()
         {
-            // Catch areas (hunters arresting the player) are not part of the editor's gameplay.
+            if (ArrestAreaRunner.ActiveArrest != null)
+            {
+                ArrestAreaRunner.ActiveArrest.Arresting();
+            }
         }
 
         public void Start(SpawnRunner spawnRunner)
@@ -428,6 +452,7 @@ namespace Vectorier.Gameplay.Models
                 _ModelObject.IsVisible = true;
             }
             _ControllerPhysics.Render();
+            _controllerTrigger.Render();
             if (_controllerAnimations.IsPlay)
             {
                 _controllerKeys.Render();
@@ -436,6 +461,7 @@ namespace Vectorier.Gameplay.Models
             }
             _ModelObject.RenderMacroNode();
             _ModelObject.RenderDetector();
+            _controllerModelEffect.Render();
             SetCollisionBox();
             _controllerStatistics.SetPosition(_ModelObject.CenterOfMassNode.Start, Sign);
             if (!_isDeath)
@@ -484,7 +510,12 @@ namespace Vectorier.Gameplay.Models
 
         public override void Draw()
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            base.Draw();
+            if (VectorGame.RenderBoxes)
+            {
+                var vs = Sets.Current.Containers[1];
+                Raylib.DrawRectangleLinesEx(new Vectorier.Gameplay.Rl.Rectangle(vs.TransformPoint(_CollisionBox.Origin), _CollisionBox.Size * vs.FrameScale), 2, Color.Yellow);
+            }
         }
 
         public override void StartPhysics()
@@ -493,7 +524,18 @@ namespace Vectorier.Gameplay.Models
             _ControllerPhysics.Start();
         }
 
+        public void CollectBonus(ItemScoreRunner bonus)
+        {
+            _collectedBonuses.Add(bonus);
+            _controllerStatistics.SetBonus(bonus);
+        }
 
+        public void AddCoin(CoinRunner coin)
+        {
+            _controllerStatistics.SetCoin(coin);
+            //UserDataManager.Instance.MainData.AddCoins(coin.score);
+            //UserDataManager.Instance.SaveUserDate();
+        }
 
         public override void Reset()
         {
@@ -501,6 +543,9 @@ namespace Vectorier.Gameplay.Models
             _controllerAnimations.Clear();
             _ControllerCollisions.Reset();
             _controllerKeys.Reset();
+            _controllerTrigger.Reset();
+            _controllerModelEffect.Reset();
+            _collectedBonuses.Clear();
             _collectedTricks.Clear();
             _ModelObject.Reset();
             _TimeOut = 0;

@@ -1,10 +1,12 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Numerics;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Node;
@@ -87,6 +89,9 @@ namespace Vectorier.Gameplay.Controllers
             ModelHuman modelHuman = (ModelHuman)_Model;
             switch (quad.TypeClass)
             {
+                case RunnerType.Trigger:
+                    modelHuman.ControllerTrigger.Check((TriggerRunner)quad);
+                    return;
                 case RunnerType.Area:
                     _controllerAreas.Check((AreaRunner)quad);
                     return;
@@ -118,12 +123,39 @@ namespace Vectorier.Gameplay.Controllers
             }
         }
 
+        public void UpdatePrimitive(PrimitiveRunner primitive)
+        {
+            if (IsCollide(primitive.Rectangle))
+            {
+                CheckPrimitive(primitive);
+            }
+        }
 
         public void CheckModel(ModelHuman modelHuman)
         {
             _modelControllerCatching.Render(modelHuman);
         }
 
+        public void CheckPrimitive(PrimitiveRunner primitive)
+        {
+            if (primitive.Model.Type == ModelType.Primitive)
+            {
+                foreach (var edge in _CollisionEdges)
+                {
+                    var collision = CrossModel(primitive.Model, edge.Start.Start, edge.End.Start);
+                    if (collision != null)
+                    {
+                        var node = _ModelObject.GetNode();
+                        var vector = node.Start - node.End;
+                        primitive.Model.Strike(collision.Edge, collision.Point, vector);
+                        collision.Edge = edge;
+                        collision.Model = primitive.Model;
+                        _Model.OnCollisionModel(collision);
+                        return;
+                    }
+                }
+            }
+        }
 
         public Collision CrossModel(Model model, Vector3 v1, Vector3 v2)
         {

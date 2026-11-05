@@ -11,9 +11,6 @@ public interface IPlatformServices
 {
     bool IsBrowser { get; }
 
-    /// <summary>Desktop only: the game executables in the Game folder can be launched.</summary>
-    bool CanLaunchGame { get; }
-
     /// <summary>Desktop only: folders can be revealed in the OS file manager.</summary>
     bool CanShowInExplorer { get; }
 
@@ -31,11 +28,11 @@ public interface IPlatformServices
 
     void ShowInExplorer(IFileSystem fileSystem, string path);
 
-    /// <summary>Launches the game. Returns an error message, or null on success.</summary>
-    string? LaunchGame(IFileSystem fileSystem, string projectName, string levelName, bool hunterMode);
-
-    /// <summary>A game started by <see cref="LaunchGame"/> is still open (desktop; always false elsewhere).</summary>
-    bool IsGameRunning => false;
+    /// <summary>
+    /// The system's audio output for the game played in the editor (the game mixer pulls from it). Null when the
+    /// system has none: the game is then silent.
+    /// </summary>
+    Gameplay.Audio.IAudioOutput? CreateAudioOutput();
 
     /// <summary>
     /// Plays a sound preview at a volume from 0 to 1. The task completes when the sound ends or is stopped.

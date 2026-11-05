@@ -104,6 +104,14 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         _timer = new DispatcherTimer(TimeSpan.FromSeconds(1.0 / MoveAnimation.TargetFps), DispatcherPriority.Render, (_, _) => UpdatePlayback());
         _gameplayTimer = new DispatcherTimer(TimeSpan.FromSeconds(GameplaySession.TickSeconds / 2), DispatcherPriority.Render, (_, _) => UpdateGameplay());
         editor.SelectionChanged += RefreshSelectedArea;
+        // A level played in the Game View takes the game: the gameplay character is gone.
+        Gameplay.Taken += () =>
+        {
+            if (!IsGameplaySpawned)
+                return;
+            ClearGameplay();
+            Changed?.Invoke();
+        };
     }
 
     public MoveAnimation Animation { get; } = new();
@@ -1011,7 +1019,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     public event Action? GameplayMoved;
 
     /// <summary>An arrow key pressed while a gameplay character is in the level: true when it was used.</summary>
-    public bool PressGameplayKey(Vectorier.Gameplay.KeyboardKey key)
+    public bool PressGameplayKey(Vectorier.Gameplay.Rl.KeyboardKey key)
     {
         if (!IsGameplaySpawned)
             return false;

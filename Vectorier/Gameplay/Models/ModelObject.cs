@@ -1,10 +1,13 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using System.Numerics;
 using System.Xml;
 using Vectorier.Gameplay.Detector;
@@ -259,7 +262,17 @@ namespace Vectorier.Gameplay.Models
         /// </summary>
         public ModelObject(IEnumerable<KeyValuePair<string, XmlNode>> files) : this(new List<string>())
         {
-            ParseDocuments(files);
+            // The editor's models (previews, the Move Visualizer's poses) never join the level being played.
+            bool detached = ModelRender.Detached;
+            ModelRender.Detached = true;
+            try
+            {
+                ParseDocuments(files);
+            }
+            finally
+            {
+                ModelRender.Detached = detached;
+            }
             CreateBothNodeList();
         }
 

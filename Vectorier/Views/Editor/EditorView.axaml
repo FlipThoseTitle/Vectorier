@@ -28,6 +28,7 @@
             <Setter Property="Background" Value="{DynamicResource AppHover}" />
         </Style>
     </UserControl.Styles>
+    <Panel>
     <DockPanel>
         <!-- ===== Menu ===== -->
         <Menu DockPanel.Dock="Top" Background="{DynamicResource AppToolbarBackground}">
@@ -342,7 +343,7 @@
                                         </StackPanel>
                                     </RadioButton>
                                     <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsGameViewTab}"
-                                                 ToolTip.Tip="{l:Tr 'What the Camera sees (read-only). Select a Camera to look through it.'}">
+                                                 ToolTip.Tip="{l:Tr 'What the Camera sees (read-only). Select a Camera to look through it. Play, Hunter Mode and Play Here play the level here.'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Play}" />
                                             <TextBlock Text="{l:Tr 'Game'}" />
@@ -358,13 +359,20 @@
                                 </StackPanel>
                                 <!-- Play buttons at the top center of the Scene -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" ToolTip.Tip="{l:Tr 'Play Level (F5)'}">
+                                    <Button Classes="tool" Command="{Binding StopGameCommand}" IsVisible="{Binding IsGameRunning}" Name="StopGameButton"
+                                            ToolTip.Tip="{l:Tr 'Stop playing and go back to the level'}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <PathIcon Data="{StaticResource Icon.Stop}" Foreground="#C62828" />
+                                            <TextBlock Text="{l:Tr 'Stop'}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" IsVisible="{Binding !IsGameRunning}" ToolTip.Tip="{l:Tr 'Play Level (F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Play}" Foreground="#2E7D32" />
                                             <TextBlock Text="{l:Tr 'Play'}" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" ToolTip.Tip="{l:Tr 'Play Level in Hunter Mode (Shift+F5)'}">
+                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" IsVisible="{Binding !IsGameRunning}" ToolTip.Tip="{l:Tr 'Play Level in Hunter Mode (Shift+F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Hunter}" Foreground="#C62828" />
                                             <TextBlock Text="{l:Tr 'Hunter Mode'}" />
@@ -377,6 +385,16 @@
                         <Panel>
                             <scene:SceneView Name="Scene" Editor="{Binding}" IsVisible="{Binding ShowsSceneView}" />
                             <scene:SceneView Name="GameScene" Editor="{Binding}" IsGameView="True" IsVisible="{Binding IsGameViewTab}" />
+                            <!-- Play / Hunter Mode / Play Here: the level is played here, in the Game View. -->
+                            <c:GameView Name="GamePlay" ToolTip.Tip="{x:Null}">
+                                <c:GameView.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="IsGameViewTab" />
+                                        <Binding Path="IsGameRunning" />
+                                        <Binding Path="!IsGameFullScreen" />
+                                    </MultiBinding>
+                                </c:GameView.IsVisible>
+                            </c:GameView>
                             <!-- Placement hint -->
                             <Border IsVisible="{Binding ShowPlacementHint}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
                                     Background="#E6FFFFFF" BorderBrush="#0078D7" BorderThickness="1" CornerRadius="2" Padding="6,3" IsHitTestVisible="False">
@@ -440,4 +458,7 @@
             </DockPanel>
         </Grid>
     </DockPanel>
+    <!-- The game's Full Screen (F11): the Game View fills the editor's window. -->
+    <c:GameView Name="GameFull" IsVisible="{Binding IsGameFullScreen}" />
+    </Panel>
 </UserControl>

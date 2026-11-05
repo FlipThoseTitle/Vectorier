@@ -55,12 +55,14 @@ public partial class EditorView : UserControl
         {
             _vm.PropertyChanged -= OnVmPropertyChanged;
             _vm.CollabDropdownRequested -= OpenCollabDropdown;
+            _vm.GameViewFocusRequested -= FocusGame;
         }
         _vm = DataContext as EditorViewModel;
         if (_vm != null)
         {
             _vm.PropertyChanged += OnVmPropertyChanged;
             _vm.CollabDropdownRequested += OpenCollabDropdown;
+            _vm.GameViewFocusRequested += FocusGame;
         }
         UpdateToolButtons();
     }
@@ -76,67 +78,48 @@ public partial class EditorView : UserControl
     {
         base.OnDetachedFromVisualTree(e);
         _infoTimer.Stop();
+        // Leaving the editor (back to the Project Manager) ends a level being played.
+        if (_vm?.IsGameRunning == true)
+            Vectorier.Services.Game.GameHost.Current.Stop();
     }
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(EditorViewModel.ActiveTool))
             UpdateToolButtons();
-        else if (e.PropertyName == nameof(EditorViewModel.IsPlayingHere))
-            SetGameLock(_vm?.IsPlayingHere == true);
+        else if (e.PropertyName == nameof(EditorViewModel.IsGameFullScreen))
+            SetGameFullScreen(_vm?.IsGameFullScreen == true);
+        else if (e.PropertyName == nameof(EditorViewModel.IsGameRunning) && _vm?.IsGameRunning == false)
+            Dispatcher.UIThread.Post(() => (_vm?.IsGameViewTab == true ? (Control)GameScene : Scene).Focus(), DispatcherPriority.Background);
     }
 
-    // ================= PLAY HERE LOCK ================= //
+    // ================= THE GAME ================= //
 
-    private Services.Tutorial.TutorialOverlay? _gameLock;
+    /// <summary>The game takes the keyboard (its view, or the full-window one).</summary>
+    private void FocusGame() => Dispatcher.UIThread.Post(() =>
+        (_vm?.IsGameFullScreen == true ? GameFull : GamePlay).Focus(), DispatcherPriority.Background);
 
-    /// <summary>
-    /// While a Play Here run uses its own version of the level file, the editor is greyed out and disabled (mouse and
-    /// keys), so nothing is edited or saved until the game is closed and the file is put back.
-    /// </summary>
-    private void SetGameLock(bool locked)
+    private Avalonia.Controls.WindowState? _stateBeforeFullScreen;
+
+    /// <summary>The game's F11: the Game View fills the editor's window, and the window the screen (desktop).</summary>
+    private void SetGameFullScreen(bool full)
     {
-        var top = TopLevel.GetTopLevel(this);
-        var layer = top == null ? null : Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(top);
-        if (locked)
+        if (TopLevel.GetTopLevel(this) is Window window)
         {
-            IsEnabled = false;
-            if (top == null || layer == null)
-                return;
-            _gameLock ??= new Services.Tutorial.TutorialOverlay();
-            if (!layer.Children.Contains(_gameLock))
-                layer.Children.Add(_gameLock);
-            FitGameLock(layer);
-            top.SizeChanged -= OnLockedWindowSizeChanged;
-            top.SizeChanged += OnLockedWindowSizeChanged;
-            _gameLock.ShowBusy(Loc.T("The game is running from the clicked point.\nClose the game window to return to the editor."));
+            if (full && _stateBeforeFullScreen == null)
+            {
+                _stateBeforeFullScreen = window.WindowState;
+                window.WindowState = Avalonia.Controls.WindowState.FullScreen;
+            }
+            else if (!full && _stateBeforeFullScreen is { } state)
+            {
+                window.WindowState = state;
+                _stateBeforeFullScreen = null;
+            }
         }
-        else
-        {
-            IsEnabled = true;
-            if (top != null)
-                top.SizeChanged -= OnLockedWindowSizeChanged;
-            if (_gameLock != null && layer != null)
-                layer.Children.Remove(_gameLock);
-            _gameLock = null;
-            Dispatcher.UIThread.Post(() => Scene.Focus(), DispatcherPriority.Background);
-        }
+        FocusGame();
     }
 
-    private void OnLockedWindowSizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        if (TopLevel.GetTopLevel(this) is { } top && Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(top) is { } layer)
-            Dispatcher.UIThread.Post(() => FitGameLock(layer), DispatcherPriority.Background);
-    }
-
-    private void FitGameLock(Avalonia.Controls.Primitives.OverlayLayer layer)
-    {
-        if (_gameLock == null)
-            return;
-        var size = layer.Bounds.Size.Width > 0 ? layer.Bounds.Size : Bounds.Size;
-        _gameLock.Width = size.Width;
-        _gameLock.Height = size.Height;
-    }
 
     private void KeepSceneHeaderClear()
     {
@@ -251,6 +234,9 @@ public partial class EditorView : UserControl
 
     private void OnPreviewKeyUp(object? sender, KeyEventArgs e)
     {
+        // The game's keys are its own.
+        if (e.Source is Vectorier.Controls.GameView)
+            return;
         _heldKeys.Remove(e.Key);
         if (e.Key == Key.Space && Scene.SpacePanHeld)
         {
@@ -276,6 +262,9 @@ public partial class EditorView : UserControl
     /// <summary>Editor shortcuts. Text fields keep their own keys (typing, Ctrl+C...).</summary>
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
+        // The game's keys are its own (its Esc pauses, its R restarts...).
+        if (e.Source is Vectorier.Controls.GameView)
+            return;
         if (_vm == null)
             return;
 
@@ -363,10 +352,10 @@ public partial class EditorView : UserControl
             {
                 _vm.MoveVisualizer.PressGameplayKey(e.Key switch
                 {
-                    Key.Left => Vectorier.Gameplay.KeyboardKey.Left,
-                    Key.Right => Vectorier.Gameplay.KeyboardKey.Right,
-                    Key.Up => Vectorier.Gameplay.KeyboardKey.Up,
-                    _ => Vectorier.Gameplay.KeyboardKey.Down,
+                    Key.Left => Vectorier.Gameplay.Rl.KeyboardKey.Left,
+                    Key.Right => Vectorier.Gameplay.Rl.KeyboardKey.Right,
+                    Key.Up => Vectorier.Gameplay.Rl.KeyboardKey.Up,
+                    _ => Vectorier.Gameplay.Rl.KeyboardKey.Down,
                 });
             }
             e.Handled = true;

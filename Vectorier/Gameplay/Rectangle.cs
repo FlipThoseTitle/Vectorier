@@ -1,10 +1,13 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Drawing;
 using System.Numerics;
 
 namespace Vectorier.Gameplay
@@ -55,7 +58,15 @@ namespace Vectorier.Gameplay
             Size = new Vector2(rectangle.Size.X, rectangle.Size.Y);
         }
 
+        public static implicit operator Vectorier.Gameplay.Rl.Rectangle(Rectangle rect)
+        {
+            return new Vectorier.Gameplay.Rl.Rectangle(rect.MinX, rect.MinY, rect.Size.X, rect.Size.Y);
+        }
 
+        public static implicit operator Rectangle(Vectorier.Gameplay.Rl.Rectangle rect)
+        {
+            return new Rectangle(rect.X, rect.Y, rect.Width, rect.Height);
+        }
 
         public static bool operator ==(Rectangle rectangle1, Rectangle rectangle2)
         {
@@ -91,6 +102,10 @@ namespace Vectorier.Gameplay
             Size.Y = rectangle.Size.Y;
         }
 
+        public bool Contains(Point point)
+        {
+            return point.X >= MinX && point.X <= MaxX && point.Y >= MinY && point.Y <= MaxY;
+        }
         public bool Contains(double x, double y)
         {
             return x >= MinX && x <= MaxX && y >= MinY && y <= MaxY;

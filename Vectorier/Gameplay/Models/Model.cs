@@ -1,13 +1,16 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using System.Numerics;
 using Vectorier.Gameplay.Controllers;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Node;
 using Vectorier.Gameplay.Result;
 using Vectorier.Gameplay.Runners;
@@ -107,7 +110,45 @@ namespace Vectorier.Gameplay.Models
 
         public virtual void Draw()
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            if (VectorGame.RenderEdges)
+            {
+                for (int i = 0; i < _ModelObject.EdgesAll.Count; i++)
+                {
+                    _ModelObject.EdgesAll[i].Draw();
+                }
+            }
+            if (VectorGame.RenderDetectors)
+            {
+                if (_ModelObject.DetectorHorizontalLine != null)
+                    _ModelObject.DetectorHorizontalLine.Draw();
+
+                if (_ModelObject.DetectorVerticalLine != null)
+                    _ModelObject.DetectorVerticalLine.Draw();
+            }
+            if (VectorGame.NodeMode != VectorGame.NodeDisplay.None)
+            {
+                var nodes = _ModelObject.NodesAll;
+                // Ordinary nodes first (All mode only), then COM / detectors / Camera on top so they stay visible.
+                if (VectorGame.NodeMode == VectorGame.NodeDisplay.All)
+                {
+                    for (int i = 0; i < nodes.Count; i++)
+                    {
+                        if (!nodes[i].IsImportant)
+                            nodes[i].Draw();
+                    }
+                }
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    if (nodes[i].GetImportantStyle(out float radius, out Color color))
+                        nodes[i].Draw(radius, color);
+                }
+            }
+            if (VectorGame.RenderBoxes)
+            {
+                var vs = Sets.Current.Containers[1];
+                Raylib.DrawRectangleLinesEx(new Vectorier.Gameplay.Rl.Rectangle(vs.TransformPoint(Rectangle.Origin), Rectangle.Size * vs.FrameScale), 2, Color.Red);
+            }
+
         }
 
         public virtual void Init()

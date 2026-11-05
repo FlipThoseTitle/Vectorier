@@ -1,11 +1,12 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Globalization;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 
 namespace Vectorier.Gameplay.Utilities
@@ -28,7 +29,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static int ParseInt(this XmlAttribute attr, int defVal = 0)
         {
-            if (attr == null || !int.TryParse(attr.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
+            if (attr == null || !int.TryParse(attr.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int result))
             {
                 return defVal;
             }
@@ -37,7 +38,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static long ParseLong(XmlAttribute attr, long defVal = 0L)
         {
-            if (attr == null || !long.TryParse(attr.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long result))
+            if (attr == null || !long.TryParse(attr.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long result))
             {
                 return defVal;
             }
@@ -46,7 +47,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static uint ParseUint(XmlAttribute attr, uint defVal = 0u)
         {
-            if (attr == null || !uint.TryParse(attr.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint result))
+            if (attr == null || !uint.TryParse(attr.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out uint result))
             {
                 return defVal;
             }
@@ -55,7 +56,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static float ParseFloat(this XmlAttribute attr, float defVal = 0f)
         {
-            if (attr == null || !float.TryParse(attr.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float result))
+            if (attr == null || !float.TryParse(attr.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float result))
             {
                 return defVal;
             }
@@ -64,7 +65,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static double ParseDouble(this XmlAttribute attr, double defVal = 0.0)
         {
-            if (attr == null || !double.TryParse(attr.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
+            if (attr == null || !double.TryParse(attr.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double result))
             {
                 return defVal;
             }
@@ -73,7 +74,7 @@ namespace Vectorier.Gameplay.Utilities
 
         public static bool ParseBool(this XmlAttribute attr, bool defVal = false)
         {
-            if (attr == null || !int.TryParse(attr.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
+            if (attr == null || !int.TryParse(attr.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int result))
             {
                 return defVal;
             }
@@ -130,17 +131,19 @@ namespace Vectorier.Gameplay.Utilities
 
         public static XmlDocument OpenXMLDocument(string path, string file = "", OpenXmlType openType = OpenXmlType.Normal, bool pIgnoreComments = true, bool dialog = true)
         {
-            // Read beforehand by the editor (see GameplayFiles), as File.ReadAllText reads it in the game.
-            string fullPath = string.IsNullOrEmpty(file) ? path : path + "/" + file;
+            string fullPath = PathCase.Resolve(Path.Combine(path, file));
             var xmlReaderSettings = new XmlReaderSettings();
             xmlReaderSettings.IgnoreComments = pIgnoreComments;
             XmlDocument document = null;
 
-            var text0 = GameplayFiles.GetText(fullPath);
-            if (text0 == null)
+            if (!GameFiles.FileExists(fullPath))
             {
+                if (dialog)
+                    Console.WriteLine("FILE DOESNT EXIST: " + fullPath, true, true);
+
                 return null;
             }
+            var text0 = GameFiles.ReadAllText(fullPath);
             document = OpenXMLDocFromString(text0, xmlReaderSettings);
 
             return document;

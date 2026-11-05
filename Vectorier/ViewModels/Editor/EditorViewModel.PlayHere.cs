@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Avalonia;
-using CommunityToolkit.Mvvm.ComponentModel;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.IO;
@@ -14,37 +13,35 @@ using Vectorier.Services.Xml;
 namespace Vectorier.ViewModels.Editor;
 
 /// <summary>
-/// Play Here (Scene context menu): the level is saved as usual, then its file is changed for one run so the player
-/// starts at the clicked point, and put back once the game is closed. Nothing of it reaches the editor's level.
+/// Play Here (Scene context menu): the level is saved as usual, then played in the Game View from the clicked point:
+/// the game gets its own copy of the level's XML, changed so the player starts there. Nothing of it reaches the
+/// editor's level or the file on disk.
 /// </summary>
 public partial class EditorViewModel
 {
-    /// <summary>True from the launch until the game is closed and the level file is put back (the editor is locked).</summary>
-    [ObservableProperty] private bool _isPlayingHere;
-
     public async Task PlayHereAsync(Point level)
     {
-        if (!CanPlay || IsPlayingHere)
+        if (!CanPlay)
             return;
         CommitPending();
         string levelName = Document.LevelName;
         string target = VPath.Combine(Project.LevelsFolder, levelName + ".xml");
-        byte[] saved;
+        byte[] run;
         try
         {
             // 1. Save, as Play does.
-            saved = ExportXml(out _);
+            byte[] saved = ExportXml(out _);
             await AppServices.FileSystem.CreateDirectoryAsync(Project.LevelsFolder);
             await AppServices.FileSystem.WriteAllBytesAsync(target, saved);
             if (string.Equals(Document.FilePath, target, StringComparison.Ordinal))
                 MarkSaved();
 
-            // 2. The run's own version of the file.
+            // 2. The run's own version of the level (in memory only).
             XDocument xml;
             using (var stream = new MemoryStream(saved))
                 xml = XDocument.Load(stream);
             PlayHereXml.Apply(xml, level.X, level.Y);
-            await AppServices.FileSystem.WriteAllBytesAsync(target, XmlHelpers.ToBytes(xml));
+            run = XmlHelpers.ToBytes(xml);
         }
         catch (Exception ex)
         {
@@ -52,41 +49,8 @@ public partial class EditorViewModel
             return;
         }
 
-        string? error = AppServices.Platform.LaunchGame(AppServices.FileSystem, Project.Name, levelName, false);
-        if (error != null)
-        {
-            await RestoreAsync(target, saved);
-            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Here"), error, MessageKind.Error);
-            return;
-        }
-        Services.Tutorial.TutorialSignals.GameLaunches++;
-        StatusText = Loc.F("Playing {0} from the clicked point", levelName);
-        IsPlayingHere = true;
-        try
-        {
-            // 3. Back from the game: the saved level again.
-            while (AppServices.Platform.IsGameRunning)
-                await Task.Delay(250);
-        }
-        finally
-        {
-            await RestoreAsync(target, saved);
-            IsPlayingHere = false;
-            StatusText = Loc.F("Back from playing {0}", levelName);
-        }
-    }
-
-    private static async Task RestoreAsync(string target, byte[] saved)
-    {
-        try
-        {
-            await AppServices.FileSystem.WriteAllBytesAsync(target, saved);
-        }
-        catch (Exception ex)
-        {
-            await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Here"),
-                Loc.F("The level file could not be put back after playing: {0}\n\nSave the level again to fix it.", ex.Message), MessageKind.Error);
-        }
+        if (await StartGameAsync(levelName, run, false, Loc.T("Play Here")))
+            StatusText = Loc.F("Playing {0} from the clicked point", levelName);
     }
 }
 

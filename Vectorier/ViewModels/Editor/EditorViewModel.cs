@@ -114,7 +114,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     /// <summary>Object definitions visible to the level through its &lt;Sets&gt;.</summary>
     public DefinitionTable Definitions { get; private set; } = new();
 
-    public bool CanPlay => AppServices.Platform.CanLaunchGame;
+    /// <summary>The game is part of the editor: a level can always be played (desktop and browser).</summary>
+    public bool CanPlay => true;
 
     // ================= SCREEN ================= //
 
@@ -788,6 +789,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         CommitPending();
         try
         {
+            // Saved first, as before: the played level is the level on disk.
             string levelName = Document.LevelName;
             string target = VPath.Combine(Project.LevelsFolder, levelName + ".xml");
             byte[] data = ExportXml(out _);
@@ -796,12 +798,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
             if (string.Equals(Document.FilePath, target, StringComparison.Ordinal))
                 MarkSaved();
 
-            string? error = AppServices.Platform.LaunchGame(AppServices.FileSystem, Project.Name, levelName, hunter);
-            if (error == null)
-                Services.Tutorial.TutorialSignals.GameLaunches++;
-            if (error != null)
-                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), error, MessageKind.Error);
-            else
+            if (await StartGameAsync(levelName, data, hunter, Loc.T("Play Level")))
                 StatusText = hunter ? Loc.F("Playing {0} in Hunter Mode", levelName) : Loc.F("Playing {0}", levelName);
         }
         catch (Exception ex)

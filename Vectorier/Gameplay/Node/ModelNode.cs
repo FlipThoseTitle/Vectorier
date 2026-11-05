@@ -1,13 +1,15 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Globalization;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using System.Numerics;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Runners;
 
 namespace Vectorier.Gameplay.Node
@@ -34,7 +36,7 @@ namespace Vectorier.Gameplay.Node
                 _name = value;
                 string[] array = _name.Split('_');
                 _bothName = _name.Split('_')[0];
-                if (array.Length == 2 && int.TryParse(array[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
+                if (array.Length == 2 && int.TryParse(array[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val))
                 {
                     _bothIndex = val;
                 }
@@ -181,7 +183,13 @@ namespace Vectorier.Gameplay.Node
 
         public void Draw(float radius, Color color)
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            var vs = Sets.Current.Containers[1];
+            Vector2 start = vs.TransformPoint(Start);
+            Vector2 end = vs.TransformPoint(End);
+
+            Raylib.DrawCircleV(start, radius, color);
+
+            Vectorier.Gameplay.Rl.Raylib.DrawLineV(start, end, color);
         }
 
         public void Reset()

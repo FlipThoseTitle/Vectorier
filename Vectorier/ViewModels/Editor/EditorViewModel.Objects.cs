@@ -52,6 +52,7 @@ public sealed partial class EditorViewModel
         // The status line belongs to the tab it was written for ("Editing object ..." and the like).
         if (oldValue != newValue)
             StatusText = string.Empty;
+        OnCenterTabChangedForGame(oldValue, newValue);
         // Leaving the Object tab ends Edit Object mode (its changes are saved to the object's file).
         if (oldValue == CenterTab.Object && newValue != CenterTab.Object && ObjectEdit != null && !_switchingTab)
             _ = LeaveObjectEditAsync(save: true);

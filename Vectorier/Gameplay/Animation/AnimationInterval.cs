@@ -1,11 +1,12 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Globalization;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Numerics;
 using System.Xml;
 using Vectorier.Gameplay.Animation.Events;
@@ -184,13 +185,13 @@ namespace Vectorier.Gameplay.Animation
                 string[] array2 = node.Attributes["RB"].Value.Split('|');
                 float[] array3 = new float[2]
                 {
-                    float.Parse(array[0], CultureInfo.InvariantCulture),
-                    float.Parse(array[1], CultureInfo.InvariantCulture)
+                    float.Parse(array[0], System.Globalization.CultureInfo.InvariantCulture),
+                    float.Parse(array[1], System.Globalization.CultureInfo.InvariantCulture)
                 };
                 float[] array4 = new float[2]
                 {
-                    float.Parse(array2[0], CultureInfo.InvariantCulture),
-                    float.Parse(array2[1], CultureInfo.InvariantCulture)
+                    float.Parse(array2[0], System.Globalization.CultureInfo.InvariantCulture),
+                    float.Parse(array2[1], System.Globalization.CultureInfo.InvariantCulture)
                 };
                 BoundingBoxRight = new Rectangle(array3[0], array3[1], array4[0] - array3[0], array4[1] - array3[1]);
                 BoundingBoxLeft = new Rectangle(-1f * array4[0], array3[1], array4[0] - array3[0], array4[1] - array3[1]);
@@ -238,7 +239,7 @@ namespace Vectorier.Gameplay.Animation
                                 foreach (string item2 in list2)
                                 {
                                     if (!string.IsNullOrEmpty(item2))
-                                        list.Add((AnimationEventCollision.Type)int.Parse(item2, CultureInfo.InvariantCulture));
+                                        list.Add((AnimationEventCollision.Type)int.Parse(item2, System.Globalization.CultureInfo.InvariantCulture));
                                 }
                             }
                             CollisionEvents.Add(new AnimationEventCollision(list, GetEventParam(item)));

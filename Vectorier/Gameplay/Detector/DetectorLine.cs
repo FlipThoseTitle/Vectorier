@@ -1,12 +1,15 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using System.Numerics;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Node;
 using Vectorier.Gameplay.Runners;
 
@@ -136,7 +139,11 @@ namespace Vectorier.Gameplay.Detector
 
         public void Draw()
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            var vs = Sets.Current.Containers[1];
+            var start = vs.TransformPoint(Start.Start);
+            Raylib.DrawLineEx(start, vs.TransformPoint(Start.End), 3, Color.Yellow);
+
+            GameFont.Draw(Start.Start.ToString(), start.X, start.Y, 5, Color.White);
         }
 
         public string GetStringType()

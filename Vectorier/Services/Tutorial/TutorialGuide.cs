@@ -247,13 +247,6 @@ public static partial class TutorialGuide
         if (!Attach(host))
             return;
 
-        // The game is running: the editor waits until it is closed.
-        if (AppServices.Platform?.IsGameRunning == true)
-        {
-            _overlay!.ShowBusy(Loc.T("The game is running.\nClose the game window to continue the tutorial."));
-            return;
-        }
-
         // Looking for the targets walks the window's controls: not on every tick.
         if (_tickCount++ % 3 == 0 || _targets.Any(t => t == null || !t.IsAttachedToVisualTree()))
             _targets = step.Targets?.Invoke().ToList() ?? new List<Control?>();

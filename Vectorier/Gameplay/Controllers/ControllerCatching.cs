@@ -1,10 +1,12 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Numerics;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Node;
@@ -36,11 +38,13 @@ namespace Vectorier.Gameplay.Controllers
         public void Play()
         {
             SoundsManager.PlaySounds(SoundType.enemy_charge);
+            _Model.controllerModelEffect.RunTaserEffect();
             _IsPlay = true;
         }
 
         public void Stop()
         {
+            _Model.controllerModelEffect.StopTaserEffect();
             _IsPlay = false;
         }
 
@@ -61,6 +65,8 @@ namespace Vectorier.Gameplay.Controllers
             }
             SoundsManager.PlaySounds(SoundType.enemy_discharge);
             //GamepadController.Instance.Rumble(0.7f, 0.7f,0.5f);
+            modelHuman.controllerModelEffect.RunParalyzeEffect();
+            _Model.controllerModelEffect.RunTaserExplosion();
         }
 
         public void Render(ModelHuman modelHuman)
@@ -124,6 +130,7 @@ namespace Vectorier.Gameplay.Controllers
 
         public void Reset()
         {
+            _Model.controllerModelEffect.StopTaserEffect();
             _IsPlay = false;
         }
     }

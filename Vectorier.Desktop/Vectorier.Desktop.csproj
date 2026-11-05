@@ -25,8 +25,8 @@
   </ItemGroup>
 
   <!--
-    Vectorier data folders (Editor, Game, Projects) copied next to the executable on build and publish,
-    so the app finds its root without asking. Put the three folders in <repo>\Data\, or point elsewhere with
+    Vectorier data folders (Editor, Projects) copied next to the executable on build and publish,
+    so the app finds its root without asking. Put the two folders in <repo>\Data\, or point elsewhere with
     -p:VectorierDataDir="C:\path\to\Vectorier Folder Structure Example\". Missing folders are skipped.
   -->
   <PropertyGroup>
@@ -50,14 +50,13 @@
   <Target Name="CollectVectorierData">
     <ItemGroup>
       <VectorierData Include="$(_VectorierData)Editor\**\*" DataFolder="Editor\" />
-      <VectorierData Include="$(_VectorierData)Game\**\*" DataFolder="Game\" />
       <VectorierData Include="$(_VectorierData)Projects\**\*" Exclude="$(_VectorierData)Projects\**\.vectorier\**" DataFolder="Projects\" />
       <!-- The editor's .vectorier cache is left out of the other projects, but the template's is kept: its folders
            are copied into every new project. -->
       <VectorierData Include="$(_VectorierData)Projects\_ProjectTemplate\.vectorier\**\*" DataFolder="Projects\_ProjectTemplate\.vectorier\" />
     </ItemGroup>
     <Warning Condition="'@(VectorierData)' == ''"
-             Text="Vectorier data folders not found in '$(VectorierDataDir)'. Put Editor, Game and Projects there or pass -p:VectorierDataDir=..." />
+             Text="Vectorier data folders not found in '$(VectorierDataDir)'. Put Editor and Projects there or pass -p:VectorierDataDir=..." />
   </Target>
 
   <Target Name="CopyVectorierDataOnBuild" AfterTargets="Build" DependsOnTargets="CollectVectorierData"

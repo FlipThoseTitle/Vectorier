@@ -1,18 +1,21 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Geometry;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Node;
 
 namespace Vectorier.Gameplay.Models
 {
-    public class ModelRender
+    public class ModelRender : IDrawable
     {
         private Color _Color;
 
@@ -59,8 +62,32 @@ namespace Vectorier.Gameplay.Models
 
         public ModelRender()
         {
+            // In the editor, models outside a level (previews, the Move Visualizer's still poses) are not the level's.
+            if (Detached)
+            {
+                return;
+            }
+            GlobalObjects.AddDrawable(this);
+            Z += Sets.Current.Containers[1].Z;
         }
 
+        public void Draw()
+        {
+            foreach (var capsule in _Capsules)
+            {
+                capsule.Draw(Color);
+            }
+            foreach (var triangle in _Triangles)
+            {
+                triangle.Draw(Color);
+            }
+        }
+
+        /// <summary>Set while the editor builds a model that does not belong to the level being played.</summary>
+        [ThreadStatic]
+        public static bool Detached;
+
+        /// <summary>The editor's drawing of the same capsules and triangles, into one geometry (model previews).</summary>
         public void Draw(ModelCanvas canvas)
         {
             foreach (var capsule in _Capsules)

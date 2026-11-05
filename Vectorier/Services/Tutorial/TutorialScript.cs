@@ -85,6 +85,8 @@ public static partial class TutorialGuide
     private static Control? Inspector() => Find<Views.Editor.InspectorView>();
     private static Control? Hierarchy() => Find<Views.Editor.HierarchyView>();
     private static Control? PlayButton() => ByCommand(Editor?.PlayLevelCommand, "tool");
+    private static Control? StopButton() => Named("StopGameButton");
+    private static Control? GamePlay() => Find<Vectorier.Controls.GameView>(v => v.Name == "GamePlay");
 
     private static bool IsElement(ElementType type) => Editor?.ActiveElementType?.Type == type;
 
@@ -168,7 +170,7 @@ public static partial class TutorialGuide
 
     private static void ClearFilters() => Editor?.ProjectWindow.SetTutorialFilter(null, null);
 
-    /// <summary>Plays the level in the game, and waits until the game is closed again.</summary>
+    /// <summary>Plays the level in the Game View, and waits until the player stops (Stop, or back to the Scene).</summary>
     private static TutorialStep Play(string title, string text, Func<IEnumerable<Control?>>? extraTargets = null)
     {
         int launches = 0;
@@ -177,10 +179,13 @@ public static partial class TutorialGuide
             Title = title,
             Text = text,
             Interactive = true,
-            Targets = () => new[] { PlayButton(), Scene(), Named("MoveTool"), Named("RotateTool"), Named("ScaleTool"), Named("RectTool") }.Concat(extraTargets?.Invoke() ?? Enumerable.Empty<Control?>()),
-            Skip = () => AppServices.Platform?.CanLaunchGame != true,
+            // While the game runs, its view and the Stop button are free to use (the game needs the keyboard).
+            Targets = () => (Editor?.IsGameRunning == true
+                    ? new[] { GamePlay(), StopButton(), WithText<RadioButton>("Scene") }
+                    : new[] { PlayButton(), Scene(), Named("MoveTool"), Named("RotateTool"), Named("ScaleTool"), Named("RectTool") })
+                .Concat(extraTargets?.Invoke() ?? Enumerable.Empty<Control?>()),
             Enter = () => launches = TutorialSignals.GameLaunches,
-            Done = () => TutorialSignals.GameLaunches > launches && AppServices.Platform?.IsGameRunning != true,
+            Done = () => TutorialSignals.GameLaunches > launches && Editor?.IsGameRunning != true,
         };
     }
 
@@ -424,7 +429,7 @@ public static partial class TutorialGuide
             Done = () => Editor is { } e && e.IsMoveVisualizerTab && e.MoveVisualizer.IsPlaced,
         });
         Add(Info("The runner",
-            "Here's the runner, playing its starting move from the spawn.\n\nThe Move Visualizer can play any move anywhere in the level. It's handy for checking jumps while you build.",
+            "Here's the runner, playing its starting move from the spawn.\n\nThe Move Visualizer can play any move anywhere in the level. It's handy for checking jumps while you build. In its Gameplay spawn mode, the game itself moves the runner on your platforms and areas, and you steer it with the arrow keys.",
             () => Many(Scene(), Find<Views.Editor.MoveVisualizerView>())));
         Add(new TutorialStep
         {
@@ -480,7 +485,7 @@ public static partial class TutorialGuide
             Done = () => Editor?.IsGameViewTab == true,
         });
         Add(Info("The Game view",
-            "This is the view from the camera, just like in the game.\n\nIt's only for looking. You build in the Scene.",
+            "This is the view from the camera, just like in the game.\n\nYou build in the Scene. When you play the level, it's played right here.",
             () => Many(GameScene())));
         Add(Act("Back to the Scene",
             "Click the Scene tab to go back.",
@@ -639,7 +644,7 @@ public static partial class TutorialGuide
         // ---------------- Play ----------------
 
         Add(Play("Try it!",
-            "Your level is playable now.\n\nClick Play to try it, then close the game to come back."));
+            "Your level is playable now.\n\nClick Play to try it. The game runs right here, in the Game view: use the arrow keys, then click Stop to come back."));
 
         // ---------------- Obstacle ----------------
         Section("Obstacle");
@@ -713,7 +718,7 @@ public static partial class TutorialGuide
             "Nice. Move it around a little if you like.\n\nClick Next when you're happy with it.",
             () => Many(Scene(), Named("MoveTool"), Named("RotateTool"), Named("ScaleTool"), Named("RectTool"))));
         Add(Play("Jump over it",
-            "Play the level and jump over the pipe with the Up key.\n\nClose the game when you're done."));
+            "Play the level and jump over the pipe with the Up key.\n\nClick Stop when you're done."));
 
         // ---------------- Item ----------------
         Section("Item");
@@ -758,7 +763,7 @@ public static partial class TutorialGuide
             "Feel free to move it, as long as the runner will run through it.\n\nClick Next when you're done.",
             () => Many(Scene(), Named("MoveTool"), Named("RotateTool"), Named("ScaleTool"), Named("RectTool"))));
         Add(Play("Collect it",
-            "Play the level and grab the bonus.\n\nClose the game when you're done."));
+            "Play the level and grab the bonus.\n\nClick Stop when you're done."));
 
         // ---------------- Trigger ----------------
         Section("Trigger");
@@ -860,7 +865,7 @@ public static partial class TutorialGuide
             () => Editor is { TriggerEditor: null },
             () => Many(TriggerEditorView() is { } v ? v.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => ReferenceEquals(b.Command, TriggerVm()?.CloseEditorCommand)) : null)));
         Add(Play("Follow me",
-            "Play the level. Once the runner reaches the trigger, the camera follows.\n\nClose the game when you're done."));
+            "Play the level. Once the runner reaches the trigger, the camera follows.\n\nClick Stop when you're done."));
 
         // ---------------- Level Settings ----------------
         Section("Level Settings");

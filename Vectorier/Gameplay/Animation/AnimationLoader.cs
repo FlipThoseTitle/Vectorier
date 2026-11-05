@@ -1,11 +1,12 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Globalization;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Camera;
 using Vectorier.Gameplay.Controllers;
@@ -46,6 +47,59 @@ namespace Vectorier.Gameplay.Animation
             AnimationReaction.Reactions.Clear();
             AnimationTrickInfo.TricksLoaded.Clear();
             ParseAnimations();
+        }
+
+        /// <summary>
+        /// Reload Moves (debug panel): moves.xml and every move's .bin read again from the disk, so edited moves and
+        /// new .bin files are used without restarting the game. When moves.xml cannot be read (a typo while
+        /// editing), the moves loaded before are kept and the error is returned.
+        /// </summary>
+        public bool ReloadMoves(out string? error)
+        {
+            var animations = new Dictionary<string, AnimationInfo>(Animations.Animation);
+            var groups = new Dictionary<string, AnimationGroup>(AnimationGroup.Groups);
+            var reactions = new List<AnimationReaction>(AnimationReaction.Reactions);
+            var tricks = new List<AnimationTrickInfo>(AnimationTrickInfo.TricksLoaded);
+            try
+            {
+                // Read on its own first: a broken file reports its line and column instead of failing half-way.
+                // Same reading as the game's (the text, so the file's encoding declaration is not used).
+                string text = GameFiles.ReadAllText(PathCase.Resolve(Path.Combine(_xmlPath, "moves.xml")));
+                using var reader = XmlReader.Create(new StringReader(text), new XmlReaderSettings { IgnoreComments = true });
+                new XmlDocument().Load(reader);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            try
+            {
+                ReloadAnimations();
+                PathCase.Clear(); // a .bin added since the start is found whatever its casing
+                Parallel.ForEach(Animations.ToList(), animation => animation.LoadBin());
+                AnimationReaction.MovesVersion++;
+                error = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Restore(Animations.Animation, animations);
+                Restore(AnimationGroup.Groups, groups);
+                AnimationReaction.Reactions.Clear();
+                AnimationReaction.Reactions.AddRange(reactions);
+                AnimationTrickInfo.TricksLoaded.Clear();
+                AnimationTrickInfo.TricksLoaded.AddRange(tricks);
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        private static void Restore<TValue>(Dictionary<string, TValue> target, Dictionary<string, TValue> saved)
+        {
+            target.Clear();
+            foreach (var (key, value) in saved)
+                target[key] = value;
         }
 
         public void ParseAnimations()
@@ -113,12 +167,12 @@ namespace Vectorier.Gameplay.Animation
 
         public static AnimationReaction ParseReaction(string[] pArray)
         {
-            if (pArray.Length < 1 && int.Parse(pArray[1], CultureInfo.InvariantCulture) == 0)
+            if (pArray.Length < 1 && int.Parse(pArray[1], System.Globalization.CultureInfo.InvariantCulture) == 0)
             {
                 return null;
             }
             string name = pArray[0];
-            int frame = !string.IsNullOrEmpty(pArray[1]) ? int.Parse(pArray[1], CultureInfo.InvariantCulture) : 0;
+            int frame = !string.IsNullOrEmpty(pArray[1]) ? int.Parse(pArray[1], System.Globalization.CultureInfo.InvariantCulture) : 0;
             AnimationReaction animationReaction = new AnimationReaction(name, frame);
             if (pArray.Length == 2)
             {
@@ -126,7 +180,7 @@ namespace Vectorier.Gameplay.Animation
             }
             else
             {
-                animationReaction.Reverse = int.Parse(pArray[2], CultureInfo.InvariantCulture) > 0;
+                animationReaction.Reverse = int.Parse(pArray[2], System.Globalization.CultureInfo.InvariantCulture) > 0;
             }
             return animationReaction;
         }

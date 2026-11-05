@@ -1,12 +1,16 @@
-// Ported from Vector-Raylib-For-Vectorier (the game's player movement and model drawing).
+// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073 // the game's own unused fields and comparisons
+#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Vectorier.Gameplay.Rl;
+using System.Drawing;
 using System.Numerics;
-using Vectorier.Gameplay.Location;
+using Vectorier.Gameplay.Level;
 
 namespace Vectorier.Gameplay.Runners
 {
@@ -88,7 +92,27 @@ namespace Vectorier.Gameplay.Runners
         //}
         public override void Draw()
         {
-            // Drawing is done by the editor (Controls/Scene/SceneView.Gameplay.cs).
+            if (!IsEnabled)
+                return;
+
+            var vs = Sets.Current.Containers[1];
+
+            Vector2 a = vs.TransformPoint(Point1);
+            Vector2 b = vs.TransformPoint(Point2);
+            Vector2 c = vs.TransformPoint(Point3);
+            Vector2 d = vs.TransformPoint(Point4);
+                
+            Rlgl.DisableBackfaceCulling();
+            Rlgl.Begin(DrawMode.Quads);
+
+            Rlgl.Color4ub(0, 0, 255, 64);
+
+            Rlgl.Vertex2f(a.X, a.Y);
+            Rlgl.Vertex2f(b.X, b.Y);
+            Rlgl.Vertex2f(c.X, c.Y);
+            Rlgl.Vertex2f(d.X, d.Y);
+
+            Rlgl.End();
         }
 
         public override void TransformResize(Vector2 size)

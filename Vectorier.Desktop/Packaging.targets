@@ -3,11 +3,11 @@
     Release packaging, run after "dotnet publish" (the publish profiles).
 
     macOS: the executable is wrapped in Vectorier.app (Info.plist + icon), so it opens with a double click and shows
-    the Vectorier icon. Editor, Game and Projects stay next to the .app.
+    the Vectorier icon. Editor and Projects stay next to the .app.
 
     Every platform: a ready-to-upload zip is written next to the publish folder (publish/Vectorier-<version>-<OS>.zip).
-    The zip is written with Unix permissions, so the macOS / Linux executables (the editor and the game) keep their
-    execute bit even when the zip is made on Windows: no chmod needed after extracting.
+    The zip is written with Unix permissions, so the macOS / Linux executable (the editor) keeps its execute bit
+    even when the zip is made on Windows: no chmod needed after extracting.
     Turn it off with -p:VectorierZip=false.
   -->
   <PropertyGroup>
@@ -102,11 +102,9 @@
             {
                 string rel = file.Substring(root.Length + 1).Replace('\\', '/');
                 string name = Path.GetFileName(file);
-                // Executables: the editor (also inside Vectorier.app/Contents/MacOS), and the game builds for
-                // Linux / macOS (Game/<rid>/ files without an extension, or .sh / .command scripts).
+                // Executable: the editor (also inside Vectorier.app/Contents/MacOS). The game is part of the editor.
                 bool exec = name == ExecutableName
-                    || rel.Contains(".app/Contents/MacOS/") && Path.GetExtension(name) == ""
-                    || (rel.StartsWith("Game/linux") || rel.StartsWith("Game/osx")) && (Path.GetExtension(name) == "" || name.EndsWith(".sh") || name.EndsWith(".command"));
+                    || rel.Contains(".app/Contents/MacOS/") && Path.GetExtension(name) == "";
                 var entry = zip.CreateEntryFromFile(file, rel, CompressionLevel.Optimal);
                 // Unix mode in the high 16 bits (regular file + permissions); Windows tools ignore it.
                 int mode = exec ? Convert.ToInt32("100755", 8) : Convert.ToInt32("100644", 8);

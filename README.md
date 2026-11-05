@@ -39,7 +39,7 @@
 Vectorier is a community-developed level editor for the game Vector to build your own dystopian stages. It runs as a standalone app on Windows, Linux and macOS, no Unity or .NET install needed. This project includes the following features:
 - Export Level into an XML
 - Import existing levels directly from the base game
-- Built-in Game, allowing for quick playtest in both normal and Hunter mode
+- Built-in Game, played right inside the editor for quick playtests in both normal and Hunter mode
 - Dynamic Editor to easily create dynamic objects
 - Trigger Editor to quickly tweak the game's rule
 - Move Visualizer to easily preview animations
@@ -60,7 +60,7 @@ A Discord server is open for the project : https://discord.com/invite/pVRuFBVwC2
   - macOS (Intel): `Vectorier-x.x.x-macOS-Intel.zip`
   - Linux: `Vectorier-x.x.x-Linux-x64.zip`
 - Extract the zip file
-- Run `Vectorier` (`Vectorier.exe` on Windows). Keep the `Editor`, `Game` and `Projects` folders next to it
+- Run `Vectorier` (`Vectorier.exe` on Windows). Keep the `Editor` and `Projects` folders next to it
 
 On Windows, a blue "Windows protected your PC" window may show up the first time. This is because the app is not signed, not because it's a virus. Click More info, then Run anyway.
 
@@ -69,7 +69,7 @@ On macOS the app isn't signed by Apple, so the first time it may say it can't be
 ### Building from source
 - Install the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 - Download the [Vectorier Project](https://github.com/FlipThoseTitle/Vectorier/archive/refs/heads/main.zip)
-- Put the `Editor`, `Game` and `Projects` folders from a release into a `Data` folder at the root of the project
+- Put the `Editor` and `Projects` folders from a release into a `Data` folder at the root of the project
 - Open the folder in VS Code and run the `Build Debug` or `Publish` task, or build `Vectorier.Desktop` with `dotnet build`
 - Publishing also makes the release zip in the `publish` folder (`Vectorier-x.x.x-<OS>.zip`), with the macOS `.app` and the execute permissions already set
 
