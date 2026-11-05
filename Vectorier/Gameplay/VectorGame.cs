@@ -268,12 +268,9 @@ namespace Vectorier.Gameplay
             if (width != ScreenWidth || height != ScreenHeight)
                 Resize(width, height);
             Raylib.PollInputEvents();
-            // The UI (text, buttons) is always drawn smooth; Q only changes how the level is drawn (DrawWorldAntiAliased).
-            using (context.PushRenderOptions(new Avalonia.Media.RenderOptions
-            {
-                EdgeMode = Avalonia.Media.EdgeMode.Antialias,
-                BitmapInterpolationMode = Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality, // bilinear with mipmaps, as the game's textures
-            }))
+            // The UI (text, buttons) is drawn with the editor's defaults (smooth); Q only changes how the level is drawn
+            // (DrawWorldAntiAliased). Nothing is set here: an option set outside wins over the same one set inside.
+            using (context.PushRenderOptions(new Avalonia.Media.RenderOptions()))
             {
                 try
                 {
@@ -713,9 +710,12 @@ namespace Vectorier.Gameplay
             using (Raylib.PushRenderOptions(new Avalonia.Media.RenderOptions
             {
                 EdgeMode = AntiAlias == 0 ? Avalonia.Media.EdgeMode.Aliased : Avalonia.Media.EdgeMode.Antialias,
-                BitmapInterpolationMode = AntiAlias == 2
-                    ? Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality
-                    : Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality,
+                BitmapInterpolationMode = AntiAlias switch
+                {
+                    0 => Avalonia.Media.Imaging.BitmapInterpolationMode.LowQuality, // the game without supersampling: bilinear only
+                    1 => Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality, // bilinear with mipmaps
+                    _ => Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality, // the finest filtering
+                },
             }))
             {
                 Raylib.BeginMode2D(Camera);

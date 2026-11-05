@@ -61,6 +61,9 @@ public sealed class GameplaySession
     /// <summary>The game was taken by a level played in the Game View (the character is gone).</summary>
     public event Action? Taken;
 
+    /// <summary>The character's pose before its spawn move (game space, runner.xml's node order); null: its rest pose.</summary>
+    public Vector3[]? StartPose { get; set; }
+
     /// <summary>The last spawn (Restart and Reverse spawn there again).</summary>
     public GameplaySpawn? LastSpawn { get; private set; }
 
@@ -209,6 +212,13 @@ public sealed class GameplaySession
             var reaction = AnimationLoader.ParseReaction(parts.Length >= 2 ? parts : new[] { parts[0], "0" });
             string pivot = model.GetNode(spawn.PivotNode) != null ? spawn.PivotNode : "NPivot";
             model.ControllerPhysics.NodeReset();
+            // The pose shown while placing (RunForward's, see the Move Visualizer) instead of runner.xml's rest pose.
+            if (StartPose is { } pose)
+            {
+                var nodes = model.ModelObject.NodesAll;
+                for (int i = 0; i < nodes.Count && i < pose.Length; i++)
+                    nodes[i].Position(pose[i], pose[i]);
+            }
             model.Position(new Vector3(spawn.Position, 0), pivot);
             model.PlayAnimation(reaction);
             model.IsEnabled = true;

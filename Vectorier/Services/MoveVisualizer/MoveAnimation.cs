@@ -44,7 +44,55 @@ public sealed class MoveModel
 
     public List<string> NodeNamesOrdered { get; } = new();
     public Dictionary<string, int> NodeIndexByName { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public Vector3[] PreviewPose { get; }
+    /// <summary>The pose shown while placing (animation space): runner.xml's rest pose, or RunForward's (see UsePose).</summary>
+    public Vector3[] PreviewPose { get; private set; }
+
+    /// <summary>The same pose in the game's space (level units, Y down), for the Gameplay mode.</summary>
+    public Vector3[] GamePose => PreviewPose.Select(ToSpace).ToArray();
+
+    /// <summary>
+    /// The preview pose from a frame of a move bin (animation space, the model's first nodes); the nodes the bin
+    /// does not move (macro, cloth) keep their rest place relative to the COM.
+    /// </summary>
+    public void UsePose(Vector3[] frame)
+    {
+        var rest = Placed.RestPose.Select(ToSpace).ToArray();
+        var pose = rest.ToArray();
+        int count = Math.Min(frame.Length, pose.Length);
+        for (int i = 0; i < count; i++)
+            pose[i] = frame[i];
+        if (count < pose.Length)
+        {
+            var shift = TryGetNodeIndex("COM", out int com) && com < count ? frame[com] - rest[com] : count > 0 ? frame[0] - rest[0] : Vector3.Zero;
+            for (int i = count; i < pose.Length; i++)
+                pose[i] = rest[i] + shift;
+        }
+        PreviewPose = pose;
+    }
+
+    /// <summary>One frame of a move bin, in the animation space (as MoveAnimation reads it).</summary>
+    public static Vector3[] ReadFrame(byte[] bin, int frameIndex)
+    {
+        using var reader = new BinaryReader(new MemoryStream(bin));
+        int frameCount = reader.ReadInt32();
+        if (frameCount <= 0)
+            throw new InvalidDataException("Animation file contains zero frames.");
+        frameIndex = Math.Clamp(frameIndex, 0, frameCount - 1);
+        for (int f = 0; ; f++)
+        {
+            reader.ReadByte();
+            int nodeCount = reader.ReadInt32();
+            if (f < frameIndex)
+            {
+                reader.BaseStream.Seek(nodeCount * 12L, SeekOrigin.Current);
+                continue;
+            }
+            var frame = new Vector3[nodeCount];
+            for (int n = 0; n < nodeCount; n++)
+                frame[n] = new Vector3(reader.ReadSingle(), reader.ReadSingle(), -reader.ReadSingle());
+            return frame;
+        }
+    }
     public int NodeCount => NodeNamesOrdered.Count;
 
     /// <summary>Largest capsule radius (for bounds).</summary>

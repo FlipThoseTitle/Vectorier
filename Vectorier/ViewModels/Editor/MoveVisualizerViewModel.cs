@@ -928,7 +928,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             if (await EnsureModelAsync() is not { } model)
                 return false;
             await GameplaySession.LoadAsync(_editor.Project, model.Data);
-            _gameplayRestPose = model.Placed.RestPose.ToArray();
+            _gameplayRestPose = model.GamePose;
             return true;
         }
         catch (Exception ex)
@@ -942,9 +942,13 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         }
     }
 
+    /// <summary>The pose shown while placing in Gameplay mode (and the one spawned from), mirrored when reversed.</summary>
+    private Vector3[]? GameplayPose() => _gameplayRestPose is not { } pose ? null
+        : Reverse ? pose.Select(p => new Vector3(-p.X, p.Y, p.Z)).ToArray() : pose;
+
     private void UpdateGameplayPreview(Point target)
     {
-        if (_gameplayRestPose is not { } rest || _model == null || !_model.TryGetNodeIndex(PivotNodeName, out int pivot) && !_model.TryGetNodeIndex("NPivot", out pivot))
+        if (GameplayPose() is not { } rest || _model == null || !_model.TryGetNodeIndex(PivotNodeName, out int pivot) && !_model.TryGetNodeIndex("NPivot", out pivot))
         {
             GameplayPreviewNodes = null;
             return;
@@ -962,6 +966,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         _autoTrick = null;
         if (!await EnsureGameplayAsync() || _model == null)
             return false;
+        Gameplay.StartPose = GameplayPose();
         try
         {
             if (IsPlaced)
@@ -1064,9 +1069,8 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Trick Area "Preview Animation" in Gameplay: the character spawns running, just before the Area (as the
-    /// Animation mode places the trick: 200 before its near side, on its bottom edge; from its right side when
-    /// Reverse is on), and the trick's key (Up) is pressed for it once it is inside, until the trick starts.
+    /// Trick Area "Preview Animation" in Gameplay: the character spawns running, just before the Area (its COM 100
+    /// before the Area's near side, its feet on the bottom edge; from the right side when Reverse is on), and the trick's key (Up) is pressed for it once it is inside, until the trick starts.
     /// </summary>
     public async Task PreviewAreaGameplayAsync(AreaTarget target)
     {
@@ -1092,9 +1096,16 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
                 if (int.TryParse((string?)move.Attribute("FirstFrame"), out int f))
                     firstFrame = f;
             }
-            if (_model == null || !_model.TryGetNodeIndex(pivot, out _))
+            if (_model == null || !_model.TryGetNodeIndex(pivot, out int pivotIndex))
+            {
                 pivot = "NPivot";
-            double x = Reverse ? bounds.Right + TrickLead : bounds.Left - TrickLead;
+                pivotIndex = _model != null && _model.TryGetNodeIndex(pivot, out int n) ? n : -1;
+            }
+            // The COM of the run pose (what spawns) TrickLead before the Area's near side: the pivot goes where that puts it.
+            double comX = Reverse ? bounds.Right + TrickLead : bounds.Left - TrickLead;
+            double comToPivot = GameplayPose() is { } pose && pivotIndex >= 0 && _model!.TryGetNodeIndex("COM", out int comIndex)
+                ? pose[pivotIndex].X - pose[comIndex].X : 0;
+            double x = comX + comToPivot;
             spawn = new GameplaySpawn(new System.Numerics.Vector2((float)x, (float)bounds.Bottom),
                 WithReverse($"{RunMove}|{firstFrame}", Reverse), pivot);
         }
@@ -1111,7 +1122,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     /// <summary>The run a trick is taken from (moves.xml), and how far before the Area it starts.</summary>
     private const string RunMove = "RunForward";
-    private const double TrickLead = 200;
+    private const double TrickLead = 100;
 
     /// <summary>A Trick Area preview in Gameplay: Up is pressed inside the Area until the trick starts (3 times at most).</summary>
     private sealed class AutoTrick(AreaTarget target, Rect bounds)
@@ -1177,7 +1188,9 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             if (!await fs.FileExistsAsync(ModelXmlPath))
                 throw new FileNotFoundException("Model XML not found: " + ModelXmlPath);
             byte[] data = await fs.ReadAllBytesAsync(ModelXmlPath);
-            _model = await Task.Run(() => MoveModel.Parse(data));
+            var model = await Task.Run(() => MoveModel.Parse(data));
+            await UseRunPoseAsync(model);
+            _model = model;
             Animation.Reverse = Reverse;
             Animation.EnsureModelLoadedForPreview(_model);
             return _model;
@@ -1189,6 +1202,30 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             return null;
         }
     }
+
+    /// <summary>
+    /// The pose shown while placing, in both Spawn Modes: RunForward at frame 2 (the pose the runner is in when it
+    /// reaches a trick, so node positions such as the COM match the game's); runner.xml's rest pose when the project
+    /// has no RunForward.
+    /// </summary>
+    private async Task UseRunPoseAsync(MoveModel model)
+    {
+        try
+        {
+            if (await LoadMovesRootAsync() is not { } root || FindMove(root, RunMove) is not { } move
+                || (string?)move.Attribute("FileName") is not { Length: > 0 } fileName
+                || await ResolveProjectFileAsync($"{BinsRelativeFolder}/{fileName}") is not { } path)
+                return;
+            byte[] bin = await AppServices.FileSystem.ReadAllBytesAsync(path);
+            model.UsePose(MoveModel.ReadFrame(bin, RunPoseFrame));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Move Visualizer: RunForward pose: " + ex.Message);
+        }
+    }
+
+    private const int RunPoseFrame = 2;
 
     // ================= PLAYBACK ================= //
 
