@@ -69,6 +69,9 @@ public sealed class GameplaySession
 
     public bool IsDead => IsActive && _model!.IsDeath;
 
+    /// <summary>The move playing (null without a character).</summary>
+    public string? MoveName => IsActive && _model!.IsPlay ? _model.AnimationName : null;
+
     /// <summary>The playing move ("Run", "JumpOff"...) and its frame, or the physics after a death.</summary>
     public string StateText => !IsActive ? string.Empty
         : _model!.IsDeath ? "Death (physics)"

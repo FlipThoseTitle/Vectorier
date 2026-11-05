@@ -106,6 +106,12 @@ namespace Vectorier.Gameplay
             }
         }
 
+        /// <summary>Every file with its content (their keys).</summary>
+        public static List<string> GetAllKeys()
+        {
+            lock (Lock) return Files.Where(f => f.Value != null).Select(f => f.Key).ToList();
+        }
+
         // ================= TEXTURES (the editor's) ================= //
 
         /// <summary>The editor's bitmap of a texture by its name (textures/, animatedtextures/), null when not loaded.</summary>

@@ -323,7 +323,7 @@ namespace Vectorier.Gameplay
 
         internal static Color Fade(Color c, float alpha) => new(c.R, c.G, c.B, (byte)Math.Clamp(alpha * 255, 0, 255));
 
-        internal static float TextWidth(string text) => Raylib.MeasureTextEx(GameFont.Font, text, FontSize, FontSize / 10f).X;
+        internal static float TextWidth(string text) => GameFont.UiWidth(text, FontSize);
 
         /// <summary>
         /// The condition's name (bold, in its color) with its measurement under it (white), kept together: when the
@@ -354,10 +354,10 @@ namespace Vectorier.Gameplay
             if (at.X > Raylib.GetScreenWidth() || at.Y > Raylib.GetScreenHeight() || at.X + TextWidth(text) < 0 || at.Y + LineHeight < 0)
                 return;
             foreach (var d in new[] { new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1), new Vector2(1, 1) })
-                GameFont.Draw(text, at.X + d.X, at.Y + d.Y, FontSize, Shadow);
-            GameFont.Draw(text, at.X, at.Y, FontSize, color);
+                GameFont.DrawUi(text, at.X + d.X, at.Y + d.Y, FontSize, Shadow);
+            GameFont.DrawUi(text, at.X, at.Y, FontSize, color);
             if (bold)
-                GameFont.Draw(text, at.X + 0.6f, at.Y, FontSize, color);
+                GameFont.DrawUi(text, at.X + 0.6f, at.Y, FontSize, color);
         }
 
         internal static void Dashed(Vector2 a, Vector2 b, Color color)
@@ -379,7 +379,7 @@ namespace Vectorier.Gameplay
             var back = new Vectorier.Gameplay.Rl.Rectangle(x - pad, y - pad, width + pad * 2, lines.Count * LineHeight + pad * 2);
             Raylib.DrawRectangleRec(back, PanelBack);
             for (int i = 0; i < lines.Count; i++)
-                GameFont.Draw(lines[i].text, x + lines[i].indent, y + i * LineHeight, FontSize, lines[i].color);
+                GameFont.DrawUi(lines[i].text, x + lines[i].indent, y + i * LineHeight, FontSize, lines[i].color);
         }
     }
 }

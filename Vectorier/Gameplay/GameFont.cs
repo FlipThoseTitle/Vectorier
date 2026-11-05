@@ -49,6 +49,34 @@ namespace Vectorier.Gameplay
             return Raylib.LoadFont(new Avalonia.Media.Typeface(family, Avalonia.Media.FontStyle.Normal, weight), BaseSize);
         }
 
+        // ================= THE EDITOR'S UI FONT ================= //
+
+        // The debug UI (buttons, FPS, the move's name, overlays, labels) is the editor's: Arial, or the closest font
+        // the system has (Liberation Sans / Arimo on Linux, Helvetica on macOS), the editor's Inter otherwise (the
+        // browser). The game's own texts (messages, tutorial hints) stay in Play.
+        private const string UiFamily = "Arial, Liberation Sans, Arimo, Helvetica, fonts:Inter#Inter";
+
+        private static Font? _ui;
+        private static Font? _uiBold;
+
+        public static Font Ui => _ui ??= Raylib.LoadFont(new Avalonia.Media.Typeface(
+            new Avalonia.Media.FontFamily(UiFamily), Avalonia.Media.FontStyle.Normal, Avalonia.Media.FontWeight.Normal), BaseSize);
+
+        public static Font UiBold => _uiBold ??= Raylib.LoadFont(new Avalonia.Media.Typeface(
+            new Avalonia.Media.FontFamily(UiFamily), Avalonia.Media.FontStyle.Normal, Avalonia.Media.FontWeight.Bold), BaseSize);
+
+        public static void DrawUi(string text, float x, float y, float size, Color color) =>
+            Raylib.DrawTextEx(Ui, text, new Vector2(x, y), size, 0, color);
+
+        public static void DrawUiBold(string text, float x, float y, float size, Color color) =>
+            Raylib.DrawTextEx(UiBold, text, new Vector2(x, y), size, 0, color);
+
+        public static float UiWidth(string text, float size) => Raylib.MeasureTextEx(Ui, text, size, 0).X;
+
+        public static float UiBoldWidth(string text, float size) => Raylib.MeasureTextEx(UiBold, text, size, 0).X;
+
+        // ================= PLAY ================= //
+
         public static void Draw(string text, float x, float y, float size, Color color) =>
             Raylib.DrawTextEx(Font, text, new Vector2(x, y), size, size / 10f, color);
 

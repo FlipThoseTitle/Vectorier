@@ -111,10 +111,10 @@ namespace Vectorier.Gameplay
             string key = Key;
             if (key.Length > 0) // a button without a key shows only its name
             {
-                GameFont.Draw(key, x, textY, FontSize, new Color(KeyColor.R, KeyColor.G, KeyColor.B, alpha));
-                x += Raylib.MeasureTextEx(GameFont.Font, key, FontSize, FontSize / 10f).X + 7;
+                GameFont.DrawUi(key, x, textY, FontSize, new Color(KeyColor.R, KeyColor.G, KeyColor.B, alpha));
+                x += GameFont.UiWidth(key, FontSize) + 7;
             }
-            GameFont.Draw(DynamicText?.Invoke() ?? Text, x, textY, FontSize, new Color((byte)235, (byte)235, (byte)235, alpha));
+            GameFont.DrawUi(DynamicText?.Invoke() ?? Text, x, textY, FontSize, new Color((byte)235, (byte)235, (byte)235, alpha));
         }
     }
 
@@ -268,149 +268,158 @@ namespace Vectorier.Gameplay
             if (width != ScreenWidth || height != ScreenHeight)
                 Resize(width, height);
             Raylib.PollInputEvents();
-            // Q: anti-aliasing on or off (the editor's drawing smooths every edge when on).
+            // The UI (text, buttons) is always drawn smooth; Q only changes how the level is drawn (DrawWorldAntiAliased).
             using (context.PushRenderOptions(new Avalonia.Media.RenderOptions
             {
-                EdgeMode = AntiAlias == 0 ? Avalonia.Media.EdgeMode.Aliased : Avalonia.Media.EdgeMode.Antialias,
+                EdgeMode = Avalonia.Media.EdgeMode.Antialias,
                 BitmapInterpolationMode = Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality, // bilinear with mipmaps, as the game's textures
             }))
             {
-                Raylib.UpdateMusicStream(SoundsManager.CurrentMusic);
+                try
+                {
+                    Raylib.UpdateMusicStream(SoundsManager.CurrentMusic);
 
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Escape))
-                {
-                    pause = !pause;
-                }
-
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.F))
-                {
-                    stepOneFrame = true;
-                }
-
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.R))
-                {
-                    LevelMainController.current.ReloadButton();
-                }
-
-                // Debug toggles and actions: same as clicking their button.
-                foreach (var (key, button) in ButtonKeys.ToList()) // a button may rebuild the panel (Full Screen)
-                {
-                    if (key is KeyboardKey.F or KeyboardKey.S or KeyboardKey.Escape or KeyboardKey.R)
-                        continue; // handled above / below as before
-                    if (InputManager.WasKeyPressedThisFrame(key))
-                        button.OnClick?.Invoke();
-                }
-
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Up))
-                {
-                    LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Up));
-                }
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Down))
-                {
-                    LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Down));
-                }
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Left))
-                {
-                    LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Left));
-                }
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Right))
-                {
-                    LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Right));
-                }
-
-                if (InputManager.WasKeyPressedThisFrame(KeyboardKey.S))
-                {
-                    ToggleSlowMode();
-                }
-
-                if (!hideDebugUi)
-                    UpdateButtons();
-
-                // The game logic advances in fixed 1/60 s ticks. When a frame takes longer than that (a slow PC, a
-                // heavy scene), the missed ticks are caught up so the game keeps its real speed instead of slowing
-                // down with the frame rate. Paused: nothing runs, except one tick for Next Frame (F).
-                int ticks;
-                if (pause)
-                {
-                    tickAccumulator = 0;
-                    ticks = stepOneFrame ? 1 : 0;
-                }
-                else
-                {
-                    ticks = TicksThisFrame();
-                }
-
-                for (int tick = 0; tick < ticks; tick++)
-                {
-                    LevelMainController.current.Render();
-
-                    for (int i = 0; i < GlobalObjects.Updatables.Count; i++)
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Escape))
                     {
-                        GlobalObjects.Updatables[i].Update();
+                        pause = !pause;
                     }
 
-                    // The delay before the automatic restart (Win / Loss / Death) only runs with the game: Esc
-                    // freezes it, unpausing resumes it.
-                    LevelMainController.current.TickReloadDelay(TickSeconds);
-                    GameplayUI.Tick();
-                }
-                stepOneFrame = false;
-
-                // Anti-aliasing: the level is first drawn into a bigger texture (outside BeginDrawing).
-                RenderWorldSupersampled();
-
-                Raylib.BeginDrawing();
-                {
-                    Raylib.ClearBackground(Color.Gray);
-
-                    DrawWorldAntiAliased();
-
-                    ModelHuman player = LevelMainController.current.Location.GetUserModel();
-                    string animation = "null";
-                    if (player != null && player.ControllerAnimations != null && player.ControllerAnimations.Animation != null)
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.F))
                     {
-                        animation = player.ControllerAnimations.CurrentFrame + " - " + player.ControllerAnimations.Animation.Name;
+                        stepOneFrame = true;
                     }
 
-                    // The game's own UI: trigger messages and tutorial hints.
-                    GameplayUI.Draw();
-
-                    if (ShowGrid)
-                        DrawGrid();
-
-                    // Names and outlines of the debug shapes shown (screen space, like the editor's labels).
-                    DrawDebugLabels();
-
-                    switch (MovesInfo)
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.R))
                     {
-                        case MovesInfoMode.ReactionCondition:
-                            MoveConditionsOverlay.Draw(Camera);
-                            MovesInfoOverlays.DrawVelosity();
-                            break;
-                        case MovesInfoMode.Physics:
-                            MovesInfoOverlays.DrawPhysics(Camera);
-                            break;
-                        case MovesInfoMode.Safe:
-                            MovesInfoOverlays.DrawSafe(Camera);
-                            break;
-                        case MovesInfoMode.PlatformBound:
-                            MovesInfoOverlays.DrawPlatformBound(Camera);
-                            break;
+                        LevelMainController.current.ReloadButton();
+                    }
+
+                    // Debug toggles and actions: same as clicking their button.
+                    foreach (var (key, button) in ButtonKeys.ToList()) // a button may rebuild the panel (Full Screen)
+                    {
+                        if (key is KeyboardKey.F or KeyboardKey.S or KeyboardKey.Escape or KeyboardKey.R)
+                            continue; // handled above / below as before
+                        if (InputManager.WasKeyPressedThisFrame(key))
+                            button.OnClick?.Invoke();
+                    }
+
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Up))
+                    {
+                        LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Up));
+                    }
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Down))
+                    {
+                        LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Down));
+                    }
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Left))
+                    {
+                        LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Left));
+                    }
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.Right))
+                    {
+                        LevelMainController.current.HandleNewInput(new Controllers.KeyVariables(KeyboardKey.Right));
+                    }
+
+                    if (InputManager.WasKeyPressedThisFrame(KeyboardKey.S))
+                    {
+                        ToggleSlowMode();
                     }
 
                     if (!hideDebugUi)
+                        UpdateButtons();
+
+                    // The game logic advances in fixed 1/60 s ticks. When a frame takes longer than that (a slow PC, a
+                    // heavy scene), the missed ticks are caught up so the game keeps its real speed instead of slowing
+                    // down with the frame rate. Paused: nothing runs, except one tick for Next Frame (F).
+                    int ticks;
+                    if (pause)
                     {
-                        GameFont.DrawBold(animation, 0, Raylib.GetScreenHeight() - 30, 30, Color.White);
-
-                        DrawButtons();
-
-                        DrawNotice();
-
-                        // Same place and size as raylib's FPS counter, in Arial and always white.
-                        GameFont.DrawBold($"{Raylib.GetFPS()} FPS", 0, 0, 20, Color.White);
+                        tickAccumulator = 0;
+                        ticks = stepOneFrame ? 1 : 0;
                     }
+                    else
+                    {
+                        ticks = TicksThisFrame();
+                    }
+
+                    for (int tick = 0; tick < ticks; tick++)
+                    {
+                        LevelMainController.current.Render();
+
+                        for (int i = 0; i < GlobalObjects.Updatables.Count; i++)
+                        {
+                            GlobalObjects.Updatables[i].Update();
+                        }
+
+                        // The delay before the automatic restart (Win / Loss / Death) only runs with the game: Esc
+                        // freezes it, unpausing resumes it.
+                        LevelMainController.current.TickReloadDelay(TickSeconds);
+                        GameplayUI.Tick();
+                    }
+                    stepOneFrame = false;
+
+                    // Anti-aliasing: the level is first drawn into a bigger texture (outside BeginDrawing).
+                    RenderWorldSupersampled();
+
+                    Raylib.BeginDrawing();
+                    {
+                        Raylib.ClearBackground(Color.Gray);
+
+                        DrawWorldAntiAliased();
+
+                        ModelHuman player = LevelMainController.current.Location.GetUserModel();
+                        string animation = "null";
+                        if (player != null && player.ControllerAnimations != null && player.ControllerAnimations.Animation != null)
+                        {
+                            animation = player.ControllerAnimations.CurrentFrame + " - " + player.ControllerAnimations.Animation.Name;
+                        }
+
+                        // The game's own UI: trigger messages and tutorial hints.
+                        GameplayUI.Draw();
+
+                        if (ShowGrid)
+                            DrawGrid();
+
+                        // Names and outlines of the debug shapes shown (screen space, like the editor's labels).
+                        DrawDebugLabels();
+
+                        switch (MovesInfo)
+                        {
+                            case MovesInfoMode.ReactionCondition:
+                                MoveConditionsOverlay.Draw(Camera);
+                                MovesInfoOverlays.DrawVelosity();
+                                break;
+                            case MovesInfoMode.Physics:
+                                MovesInfoOverlays.DrawPhysics(Camera);
+                                break;
+                            case MovesInfoMode.Safe:
+                                MovesInfoOverlays.DrawSafe(Camera);
+                                break;
+                            case MovesInfoMode.PlatformBound:
+                                MovesInfoOverlays.DrawPlatformBound(Camera);
+                                break;
+                        }
+
+                        if (!hideDebugUi)
+                        {
+                            GameFont.DrawUiBold(animation, 0, Raylib.GetScreenHeight() - 30, 30, Color.White);
+
+                            DrawButtons();
+
+                            DrawNotice();
+
+                            // Same place and size as raylib's FPS counter, in Arial and always white.
+                            GameFont.DrawUiBold($"{Raylib.GetFPS()} FPS", 0, 0, 20, Color.White);
+                        }
+                    }
+                    Raylib.EndDrawing();
                 }
-                Raylib.EndDrawing();
+                catch
+                {
+                    // A frame cut short by an error: what it pushed is undone first (the host stops the game).
+                    Raylib.PopAllStates();
+                    throw;
+                }
             }
             Raylib.SetTarget(null, width, height);
         }
@@ -497,9 +506,9 @@ namespace Vectorier.Gameplay
                 return;
             const float size = 18;
             float y = Raylib.GetScreenHeight() - 30 - size - 8;
-            float w = Raylib.MeasureTextEx(GameFont.Bold, _notice, size, 0).X;
+            float w = GameFont.UiBoldWidth(_notice, size);
             Raylib.DrawRectangleRounded(new Vectorier.Gameplay.Rl.Rectangle(4, y - 4, w + 12, size + 8), 0.3f, 4, new Color(20, 20, 24, 190));
-            GameFont.DrawBold(_notice, 10, y, size, _noticeIsError ? new Color(255, 120, 110, 255) : new Color(140, 230, 160, 255));
+            GameFont.DrawUiBold(_notice, 10, y, size, _noticeIsError ? new Color(255, 120, 110, 255) : new Color(140, 230, 160, 255));
         }
 
         void ToggleSlowMode()
@@ -560,6 +569,9 @@ namespace Vectorier.Gameplay
 
         static readonly string[] AntiAliasNames = { "Off", "Medium", "High" };
 
+        /// <summary>The editor's drawing smooths edges itself (no render textures there).</summary>
+        const bool EditorDrawsAntiAliased = true;
+
         RenderTexture2D sceneTarget;
         bool sceneTargetReady;
         int sceneScale;
@@ -571,6 +583,10 @@ namespace Vectorier.Gameplay
         /// <summary>Supersampling factor for the current setting and screen (capped to what a GPU texture allows).</summary>
         int SupersampleFactor()
         {
+            // In the editor the drawing itself is anti-aliased (Avalonia smooths every edge: see Frame), so the level
+            // is never drawn into a bigger texture first. Off / Medium / High set how the edges and images are drawn.
+            if (EditorDrawsAntiAliased)
+                return 1;
             int factor = AntiAlias switch { 1 => 2, 2 => 4, _ => 1 };
             int largest = Math.Max(ScreenWidth, ScreenHeight);
             while (factor > 1 && largest * factor > 8192)
@@ -692,9 +708,20 @@ namespace Vectorier.Gameplay
                 DrawTextureCopy(texture, ScreenWidth, ScreenHeight);
                 return;
             }
-            Raylib.BeginMode2D(Camera);
-            DrawWorld();
-            Raylib.EndMode2D();
+            // Q in the editor: Off draws hard edges (as the game without supersampling), Medium smooth edges, High
+            // smooth edges and the best image filtering (scaled-down textures stay sharp without shimmering).
+            using (Raylib.PushRenderOptions(new Avalonia.Media.RenderOptions
+            {
+                EdgeMode = AntiAlias == 0 ? Avalonia.Media.EdgeMode.Aliased : Avalonia.Media.EdgeMode.Antialias,
+                BitmapInterpolationMode = AntiAlias == 2
+                    ? Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality
+                    : Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality,
+            }))
+            {
+                Raylib.BeginMode2D(Camera);
+                DrawWorld();
+                Raylib.EndMode2D();
+            }
         }
 
         void DrawWorld()
@@ -848,7 +875,7 @@ namespace Vectorier.Gameplay
             return new Vectorier.Gameplay.Rl.Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
-        static float TextWidth(string text) => Raylib.MeasureTextEx(GameFont.Font, text, LabelSize, LabelSize / 10f).X;
+        static float TextWidth(string text) => GameFont.UiWidth(text, LabelSize);
 
         static List<string> WrapText(string text, float maxWidth)
         {
@@ -900,7 +927,7 @@ namespace Vectorier.Gameplay
             {
                 if (lineY > y + h)
                     break;
-                GameFont.Draw(line, MathF.Round(x), lineY, LabelSize, LabelColor);
+                GameFont.DrawUi(line, MathF.Round(x), lineY, LabelSize, LabelColor);
                 lineY += LabelSize + 2;
             }
             Raylib.EndScissorMode();

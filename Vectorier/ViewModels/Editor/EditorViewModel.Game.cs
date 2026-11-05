@@ -29,6 +29,7 @@ public partial class EditorViewModel
         _gameHooked = true;
         GameHost.Current.RunningChanged += OnGameRunningChanged;
         GameHost.Current.FullScreenToggled += OnGameFullScreenToggled;
+        GameHost.Current.Failed += OnGameFailed;
         VectorierGameHooks.Install(this);
     }
 
@@ -38,6 +39,10 @@ public partial class EditorViewModel
         if (!IsGameRunning)
             IsGameFullScreen = false;
     }
+
+    // Raised while the Game View draws: the message waits until the drawing is done.
+    private void OnGameFailed(string message) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        _ = AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), Loc.T("The game stopped because of an error:\n") + message, MessageKind.Error));
 
     private void OnGameFullScreenToggled() => IsGameFullScreen = IsGameRunning && !IsGameFullScreen;
 
@@ -87,8 +92,9 @@ internal static class VectorierGameHooks
         _editor = editor;
         Gameplay.VectorGame.ReloadMovesRequested = () =>
         {
-            if (_editor != null)
-                _ = GameHost.Current.ReloadMovesAsync(_editor.Project);
+            // Clicked during the game's frame: done after it.
+            if (_editor is { } editor)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = GameHost.Current.ReloadMovesAsync(editor.Project));
         };
     }
 }

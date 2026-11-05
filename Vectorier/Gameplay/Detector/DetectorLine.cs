@@ -143,7 +143,7 @@ namespace Vectorier.Gameplay.Detector
             var start = vs.TransformPoint(Start.Start);
             Raylib.DrawLineEx(start, vs.TransformPoint(Start.End), 3, Color.Yellow);
 
-            GameFont.Draw(Start.Start.ToString(), start.X, start.Y, 5, Color.White);
+            GameFont.DrawUi(Start.Start.ToString(), start.X, start.Y, 5, Color.White);
         }
 
         public string GetStringType()

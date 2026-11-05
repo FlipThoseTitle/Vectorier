@@ -353,6 +353,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
             }
             ProjectWindow.SetContext(ActiveElementType?.Type ?? ElementType.Object);
             _ = EnsureTrickTriggersAsync();
+            // The game gets its files and moves ready meanwhile: Play starts right away.
+            _ = Services.Game.GameHost.Current.WarmUpAsync(Project);
         }
         catch (Exception ex)
         {

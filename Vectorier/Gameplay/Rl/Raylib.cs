@@ -30,6 +30,7 @@ namespace Vectorier.Gameplay.Rl
         private sealed class PushedState
         {
             public bool IsMode;
+            public bool IsOptions;
             public Func<DrawingContext, DrawingContext.PushedState> Push;
             public DrawingContext.PushedState Pushed;
         }
@@ -42,10 +43,12 @@ namespace Vectorier.Gameplay.Rl
             _pushed.Add(new PushedState { IsMode = isMode, Push = push, Pushed = push(_ctx) });
         }
 
-        private static void PopState(bool isMode)
+        private static void PopState(bool isMode) =>
+            PopAt(_pushed.FindLastIndex(p => p.IsMode == isMode && p.Push != null && !p.IsOptions));
+
+        private static void PopAt(int index)
         {
-            int index = _pushed.FindLastIndex(p => p.IsMode == isMode);
-            if (index < 0) return;
+            if (index < 0 || _ctx == null) return;
             for (int i = _pushed.Count - 1; i >= index; i--)
                 _pushed[i].Pushed.Dispose();
             _pushed.RemoveAt(index);
@@ -77,6 +80,22 @@ namespace Vectorier.Gameplay.Rl
         }
 
         public static bool IsDrawing => _ctx != null;
+
+        /// <summary>The editor's own: drawing options for a part of the frame (disposed in order, around a 2D mode).</summary>
+        public static IDisposable PushRenderOptions(Avalonia.Media.RenderOptions options)
+        {
+            if (_ctx == null) return new OptionsState(null);
+            var state = new PushedState { IsOptions = true, Push = c => c.PushRenderOptions(options) };
+            state.Pushed = state.Push(_ctx);
+            _pushed.Add(state);
+            return new OptionsState(state);
+        }
+
+        // Undone wherever it is on the stack (a 2D mode left on by an error is above it).
+        private sealed class OptionsState(PushedState state) : IDisposable
+        {
+            public void Dispose() => PopAt(state == null ? -1 : _pushed.IndexOf(state));
+        }
 
         public static void BeginDrawing() { }
 
@@ -460,19 +479,32 @@ namespace Vectorier.Gameplay.Rl
 
         // ================= TEXT ================= //
 
-        private static readonly Dictionary<(string, int), FormattedText> _texts = new();
 
         public static Font GetFontDefault() => new() { BaseSize = 20, Typeface = new Typeface(FontFamily.Default) };
 
         /// <summary>A font of the editor (the game's Play, built into the editor's assets).</summary>
         public static Font LoadFont(Typeface typeface, int baseSize) => new() { BaseSize = baseSize, Typeface = typeface };
 
+        // Laying out a text (shaping) is the costly part of drawing it: the same texts are drawn every frame (the
+        // buttons, the move's name), so the laid-out ones are kept (the oldest dropped when there are many).
+        private readonly record struct TextKey(Typeface Typeface, string Text, float Size, uint Color);
+        private static readonly Dictionary<TextKey, FormattedText> _texts = new();
+
         private static FormattedText Text(Font font, string text, float size, Color color)
         {
             var typeface = font.Typeface ?? new Typeface(FontFamily.Default);
-            return new FormattedText(text ?? string.Empty, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                typeface, Math.Max(1, size), Brush(color));
+            var key = new TextKey(typeface, text ?? string.Empty, Math.Max(1, size), Pack(color));
+            if (_texts.TryGetValue(key, out var cached))
+                return cached;
+            if (_texts.Count >= 1024)
+                _texts.Clear();
+            var formatted = new FormattedText(key.Text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                typeface, key.Size, Brush(color));
+            _texts[key] = formatted;
+            return formatted;
         }
+
+        private static uint Pack(Color c) => (uint)(c.R << 24 | c.G << 16 | c.B << 8 | c.A);
 
         public static void DrawTextEx(Font font, string text, Vector2 position, float fontSize, float spacing, Color tint)
         {

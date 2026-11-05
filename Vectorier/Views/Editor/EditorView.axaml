@@ -459,6 +459,6 @@
         </Grid>
     </DockPanel>
     <!-- The game's Full Screen (F11): the Game View fills the editor's window. -->
-    <c:GameView Name="GameFull" IsVisible="{Binding IsGameFullScreen}" />
+    <c:GameView Name="GameFull" IsVisible="False" />
     </Panel>
 </UserControl>

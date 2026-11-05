@@ -95,31 +95,75 @@ public partial class EditorView : UserControl
 
     // ================= THE GAME ================= //
 
-    /// <summary>The game takes the keyboard (its view, or the full-window one).</summary>
+    /// <summary>The game takes the keyboard (its view, or the full screen one).</summary>
     private void FocusGame() => Dispatcher.UIThread.Post(() =>
-        (_vm?.IsGameFullScreen == true ? GameFull : GamePlay).Focus(), DispatcherPriority.Background);
+    {
+        if (_vm?.IsGameFullScreen == true)
+            (_fullScreenView ?? GameFull).Focus();
+        else
+            GamePlay.Focus();
+    }, DispatcherPriority.Background);
 
-    private Avalonia.Controls.WindowState? _stateBeforeFullScreen;
+    private Window? _fullScreenWindow;
+    private Vectorier.Controls.GameView? _fullScreenView;
 
-    /// <summary>The game's F11: the Game View fills the editor's window, and the window the screen (desktop).</summary>
+    /// <summary>
+    /// The game's F11. On the desktop the game gets a window of its own, borderless and covering the screen the
+    /// editor is on: the editor's window keeps its size (nothing of the editor is laid out or drawn again), so it is
+    /// instant. In the browser the Game View covers the editor's page.
+    /// </summary>
     private void SetGameFullScreen(bool full)
     {
-        if (TopLevel.GetTopLevel(this) is Window window)
+        if (TopLevel.GetTopLevel(this) is Window owner)
         {
-            if (full && _stateBeforeFullScreen == null)
+            if (full && _fullScreenWindow == null)
             {
-                _stateBeforeFullScreen = window.WindowState;
+                _fullScreenView = new Vectorier.Controls.GameView();
+                var window = new Window
+                {
+                    Title = owner.Title,
+                    Icon = owner.Icon,
+                    Background = Avalonia.Media.Brushes.Black,
+                    WindowDecorations = Avalonia.Controls.WindowDecorations.None,
+                    CanResize = false,
+                    ShowInTaskbar = false,
+                    Content = _fullScreenView,
+                };
+                if (owner.Screens.ScreenFromWindow(owner) is { } screen)
+                {
+                    window.WindowStartupLocation = WindowStartupLocation.Manual;
+                    window.Position = screen.Bounds.Position;
+                }
                 window.WindowState = Avalonia.Controls.WindowState.FullScreen;
+                window.Closed += (_, _) =>
+                {
+                    if (_fullScreenWindow != window)
+                        return;
+                    _fullScreenWindow = null;
+                    _fullScreenView = null;
+                    if (_vm?.IsGameFullScreen == true)
+                        _vm.IsGameFullScreen = false; // closed by the system (Alt+F4)
+                    owner.Activate();
+                    FocusGame();
+                };
+                window.Opened += (_, _) => FocusGame();
+                _fullScreenWindow = window;
+                window.Show(owner);
             }
-            else if (!full && _stateBeforeFullScreen is { } state)
+            else if (!full && _fullScreenWindow is { } window)
             {
-                window.WindowState = state;
-                _stateBeforeFullScreen = null;
+                _fullScreenWindow = null;
+                _fullScreenView = null;
+                window.Close();
+                owner.Activate();
             }
+        }
+        else
+        {
+            GameFull.IsVisible = full;
         }
         FocusGame();
     }
-
 
     private void KeepSceneHeaderClear()
     {

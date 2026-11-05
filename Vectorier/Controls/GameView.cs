@@ -21,7 +21,6 @@ public sealed class GameView : Control
     {
         Focusable = true;
         ClipToBounds = true;
-        GameHost.Current.RunningChanged += OnRunningChanged;
         // Keys held when the view loses the keyboard are let go (they would stay "down" for the game).
         LostFocus += (_, _) => GameHost.Current.ReleaseKeys();
     }
@@ -35,7 +34,14 @@ public sealed class GameView : Control
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        GameHost.Current.RunningChanged += OnRunningChanged;
         RequestFrame();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        GameHost.Current.RunningChanged -= OnRunningChanged;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -61,13 +67,29 @@ public sealed class GameView : Control
         });
     }
 
+    /// <summary>The game's screen: always 16:9, as large as fits, centered (the rest is black bars).</summary>
+    private Rect Screen()
+    {
+        var size = Bounds.Size;
+        double width = Math.Min(size.Width, size.Height * 16 / 9);
+        width = Math.Floor(width / 16) * 16; // whole pixels in both directions
+        double height = width * 9 / 16;
+        return new Rect(Math.Round((size.Width - width) / 2), Math.Round((size.Height - height) / 2), width, height);
+    }
+
     public override void Render(DrawingContext context)
     {
         var size = Bounds.Size;
-        context.FillRectangle(Brushes.Gray, new Rect(size));
-        if (!GameHost.Current.IsRunning || size.Width < 2 || size.Height < 2)
+        if (!GameHost.Current.IsRunning || size.Width < 16 || size.Height < 9)
+        {
+            context.FillRectangle(Brushes.Gray, new Rect(size));
             return;
-        GameHost.Current.Frame(context, (int)size.Width, (int)size.Height);
+        }
+        context.FillRectangle(Brushes.Black, new Rect(size));
+        var screen = Screen();
+        using (context.PushClip(screen))
+        using (context.PushTransform(Matrix.CreateTranslation(screen.X, screen.Y)))
+            GameHost.Current.Frame(context, (int)screen.Width, (int)screen.Height);
         RequestFrame();
     }
 
@@ -131,7 +153,8 @@ public sealed class GameView : Control
     private void Move(PointerEventArgs e)
     {
         var p = e.GetPosition(this);
-        Raylib.MouseMoved(new Vector2((float)p.X, (float)p.Y));
+        var screen = Screen();
+        Raylib.MouseMoved(new Vector2((float)(p.X - screen.X), (float)(p.Y - screen.Y)));
     }
 
     /// <summary>The editor's key → Raylib's (the game reads Raylib's codes).</summary>

@@ -322,7 +322,9 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         {
             if (_suppressReverseRespawn)
                 return;
-            if (Gameplay.LastSpawn is { } last)
+            if (_autoTrick is { } trick)
+                await PreviewAreaGameplayAsync(trick.Target); // runs in from the Area's other side
+            else if (Gameplay.LastSpawn is { } last)
                 await SpawnGameplayAsync(last with { Animation = WithReverse(last.Animation, value) });
             return;
         }
@@ -404,7 +406,9 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     {
         if (IsGameplayMode)
         {
-            if (Gameplay.LastSpawn is { } last)
+            if (_autoTrick is { } trick)
+                await PreviewAreaGameplayAsync(trick.Target);
+            else if (Gameplay.LastSpawn is { } last)
                 await SpawnGameplayAsync(last with { Animation = WithReverse(last.Animation, Reverse) });
             return;
         }
@@ -953,8 +957,9 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     /// <summary>Spawns the gameplay character (again: there is only ever one) on the level as it is now.</summary>
-    private async Task<bool> SpawnGameplayAsync(GameplaySpawn spawn)
+    private async Task<bool> SpawnGameplayAsync(GameplaySpawn spawn, AutoTrick? autoTrick = null)
     {
+        _autoTrick = null;
         if (!await EnsureGameplayAsync() || _model == null)
             return false;
         try
@@ -967,6 +972,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
                 return def.Content;
             }, _editor.Document.Roots);
             IsGameplaySpawned = true;
+            _autoTrick = autoTrick;
             GameplayStateText = Gameplay.StateText;
             StatusMessage = IsPlacementActive
                 ? Loc.T("Arrow keys play the runner. Click again to spawn it somewhere else, Esc to stop spawning.")
@@ -1007,6 +1013,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             Report(Loc.T("Gameplay stopped: ") + ex.Message);
             return;
         }
+        PressTrickKey();
         string state = Gameplay.StateText;
         if (state != GameplayStateText)
             GameplayStateText = state;
@@ -1030,6 +1037,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     private void ClearGameplay()
     {
         _gameplayTimer.Stop();
+        _autoTrick = null;
         Gameplay.Clear();
         GameplayPreviewNodes = null;
         IsGameplaySpawned = false;
@@ -1056,8 +1064,9 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Trick Area "Preview Animation" in Gameplay: the character spawns a run-up before the Area, on its bottom edge,
-    /// running towards it (from its right side when Reverse is on); press the trick's key inside the Area.
+    /// Trick Area "Preview Animation" in Gameplay: the character spawns running, just before the Area (as the
+    /// Animation mode places the trick: 200 before its near side, on its bottom edge; from its right side when
+    /// Reverse is on), and the trick's key (Up) is pressed for it once it is inside, until the trick starts.
     /// </summary>
     public async Task PreviewAreaGameplayAsync(AreaTarget target)
     {
@@ -1066,13 +1075,86 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
             SpawnMode = MoveSpawnMode.Gameplay;
         if (!await EnsureGameplayAsync())
             return;
-        const double RunUp = 400;
         var o = target.Origin;
         var bounds = target.Area.GetLocalBounds().Translate(new Avalonia.Vector(o.X, o.Y));
-        double x = Reverse ? bounds.Right + RunUp : bounds.Left - RunUp;
-        string animation = WithReverse($"{GameplaySession.SpawnMove}|{GameplaySession.SpawnFrame}", Reverse);
-        if (await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)x, (float)bounds.Bottom), animation)))
-            StatusMessage = Loc.F("Run into '{0}' and press its trick key.", target.Area.Name);
+
+        // The run (the move a trick is taken from), its first frame and the node it is placed by; the game's spawn
+        // move with a longer run-up when the project has no run.
+        GameplaySpawn spawn;
+        if (Vectorier.Gameplay.Animation.Animations.Animation.TryGetValue(RunMove, out _))
+        {
+            string pivot = "NPivot";
+            int firstFrame = 1;
+            if (await LoadMovesRootAsync() is { } root && FindMove(root, RunMove) is { } move)
+            {
+                if ((string?)move.Attribute("PivotNode") is { Length: > 0 } p)
+                    pivot = p;
+                if (int.TryParse((string?)move.Attribute("FirstFrame"), out int f))
+                    firstFrame = f;
+            }
+            if (_model == null || !_model.TryGetNodeIndex(pivot, out _))
+                pivot = "NPivot";
+            double x = Reverse ? bounds.Right + TrickLead : bounds.Left - TrickLead;
+            spawn = new GameplaySpawn(new System.Numerics.Vector2((float)x, (float)bounds.Bottom),
+                WithReverse($"{RunMove}|{firstFrame}", Reverse), pivot);
+        }
+        else
+        {
+            const double RunUp = 400;
+            double x = Reverse ? bounds.Right + RunUp : bounds.Left - RunUp;
+            spawn = new GameplaySpawn(new System.Numerics.Vector2((float)x, (float)bounds.Bottom),
+                WithReverse($"{GameplaySession.SpawnMove}|{GameplaySession.SpawnFrame}", Reverse));
+        }
+        if (await SpawnGameplayAsync(spawn, new AutoTrick(target, bounds)))
+            StatusMessage = Loc.F("The runner runs into '{0}': its trick key is pressed for it.", target.Area.Name);
+    }
+
+    /// <summary>The run a trick is taken from (moves.xml), and how far before the Area it starts.</summary>
+    private const string RunMove = "RunForward";
+    private const double TrickLead = 200;
+
+    /// <summary>A Trick Area preview in Gameplay: Up is pressed inside the Area until the trick starts (3 times at most).</summary>
+    private sealed class AutoTrick(AreaTarget target, Rect bounds)
+    {
+        public AreaTarget Target { get; } = target;
+        public Rect Bounds { get; } = bounds;
+        public int Presses;
+        public double NextPress;
+        public string? MoveAtPress;
+        public bool Done;
+    }
+
+    private AutoTrick? _autoTrick;
+    private readonly System.Diagnostics.Stopwatch _autoTrickClock = System.Diagnostics.Stopwatch.StartNew();
+
+    /// <summary>After the game's ticks: inside the Area, Up is pressed (again after a moment) until the move changes.</summary>
+    private void PressTrickKey()
+    {
+        if (_autoTrick is not { Done: false } t || Gameplay.Character is not { } character || Gameplay.IsDead)
+            return;
+        string? move = Gameplay.MoveName;
+        if (t.MoveAtPress != null && move != t.MoveAtPress)
+        {
+            t.Done = true; // the trick (or another reaction) started
+            return;
+        }
+        if (character.GetNode("COM") is not { } com)
+            return;
+        double x = com.Start.X;
+        if (x < t.Bounds.Left || x > t.Bounds.Right)
+            return;
+        double now = _autoTrickClock.Elapsed.TotalSeconds;
+        if (now < t.NextPress)
+            return;
+        if (t.Presses >= 3)
+        {
+            t.Done = true;
+            return;
+        }
+        t.Presses++;
+        t.NextPress = now + 0.1;
+        t.MoveAtPress = move;
+        Gameplay.Press(Vectorier.Gameplay.Rl.KeyboardKey.Up);
     }
 
     public Task PreviewAreaGameplayAsync(AreaElement area) => PreviewAreaGameplayAsync(TargetFor(area));

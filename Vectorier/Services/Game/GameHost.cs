@@ -54,7 +54,8 @@ public sealed class GameHost
 
     private GameHost()
     {
-        Raylib.FullScreenRequested += () => FullScreenToggled?.Invoke();
+        // Asked during the game's frame (the Game View's drawing): the views change after it.
+        Raylib.FullScreenRequested += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => FullScreenToggled?.Invoke());
         Raylib.IsFullScreen = () => IsFullScreen;
         VectorGame.LoadSettingsText = () => AppServices.Platform?.Settings.Get(SettingsKey) ?? string.Empty;
         VectorGame.SaveSettingsText = text => AppServices.Platform?.Settings.Set(SettingsKey, text);
@@ -80,10 +81,20 @@ public sealed class GameHost
         Taken?.Invoke();
         try
         {
-            bool projectChanged = await PrepareAsync(project) | _projectChangedPending;
-            _projectChangedPending = false;
+            bool projectChanged;
+            await _prepareLock.WaitAsync();
+            try
+            {
+                projectChanged = await PrepareAsync(project) | _projectChangedPending;
+                _projectChangedPending = false;
+                await PrepareMovesAsync(project);
+                await ParseMovesAsync();
+            }
+            finally
+            {
+                _prepareLock.Release();
+            }
             GameFiles.Set(VPath.Combine("xmlroot", "levels", levelName + ".xml"), levelXml);
-            bool loadMoves = await PrepareMovesAsync(project);
 
             using (Invariant())
             {
@@ -92,7 +103,7 @@ public sealed class GameHost
                 _game ??= new VectorGame();
                 VectorGame.Instance = _game;
                 ResourceManager.LoadResources();
-                _game.Start(levelName, hunterMode, loadMoves);
+                _game.Start(levelName, hunterMode, false);
             }
 
             // Textures the level uses that the editor had not loaded yet: loaded, then the level starts again with them.
@@ -111,6 +122,7 @@ public sealed class GameHost
 
             LevelName = levelName;
             IsHunterMode = hunterMode;
+            _faulted = false;
             IsRunning = true;
             RunningChanged?.Invoke();
             return null;
@@ -161,24 +173,78 @@ public sealed class GameHost
     public async Task PrepareMoveVisualizerAsync(ProjectInfo project, byte[] runner)
     {
         Stop();
-        EnsureProject(project);
-        GameFiles.Set(VPath.Combine("models", MoveVisualizerModel), runner);
-        if (await PrepareMovesAsync(project))
+        await _prepareLock.WaitAsync();
+        try
         {
-            try
-            {
-                await Task.Run(() =>
-                {
-                    using (Invariant())
-                        VectorGame.LoadMoves();
-                });
-            }
-            catch
-            {
-                _movesSignature = null; // parsed again next time
-                throw;
-            }
+            EnsureProject(project);
+            GameFiles.Set(VPath.Combine("models", MoveVisualizerModel), runner);
+            await PrepareMovesAsync(project);
+            await ParseMovesAsync();
         }
+        finally
+        {
+            _prepareLock.Release();
+        }
+    }
+
+    // ================= GETTING READY AHEAD ================= //
+
+    private readonly System.Threading.SemaphoreSlim _prepareLock = new(1, 1);
+
+    /// <summary>
+    /// Reads what the game needs and parses the project's moves while the editor opens a level, so Play (and the
+    /// Move Visualizer's Gameplay mode) start right away. Nothing happens while the game is in use; errors are
+    /// left for Play to report.
+    /// </summary>
+    public async Task WarmUpAsync(ProjectInfo project)
+    {
+        if (IsRunning || LevelMainController.current != null)
+            return;
+        await _prepareLock.WaitAsync();
+        try
+        {
+            if (IsRunning || LevelMainController.current != null)
+                return;
+            await PrepareAsync(project);
+            await PrepareMovesAsync(project);
+            if (!IsRunning && LevelMainController.current == null)
+                await ParseMovesAsync();
+            // The object sets, trigger templates and models are parsed ahead too (kept until they change).
+            var xml = GameFiles.GetAllKeys().Where(k => k.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+                && (k.StartsWith("xmlroot/", StringComparison.OrdinalIgnoreCase) && !k.StartsWith("xmlroot/levels/", StringComparison.OrdinalIgnoreCase)
+                    || k.StartsWith("models/", StringComparison.OrdinalIgnoreCase))).ToList();
+            await Task.Run(() => Parallel.ForEach(xml, key =>
+            {
+                int slash = key.LastIndexOf('/');
+                Gameplay.Utilities.XmlUtils.OpenXMLDocument(key[..slash], key[(slash + 1)..], dialog: false);
+            }));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Game warm-up: " + ex.Message);
+        }
+        finally
+        {
+            _prepareLock.Release();
+        }
+    }
+
+    // The moves read last (_movesSignature) and the moves parsed (the game's shared tables).
+    private string? _parsedSignature;
+
+    /// <summary>moves.xml and every move's .bin parsed (on another thread) when they changed since last time.</summary>
+    private async Task ParseMovesAsync()
+    {
+        string? signature = _movesSignature;
+        if (signature == null || signature == _parsedSignature)
+            return;
+        _parsedSignature = null; // half-parsed if it fails: parsed again next time
+        await Task.Run(() =>
+        {
+            using (Invariant())
+                VectorGame.LoadMoves();
+        });
+        _parsedSignature = signature;
     }
 
     // ================= FRAMES ================= //
@@ -192,7 +258,7 @@ public sealed class GameHost
     /// <summary>One frame of the game into the Game View (called from its Render, once per display frame).</summary>
     public void Frame(DrawingContext context, int width, int height)
     {
-        if (!IsRunning || _game == null)
+        if (!IsRunning || _game == null || _faulted)
             return;
         double now = _clock.Elapsed.TotalSeconds;
         double dt = _lastFrame == 0 ? 1.0 / 60 : now - _lastFrame;
@@ -205,9 +271,31 @@ public sealed class GameHost
             _fpsStart = now;
         }
         Raylib.SetFrameTiming((float)dt, _fps);
-        using (Invariant())
-            _game.Frame(context, width, height);
+        try
+        {
+            using (Invariant())
+                _game.Frame(context, width, height);
+        }
+        catch (Exception ex)
+        {
+            // An error in the game stops it (the editor stays): the Game View shows the level's camera again. This is
+            // the Game View's drawing: the views change after it.
+            Raylib.PopAllStates();
+            Raylib.SetTarget(null, width, height);
+            Console.WriteLine("The game stopped: " + ex);
+            _faulted = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                Stop();
+                Failed?.Invoke(ex.Message);
+            });
+        }
     }
+
+    private bool _faulted;
+
+    /// <summary>The game stopped on an error (the message is shown to the user).</summary>
+    public event Action<string>? Failed;
 
     // ================= INPUT (from the Game View) ================= //
 
@@ -236,6 +324,10 @@ public sealed class GameHost
         string root = project.Path;
         string Rel(string path) => path.StartsWith(root + "/", StringComparison.Ordinal) ? path[(root.Length + 1)..] : path;
 
+        // Files are listed folder by folder; those whose content is needed (and changed) are read all at once,
+        // off the editor's thread.
+        var toCheck = new List<(string File, string Rel)>();
+
         async Task ListAsync(string folder, bool recursive, Func<string, bool> withContent, Func<string, bool>? include = null)
         {
             string path = VPath.Combine(root, folder);
@@ -252,11 +344,7 @@ public sealed class GameHost
                         GameFiles.Set(rel, null);
                     continue;
                 }
-                var time = await fs.GetLastWriteTimeAsync(file);
-                if (_loaded.TryGetValue(rel, out var known) && known == time && GameFiles.HasContent(rel))
-                    continue;
-                GameFiles.Set(rel, await fs.ReadAllBytesAsync(file));
-                _loaded[rel] = time;
+                toCheck.Add((file, rel));
             }
         }
 
@@ -271,6 +359,18 @@ public sealed class GameHost
         await ListAsync("textures", false, _ => false);
         await ListAsync("animatedtextures", true, p => p.EndsWith(".plist", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
         await ListAsync("music", false, _ => false);
+
+        var times = await Task.WhenAll(toCheck.Select(f => fs.GetLastWriteTimeAsync(f.File)));
+        var changed = new List<(string File, string Rel, DateTimeOffset? Time)>();
+        for (int i = 0; i < toCheck.Count; i++)
+        {
+            var (file, rel) = toCheck[i];
+            if (!(_loaded.TryGetValue(rel, out var known) && known == times[i] && GameFiles.HasContent(rel)))
+                changed.Add((file, rel, times[i]));
+        }
+        await ReadAllAsync(changed.Select(c => (c.File, c.Rel)));
+        foreach (var c in changed)
+            _loaded[c.Rel] = c.Time;
         return projectChanged;
     }
 
@@ -280,8 +380,10 @@ public sealed class GameHost
         if (string.Equals(_projectPath, project.Path, StringComparison.Ordinal))
             return false;
         GameFiles.Clear();
+        Gameplay.Utilities.XmlUtils.ClearParsedCache();
         _loaded.Clear();
         _movesSignature = null;
+        _parsedSignature = null;
         _projectPath = project.Path;
         VectorPaths.ProjectName = project.Name;
         _projectChangedPending = true;
@@ -307,28 +409,53 @@ public sealed class GameHost
                 onDisk.TryAdd(VPath.GetFileName(file), file);
         var bins = MoveFileNames(moves).Where(onDisk.ContainsKey).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
+        var times = await Task.WhenAll(bins.Select(bin => fs.GetLastWriteTimeAsync(onDisk[bin])));
         var signature = new System.Text.StringBuilder(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(moves)));
-        foreach (var bin in bins)
-            signature.Append('|').Append(bin).Append('@').Append(await fs.GetLastWriteTimeAsync(onDisk[bin]));
+        for (int i = 0; i < bins.Count; i++)
+            signature.Append('|').Append(bins[i]).Append('@').Append(times[i]);
         string sig = signature.ToString();
         if (sig == _movesSignature)
             return false;
 
         GameFiles.Set("animations/moves.xml", moves);
-        foreach (var bin in bins)
-            GameFiles.Set("animations/data/" + bin, await fs.ReadAllBytesAsync(onDisk[bin]));
+        await ReadAllAsync(bins.Select(bin => (onDisk[bin], "animations/data/" + bin)));
         _movesSignature = sig;
         return true;
+    }
+
+    /// <summary>
+    /// Reads files into GameFiles all at once (the file system works on them in parallel; on the desktop the reads
+    /// continue off the editor's thread, which keeps drawing meanwhile).
+    /// </summary>
+    private static async Task ReadAllAsync(IEnumerable<(string File, string Key)> files)
+    {
+        var fs = AppServices.FileSystem;
+        await Task.WhenAll(files.Select(async f =>
+        {
+            byte[] data = await fs.ReadAllBytesAsync(f.File).ConfigureAwait(false);
+            GameFiles.Set(f.Key, data);
+        }));
     }
 
     /// <summary>Reload Moves (the game's button): the files are read again first, then the game reloads them.</summary>
     public async Task ReloadMovesAsync(ProjectInfo project)
     {
-        _movesSignature = null;
-        await PrepareMovesAsync(project);
+        await _prepareLock.WaitAsync();
+        try
+        {
+            _movesSignature = null;
+            await PrepareMovesAsync(project);
+        }
+        finally
+        {
+            _prepareLock.Release();
+        }
         if (IsRunning && LevelMainController.current != null)
+        {
             using (Invariant())
                 LevelMainController.current.ReloadMovesButton();
+            _parsedSignature = _movesSignature; // the game parsed them again itself
+        }
     }
 
     private static IEnumerable<string> MoveFileNames(byte[] moves)

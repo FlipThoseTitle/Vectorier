@@ -83,7 +83,7 @@ namespace Vectorier.Gameplay
                 width = MathF.Max(width, line.indent + TextWidth(line.text));
             Raylib.DrawRectangleRec(new Vectorier.Gameplay.Rl.Rectangle(x - pad, y - pad, width + pad * 2, lines.Count * LineHeight + pad * 2), new Color(15, 15, 18, 185));
             for (int i = 0; i < lines.Count; i++)
-                GameFont.Draw(lines[i].text, x + lines[i].indent, y + i * LineHeight, FontSize, lines[i].color);
+                GameFont.DrawUi(lines[i].text, x + lines[i].indent, y + i * LineHeight, FontSize, lines[i].color);
         }
 
         // ================= PHYSICS ================= //
