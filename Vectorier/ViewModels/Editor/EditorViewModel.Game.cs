@@ -37,8 +37,17 @@ public partial class EditorViewModel
     {
         IsGameRunning = GameHost.Current.IsRunning;
         if (!IsGameRunning)
+        {
             IsGameFullScreen = false;
+            // Stopped: back to the Scene View, where the work goes on (and the tutorial points).
+            if (_startingGame)
+                return; // played again: the previous game stops, the Game View stays
+            if (CenterTab == CenterTab.Game)
+                CenterTab = CenterTab.Scene;
+        }
     }
+
+    private bool _startingGame;
 
     // Raised while the Game View draws: the message waits until the drawing is done.
     private void OnGameFailed(string message) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -55,10 +64,21 @@ public partial class EditorViewModel
         MoveVisualizer.StopPlacement();
         CenterTab = CenterTab.Game;
         StatusText = Loc.F("Loading {0}...", levelName);
-        string? error = await GameHost.Current.StartAsync(Project, levelName, levelXml, hunter);
+        string? error;
+        _startingGame = true;
+        try
+        {
+            error = await GameHost.Current.StartAsync(Project, levelName, levelXml, hunter);
+        }
+        finally
+        {
+            _startingGame = false;
+        }
         if (error != null)
         {
             StatusText = string.Empty;
+            if (CenterTab == CenterTab.Game)
+                CenterTab = CenterTab.Scene;
             await AppServices.Dialogs.ShowMessageAsync(title, Loc.T("The level could not be played:\n") + error, MessageKind.Error);
             return false;
         }

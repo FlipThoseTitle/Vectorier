@@ -281,7 +281,7 @@ public sealed class GameHost
             // An error in the game stops it (the editor stays): the Game View shows the level's camera again. This is
             // the Game View's drawing: the views change after it.
             Raylib.PopAllStates();
-            Raylib.SetTarget(null, width, height);
+            Raylib.SetTarget(null!, width, height);
             Console.WriteLine("The game stopped: " + ex);
             _faulted = true;
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>

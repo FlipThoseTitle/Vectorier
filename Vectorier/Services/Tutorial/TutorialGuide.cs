@@ -226,6 +226,10 @@ public static partial class TutorialGuide
         try
         {
             step.Tick?.Invoke();
+            // A step that points at the Scene View while the Game tab is shown (and no game is running there) would
+            // leave nothing to click: the Scene comes back.
+            if (step.Guides != null && AppServices.Shell?.CurrentScreen is ViewModels.Editor.EditorViewModel { IsGameRunning: false, CenterTab: ViewModels.Editor.CenterTab.Game } editor)
+                editor.CenterTab = ViewModels.Editor.CenterTab.Scene;
             SceneGuides.Set(step.Guides?.Invoke() ?? Array.Empty<SceneGuide>());
             if (step.Done?.Invoke() == true)
             {

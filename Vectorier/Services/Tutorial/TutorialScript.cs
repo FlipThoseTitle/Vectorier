@@ -28,11 +28,11 @@ public static partial class TutorialGuide
     private static readonly Avalonia.Point SpawnAt = new(0, 0);
     private static readonly Avalonia.Point CameraAt = new(494, -2);
     private static readonly Avalonia.Point BackgroundAt = new(-1000, -500);
-    private static readonly Avalonia.Point ObstacleAirAt = new(843.419, -24.766);
-    private static readonly Avalonia.Point ObstacleGroundAt = new(593.891, 131);
-    private static readonly Avalonia.Point BonusAt = new(647.771, 53.957);
-    private static readonly Avalonia.Rect PlatformBox = new(-803, 153, 2000, 500);
-    private static readonly Avalonia.Rect TriggerBox = new(474.839, -172.345, 41.739, 396.522);
+    private static readonly Avalonia.Point ObstacleAirAt = new(858.934, -13);
+    private static readonly Avalonia.Point ObstacleGroundAt = new(800.934, 123);
+    private static readonly Avalonia.Point BonusAt = new(859.271, 53.188);
+    private static readonly Avalonia.Rect PlatformBox = new(-518, 213, 2000, 500);
+    private static readonly Avalonia.Rect TriggerBox = new(469.175, -187, 50, 400);
 
     /// <summary>The Move Visualizer's runner is held on this frame as a size reference.</summary>
     private const int ReferenceFrame = 6;
