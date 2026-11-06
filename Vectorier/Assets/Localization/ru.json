@@ -1550,6 +1550,14 @@
     "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?": "Доступна новая версия Vectorier: {0}.\nУ вас {1}.\n\nОткрыть страницу выпусков на GitHub, чтобы скачать её?",
     "Download": "Скачать",
     "Skip This Version": "Пропустить эту версию",
-    "Later": "Позже"
+    "Later": "Позже",
+    "Click Spawn, then click in the Scene to place the runner.": "Нажмите «Spawn», затем щёлкните на сцене, чтобы поставить бегуна.",
+    "Hold C to snap to platforms. Esc stops placing.": "Удерживайте C для привязки к платформам. Esc — прекратить.",
+    "Clear removes the runner.": "«Очистить» убирает бегуна.",
+    "Spawns and Trick Areas can also be previewed from the Inspector.": "Создания и трюковые зоны также можно просмотреть из инспектора.",
+    "Click Spawn, then click in the Scene to start running.": "Нажмите «Spawn», затем щёлкните на сцене, чтобы начать бег.",
+    "Use the arrow keys to control the runner.": "Управляйте бегуном стрелками.",
+    "Esc stops spawning. Restart spawns it again.": "Esc — прекратить размещение. «Сначала» создаёт его снова.",
+    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Используются только платформы, трапеции и зоны. Триггеры не работают."
   }
 }

@@ -1550,6 +1550,14 @@
     "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?": "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?",
     "Download": "Download",
     "Skip This Version": "Skip This Version",
-    "Later": "Later"
+    "Later": "Later",
+    "Click Spawn, then click in the Scene to place the runner.": "Click Spawn, then click in the Scene to place the runner.",
+    "Hold C to snap to platforms. Esc stops placing.": "Hold C to snap to platforms. Esc stops placing.",
+    "Clear removes the runner.": "Clear removes the runner.",
+    "Spawns and Trick Areas can also be previewed from the Inspector.": "Spawns and Trick Areas can also be previewed from the Inspector.",
+    "Click Spawn, then click in the Scene to start running.": "Click Spawn, then click in the Scene to start running.",
+    "Use the arrow keys to control the runner.": "Use the arrow keys to control the runner.",
+    "Esc stops spawning. Restart spawns it again.": "Esc stops spawning. Restart spawns it again.",
+    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Only Platforms, Trapezoids and Areas are used. Triggers don't run."
   }
 }

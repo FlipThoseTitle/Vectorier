@@ -134,10 +134,18 @@
                 </Grid>
             </StackPanel>
 
-            <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Classes="dim" FontSize="11" IsVisible="{Binding IsAnimationMode}"
-                       Text="{l:Tr 'Spawn, then click in the Scene to add the runner (hold C to stick to platforms, Esc to stop). The character stays visible while you keep building; Clear removes it. Spawns and Trick Areas also have a Preview Animation button in the Inspector.'}" />
-            <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Classes="dim" FontSize="11" IsVisible="{Binding IsGameplayMode}"
-                       Text="{l:Tr 'Spawn, then click in the Scene: the runner starts with JumpOff and runs on the level\'s Platforms, Trapezoids and Areas. Play it with the arrow keys. Click again to spawn it somewhere else (Esc stops spawning); after a death it falls until Clear or Restart. The Game View follows it. Triggers are not run.'}" />
+            <StackPanel Margin="0,12,0,0" Spacing="3" IsVisible="{Binding IsAnimationMode}">
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Click Spawn, then click in the Scene to place the runner.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Hold C to snap to platforms. Esc stops placing.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Clear removes the runner.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Spawns and Trick Areas can also be previewed from the Inspector.'}" /></Grid>
+            </StackPanel>
+            <StackPanel Margin="0,12,0,0" Spacing="3" IsVisible="{Binding IsGameplayMode}">
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Click Spawn, then click in the Scene to start running.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Use the arrow keys to control the runner.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Esc stops spawning. Restart spawns it again.'}" /></Grid>
+                <Grid ColumnDefinitions="12,*"><TextBlock Classes="dim" FontSize="11" Text="•" /><TextBlock Grid.Column="1" Classes="dim" FontSize="11" TextWrapping="Wrap" Text="{l:Tr 'Only Platforms, Trapezoids and Areas are used. Triggers don\'t run.'}" /></Grid>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
