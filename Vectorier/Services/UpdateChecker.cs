@@ -10,7 +10,7 @@ namespace Vectorier.Services;
 
 /// <summary>
 /// Looks for a newer Vectorier release on GitHub (the latest published release of FlipThoseTitle/Vectorier) and
-/// offers to open its page to download it. Checked once when the desktop app starts, and from Help › Check for Updates.
+/// offers to open its page to download it. Checked once when the desktop app starts, and from About › Check for Updates.
 /// </summary>
 public static class UpdateChecker
 {
@@ -48,7 +48,7 @@ public static class UpdateChecker
         }
     }
 
-    /// <summary>Help › Check for Updates: always answers (up to date, a new version, or why it could not check).</summary>
+    /// <summary>About › Check for Updates: always answers (up to date, a new version, or why it could not check).</summary>
     public static async Task CheckNowAsync()
     {
         string title = Loc.T("Check for Updates");

@@ -140,11 +140,11 @@
             <MenuItem Header="{l:Tr '_Help'}">
                 <MenuItem Header="{l:Tr '_Tutorial'}" Click="OnHelpTutorial" />
                 <MenuItem Header="{l:Tr '_Keybinds'}" Click="OnHelpKeybinds" />
-                <MenuItem Header="{l:Tr 'Check for _Updates...'}" Click="OnHelpCheckUpdates" />
             </MenuItem>
             <MenuItem Header="{l:Tr '_About'}">
                 <MenuItem Header="{l:Tr '_GitHub'}" Click="OnHelpGitHub" />
                 <MenuItem Header="{l:Tr '_Credits'}" Click="OnHelpCredits" />
+                <MenuItem Header="{l:Tr 'Check for _Updates...'}" Click="OnHelpCheckUpdates" />
                 <Separator />
                 <!-- Version (from the Publish task's version), shown as plain text -->
                 <MenuItem Header="{Binding AppVersion}" IsEnabled="False" />

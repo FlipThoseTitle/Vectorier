@@ -689,6 +689,10 @@ public partial class EditorView : UserControl
             "• zayden1325682 (Zayden)\n\n" +
             Loc.T("Localization") + "\n" +
             "• J.C. - " + Loc.T("Russian Translation") + "\n\n" +
+            Loc.T("Testing") + "\n" +
+            "• ShrimpFriedRice (DC)\n" +
+            "• FloofIsFalaful (Floof)\n" +
+            "• enderdude290 (Ghosted)\n\n" +
             Loc.T("Vector and its original assets belong to Nekki Limited. Vectorier is a fan-made editor, not affiliated with or endorsed by Nekki.");
         await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Credits"), text, Services.MessageKind.Info);
     }
