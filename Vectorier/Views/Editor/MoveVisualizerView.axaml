@@ -36,7 +36,6 @@
         <StackPanel Margin="10" Spacing="2">
             <!-- ===== Settings ===== -->
             <TextBlock Classes="section" Text="{l:Tr 'Settings'}" />
-            <CheckBox Content="{l:Tr 'Render Model'}" IsChecked="{Binding RenderModel}" ToolTip.Tip="{l:Tr 'Draw the runner as a black silhouette'}" />
             <CheckBox Content="{l:Tr 'Render Trajectory'}" IsChecked="{Binding RenderTrajectory}" IsVisible="{Binding IsAnimationMode}"
                       ToolTip.Tip="{l:Tr 'Draw the path of the center of mass'}" />
             <CheckBox Content="{l:Tr 'Follow Camera'}" IsChecked="{Binding FollowCamera}"

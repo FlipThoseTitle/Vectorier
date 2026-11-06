@@ -54,7 +54,7 @@ public partial class SceneView
     {
         if (_editor == null) return;
         var mv = _editor.MoveVisualizer;
-        if (mv.Animation.Model is null || !mv.RenderModel) return;
+        if (mv.Animation.Model is null) return;
         var screen = new Rect(viewport.Size);
 
         // Animation mode: the move, in the level coordinates of its host's layer.

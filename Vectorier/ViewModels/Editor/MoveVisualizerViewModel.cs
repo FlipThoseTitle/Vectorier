@@ -127,7 +127,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     // ================= SETTINGS ================= //
 
-    [ObservableProperty] private bool _renderModel = true;
     [ObservableProperty] private bool _renderTrajectory = true;
     [ObservableProperty] private bool _followCamera;
     [ObservableProperty] private bool _reverse;
@@ -294,7 +293,6 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
 
     // ================= SETTING CHANGES ================= //
 
-    partial void OnRenderModelChanged(bool value) => Changed?.Invoke();
     partial void OnRenderTrajectoryChanged(bool value) => Changed?.Invoke();
     partial void OnFollowCameraChanged(bool value) => Follow();
 
