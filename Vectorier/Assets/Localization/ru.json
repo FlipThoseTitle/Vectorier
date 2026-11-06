@@ -1536,6 +1536,17 @@
     "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Конфликт: «{0}» в <{1}> определён и в {2}, и в {3}.\nУдалите одно из определений, чтобы просмотреть персонажа.",
     "{0} frames, from the object": "{0} кадров, из объекта",
     "'{0}' is not in {1}.": "«{0}» нет в {1}.",
-    "Saved the transformations of object {0} to {1}": "Трансформации объекта {0} сохранены в {1}"
+    "Saved the transformations of object {0} to {1}": "Трансформации объекта {0} сохранены в {1}",
+    "Check for Updates": "Проверка обновлений",
+    "Check for _Updates...": "Проверить _обновления...",
+    "Could not reach GitHub to check for updates:\n": "Не удалось связаться с GitHub для проверки обновлений:\n",
+    "No release was found on GitHub.": "На GitHub не найдено ни одного выпуска.",
+    "You have the latest version ({0}).": "У вас последняя версия ({0}).",
+    "a development build": "сборка для разработки",
+    "Update Available": "Доступно обновление",
+    "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?": "Доступна новая версия Vectorier: {0}.\nУ вас {1}.\n\nОткрыть страницу выпусков на GitHub, чтобы скачать её?",
+    "Download": "Скачать",
+    "Skip This Version": "Пропустить эту версию",
+    "Later": "Позже"
   }
 }

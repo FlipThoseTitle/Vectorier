@@ -660,6 +660,9 @@ public partial class EditorView : UserControl
         await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Keybinds"), text.TrimEnd(), Services.MessageKind.Info);
     }
 
+    private async void OnHelpCheckUpdates(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        await Services.UpdateChecker.CheckNowAsync();
+
     private async void OnHelpGitHub(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (!await Services.AppServices.Dialogs.ConfirmAsync(Loc.T("GitHub"), Loc.F("Open the Vectorier GitHub page in your browser?\n\n{0}", GitHubUrl), Loc.T("Open"), Loc.T("Cancel")))

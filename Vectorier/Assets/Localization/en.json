@@ -1536,6 +1536,17 @@
     "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.": "Conflicting entries: '{0}' in <{1}> is defined in both {2} and {3}.\nRemove one of them to preview this character.",
     "{0} frames, from the object": "{0} frames, from the object",
     "'{0}' is not in {1}.": "'{0}' is not in {1}.",
-    "Saved the transformations of object {0} to {1}": "Saved the transformations of object {0} to {1}"
+    "Saved the transformations of object {0} to {1}": "Saved the transformations of object {0} to {1}",
+    "Check for Updates": "Check for Updates",
+    "Check for _Updates...": "Check for _Updates...",
+    "Could not reach GitHub to check for updates:\n": "Could not reach GitHub to check for updates:\n",
+    "No release was found on GitHub.": "No release was found on GitHub.",
+    "You have the latest version ({0}).": "You have the latest version ({0}).",
+    "a development build": "a development build",
+    "Update Available": "Update Available",
+    "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?": "A new version of Vectorier is available: {0}.\nYou have {1}.\n\nOpen the GitHub releases page to download it?",
+    "Download": "Download",
+    "Skip This Version": "Skip This Version",
+    "Later": "Later"
   }
 }
