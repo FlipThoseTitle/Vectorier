@@ -188,9 +188,15 @@ namespace Vectorier.Gameplay.Animation
         private void ParseConfigs(XmlNode xmlNode)
         {
             XmlNode cameraNode = xmlNode["Camera"];
-            LocationCamera.MinZoom = cameraNode.Attributes["MinZoom"].ParseFloat();
-            LocationCamera.MaxZoom = cameraNode.Attributes["MaxZoom"].ParseFloat();
-            LocationCamera.CurrentZoom = cameraNode.Attributes["CurrZoom"].ParseFloat();
+            // Attributes left out keep the game's defaults.
+            float Read(string name, float fallback) => cameraNode?.Attributes?[name] is { } a ? a.ParseFloat() : fallback;
+            LocationCamera.Config = (Read("MinZoom", 0.1f), Read("MaxZoom", 1.3f), Read("CurrZoom", 0.5f),
+                System.Math.Max(0.001f, Read("MaxSpeed", 50f)), System.Math.Max(0.001f, Read("Fluency", 2f)));
+            LocationCamera.MinZoom = LocationCamera.Config.MinZoom;
+            LocationCamera.MaxZoom = LocationCamera.Config.MaxZoom;
+            LocationCamera.CurrentZoom = LocationCamera.Config.CurrZoom;
+            LocationCamera.MaxSpeed = LocationCamera.Config.MaxSpeed;
+            LocationCamera.FluencyCurrent = LocationCamera.Config.Fluency;
 
             XmlNode taserNode = xmlNode["Taser"];
             ControllerCatching.DistanceFactor = taserNode.Attributes["Distance"].ParseFloat();

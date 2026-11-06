@@ -40,11 +40,21 @@ namespace Vectorier.Gameplay.Camera
         public static void ResetAll()
         {
             _Current = null;
-            MinZoom = 0.1f;
-            MaxZoom = 1.3f;
-            CurrentZoom = 0.5f;
-            FluencyCurrent = 2;
+            MinZoom = Config.MinZoom;
+            MaxZoom = Config.MaxZoom;
+            CurrentZoom = Config.CurrZoom;
+            FluencyCurrent = Config.Fluency;
+            MaxSpeed = Config.MaxSpeed;
         }
+
+        /// <summary>
+        /// moves.xml's &lt;Config&gt;&lt;Camera MinZoom MaxZoom CurrZoom MaxSpeed Fluency/&gt; (the game's defaults when it has
+        /// none). Every level starts from these (a Camera trigger may change the current ones while it plays).
+        /// </summary>
+        public static (float MinZoom, float MaxZoom, float CurrZoom, float MaxSpeed, float Fluency) Config = (0.1f, 1.3f, 0.5f, 50f, 2f);
+
+        /// <summary>The camera's top speed, in level units per tick (moves.xml's MaxSpeed; the game had 50 built in).</summary>
+        public static float MaxSpeed = 50;
 
         public static float MinZoom = 0.1f;
 
@@ -142,9 +152,9 @@ namespace Vectorier.Gameplay.Camera
             posStart.Add(nodeEnd);
             nodeEnd = posStart - posEnd;
 
-            if (nodeEnd.Length() > 50)
+            if (nodeEnd.Length() > MaxSpeed)
             {
-                nodeEnd = nodeEnd.Multiply(50 / nodeEnd.Length());
+                nodeEnd = nodeEnd.Multiply(MaxSpeed / nodeEnd.Length());
                 posStart = posEnd + nodeEnd;
             }
             _Position.PositionStart(posStart);
