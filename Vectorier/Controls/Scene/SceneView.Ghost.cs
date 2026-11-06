@@ -98,6 +98,16 @@ public sealed partial class SceneView
             return;
         if (_mode == InteractionMode.PlaceDrag)
             return; // the dragged rectangle replaces it
-        _renderer.RenderGhost(context, viewport, _ghost, GhostOpacity, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
+        try
+        {
+            _renderer.RenderGhost(context, viewport, _ghost, GhostOpacity, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
+        }
+        catch (Exception ex)
+        {
+            // Its asset went away (deleted, reloaded): no preview rather than an error in the Scene's drawing.
+            Console.WriteLine("Placement preview: " + ex.Message);
+            _ghost = null;
+            _ghostKey = null;
+        }
     }
 }

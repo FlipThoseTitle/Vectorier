@@ -70,6 +70,7 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
         Hierarchy = new HierarchyViewModel(this);
         Inspector = new InspectorViewModel(this);
         ProjectWindow = new ProjectWindowViewModel(this);
+        ProjectWindow.ItemsDeleted += OnProjectItemsDeleted;
         Paint = new PaintViewModel(this);
         Dynamics = new DynamicEditorViewModel(this);
         MoveVisualizer = new MoveVisualizerViewModel(this);
@@ -301,6 +302,17 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     }
 
     partial void OnPlacementTypeChanged(ElementType? value) => SceneInvalidated?.Invoke();
+
+    /// <summary>The Scene drops its placement preview (its asset was deleted from the Project Window).</summary>
+    public event Action? PlacementPreviewReset;
+
+    /// <summary>Project Window items deleted: placement of a deleted asset stops, and its preview goes.</summary>
+    private void OnProjectItemsDeleted()
+    {
+        if (PlacementType is { } type && RequiresAsset(type) && !ProjectWindow.HasPlaceableSelection)
+            PlacementType = null;
+        PlacementPreviewReset?.Invoke();
+    }
 
     /// <summary>Element Bar click / number key: switch the Project Window and arm placement where it applies.</summary>
     public void ChooseElementType(ElementTypeInfo info)

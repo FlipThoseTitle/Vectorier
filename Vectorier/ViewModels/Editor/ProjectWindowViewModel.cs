@@ -773,6 +773,9 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     /// <summary>Asks the view to scroll the tile grid to an item.</summary>
     public event Action<PwItem>? RevealRequested;
 
+    /// <summary>Items were deleted (the Scene's placement preview of one of them must go).</summary>
+    public event Action? ItemsDeleted;
+
     /// <summary>
     /// Newly added / imported items (by item key): opens the folder holding the first one, selects every new item
     /// shown there and scrolls to the first of them.
@@ -988,6 +991,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     {
         var files = folders.Where(f => f.FileName != null).Select(f => f.FileName!).ToList();
         var userFolders = folders.Where(f => f.IsUserFolder).ToList();
+        ItemsDeleted?.Invoke(); // the placement preview goes first (it may be one of their objects)
         try
         {
             if (files.Count > 0)
@@ -1011,6 +1015,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
                 await _editor.RefreshDefinitionsAsync(files);
                 _editor.StatusText = Loc.F("Deleted {0}", string.Join(", ", files));
                 await ReloadAsync();
+                ItemsDeleted?.Invoke();
                 return;
             }
             if (userFolders.Count == 0)
@@ -1171,6 +1176,9 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
         items = items.Where(CanDelete).ToList();
         if (items.Count == 0)
             return;
+        // The Scene's placement preview may draw one of them (its bitmap, its model): it goes before anything is
+        // deleted (it comes back on the next pointer move if nothing was).
+        ItemsDeleted?.Invoke();
         try
         {
             switch (Context)
@@ -1258,6 +1266,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
             }
             await Cache.SaveAsync();
             await ReloadAsync();
+            ItemsDeleted?.Invoke();
         }
         catch (Exception ex)
         {

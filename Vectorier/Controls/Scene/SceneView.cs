@@ -85,6 +85,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         if (_editor != null)
         {
             _editor.SceneInvalidated -= InvalidateVisual;
+            _editor.PlacementPreviewReset -= ClearGhost;
             _editor.StructureChanged -= OnStructureChanged;
             _editor.ElementChanged -= OnElementChanged;
             _editor.FrameRequested -= Frame;
@@ -103,6 +104,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             _renderer = new SceneRenderer(editor);
             _renderer.RedrawRequested += () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render);
             editor.SceneInvalidated += InvalidateVisual;
+            editor.PlacementPreviewReset += ClearGhost;
             editor.StructureChanged += OnStructureChanged;
             editor.ElementChanged += OnElementChanged;
             editor.FrameRequested += Frame;
