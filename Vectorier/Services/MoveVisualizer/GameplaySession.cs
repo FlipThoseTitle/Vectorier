@@ -23,7 +23,7 @@ namespace Vectorier.Services.MoveVisualizer;
 /// What a gameplay spawn starts with: where, the node of the model's rest pose put there (the game uses NPivot) and
 /// its first move ("JumpOff|18", "JumpOff|18|1" reversed).
 /// </summary>
-public sealed record GameplaySpawn(System.Numerics.Vector2 Position, string Animation, string PivotNode = "NPivot");
+public sealed record GameplaySpawn(System.Numerics.Vector2 Position, string Animation, string PivotNode = "NPivot", bool RestPose = false);
 
 /// <summary>
 /// Move Visualizer, Gameplay spawn mode: the editor's integrated game (Gameplay folder, <see cref="GameHost"/>) runs

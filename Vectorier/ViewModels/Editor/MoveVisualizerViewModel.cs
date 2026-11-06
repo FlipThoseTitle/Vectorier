@@ -941,6 +941,10 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     /// <summary>The pose shown while placing in Gameplay mode (and the one spawned from), mirrored when reversed.</summary>
+    /// <summary>runner.xml's rest pose in the game's space, mirrored when reversed.</summary>
+    private Vector3[]? RestGamePose() => _model?.Placed.RestPose is not { } rest ? null
+        : Reverse ? rest.Select(p => new Vector3(-p.X, p.Y, p.Z)).ToArray() : rest.ToArray();
+
     private Vector3[]? GameplayPose() => _gameplayRestPose is not { } pose ? null
         : Reverse ? pose.Select(p => new Vector3(-p.X, p.Y, p.Z)).ToArray() : pose;
 
@@ -959,12 +963,13 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
     }
 
     /// <summary>Spawns the gameplay character (again: there is only ever one) on the level as it is now.</summary>
-    private async Task<bool> SpawnGameplayAsync(GameplaySpawn spawn, AutoTrick? autoTrick = null)
+    private async Task<bool> SpawnGameplayAsync(GameplaySpawn spawn, AutoTrick? autoTrick = null, bool restPose = false)
     {
         _autoTrick = null;
         if (!await EnsureGameplayAsync() || _model == null)
             return false;
-        Gameplay.StartPose = GameplayPose();
+        // A Spawn element starts from runner.xml's own pose, as the game does (the run pose is for clicks and Areas).
+        Gameplay.StartPose = restPose || spawn.RestPose ? RestGamePose() : GameplayPose();
         try
         {
             if (IsPlaced)
@@ -1063,7 +1068,7 @@ public sealed partial class MoveVisualizerViewModel : ObservableObject
         Reverse = spawn.Reverse;
         _suppressReverseRespawn = false;
         var p = spawn.WorldPosition;
-        await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)p.X, (float)p.Y), animation));
+        await SpawnGameplayAsync(new GameplaySpawn(new System.Numerics.Vector2((float)p.X, (float)p.Y), animation, RestPose: true));
     }
 
     /// <summary>
