@@ -693,7 +693,8 @@ public partial class EditorView : UserControl
             "• ShrimpFriedRice (DC)\n" +
             "• FloofIsFalaful (Floof)\n" +
             "• enderdude290 (Ghosted)\n\n" +
-            Loc.T("Vector and its original assets belong to Nekki Limited. Vectorier is a fan-made editor, not affiliated with or endorsed by Nekki.");
+            Loc.T("Vectorier is unaffiliated with Nekki Limited. Vector and all related assets and trademarks belong to Nekki Limited and are not covered by this project's license. This project is for non-commercial use only, released as-is, and maintained by non-paid contributors in their free time. See the LICENSE file for full terms.") + "\n\n" +
+            Loc.T("Originally based on Vectorier-Unity-Editor by DoritoTheChips (2022). Maintained with his permission.");
         await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Credits"), text, Services.MessageKind.Info);
     }
 }
