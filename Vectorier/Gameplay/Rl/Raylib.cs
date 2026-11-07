@@ -416,11 +416,15 @@ namespace Vectorier.Gameplay.Rl
                 _textures[(int)id] = image;
         }
 
+        /// <summary>Changes when the handles go (ResetTextures): a texture kept from before must be registered again.</summary>
+        public static int TextureGeneration { get; private set; }
+
         internal static IImage TextureImage(uint id) => id > 0 && id < _textures.Count ? _textures[(int)id] : null;
 
         /// <summary>The level was left: its textures are the editor's (cached there), only the handles go.</summary>
         public static void ResetTextures()
         {
+            TextureGeneration++;
             _textures.Clear();
             _textures.Add(null);
         }

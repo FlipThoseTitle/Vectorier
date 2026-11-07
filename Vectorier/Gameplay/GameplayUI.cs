@@ -91,6 +91,7 @@ namespace Vectorier.Gameplay
 
         static Texture2D _button, _arrow;
         static bool _texturesLoaded;
+        static int _texturesGeneration;
 
         /// <summary>A Help area asks for its key (LevelMainController.TutorialAreaActivate).</summary>
         public static void ShowTutorial(KeyVariables key, string description)
@@ -105,9 +106,12 @@ namespace Vectorier.Gameplay
 
         static void LoadTextures()
         {
-            if (_texturesLoaded)
+            // Leaving or reloading a level drops every texture handle (Raylib.ResetTextures): the old ones would
+            // draw nothing (or another picture), so the hint's pictures are registered again then.
+            if (_texturesLoaded && _texturesGeneration == Raylib.TextureGeneration)
                 return;
             _texturesLoaded = true;
+            _texturesGeneration = Raylib.TextureGeneration;
             _button = LoadEmbedded("help_btn.png");
             _arrow = LoadEmbedded("help_arrow_up.png");
         }
