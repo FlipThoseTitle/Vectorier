@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             x:Class="Vectorier.Views.Dialogs.KeybindsView"
+             x:DataType="vm:KeybindsViewModel">
+    <UserControl.Styles>
+        <!-- A key cap: the keys stand out from the text around them. -->
+        <Style Selector="Border.key">
+            <Setter Property="Background" Value="{DynamicResource AppToolbarBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}" />
+            <Setter Property="BorderThickness" Value="1,1,1,2" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="MinWidth" Value="22" />
+            <Setter Property="Margin" Value="0,2,0,2" />
+        </Style>
+        <Style Selector="Border.key > TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.keyrow">
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.keyrow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AppToolbarBackground}" />
+        </Style>
+    </UserControl.Styles>
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Button Classes="accent" Content="{l:Tr 'Close'}" MinWidth="80" HorizontalAlignment="Right" HorizontalContentAlignment="Center"
+                    Command="{Binding CloseDialogCommand}" IsDefault="True" IsCancel="True" />
+        </Border>
+        <Grid ColumnDefinitions="180,*">
+            <!-- Groups -->
+            <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <TextBox DockPanel.Dock="Top" Margin="8,8,8,4" PlaceholderText="{l:Tr 'Search…'}" Text="{Binding SearchText}" />
+                    <ListBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Background="Transparent"
+                             BorderThickness="0" Margin="4,0,4,4">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+            <!-- Shortcuts -->
+            <Panel Grid.Column="1">
+                <TextBlock Classes="dim" Text="{l:Tr 'No shortcut matches the search.'}" IsVisible="{Binding NothingFound}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Shown}" Margin="12,8,16,12">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KeybindSection">
+                                <StackPanel Margin="0,4,0,10">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" Margin="8,0,0,4" />
+                                    <ItemsControl ItemsSource="{Binding Rows}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:KeybindRow">
+                                                <Border Classes="keyrow">
+                                                    <Grid ColumnDefinitions="230,*">
+                                                        <ItemsControl ItemsSource="{Binding Parts}" VerticalAlignment="Center">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:KeyPart">
+                                                                    <Panel Margin="0,0,4,0">
+                                                                        <Border Classes="key" IsVisible="{Binding IsKey}">
+                                                                            <TextBlock Text="{Binding Text}" />
+                                                                        </Border>
+                                                                        <TextBlock Classes="dim" Text="{Binding Text}" IsVisible="{Binding !IsKey}" VerticalAlignment="Center" FontSize="11" />
+                                                                    </Panel>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Action}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Panel>
+        </Grid>
+    </DockPanel>
+</UserControl>

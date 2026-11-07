@@ -412,6 +412,17 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
         var menu = new ContextMenu();
         menu.Items.Add(create);
 
+        // Hierarchy only (the Scene's menu has no rows to fold).
+        bool hierarchy = ReferenceEquals(target, RowList);
+        void AddFolding()
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Command(Loc.T("Collapse All"), null, "", () => vm.Hierarchy.SetAllExpanded(false)));
+            menu.Items.Add(Command(Loc.T("Uncollapse All"), null, "", () => vm.Hierarchy.SetAllExpanded(true)));
+        }
+        if (hierarchy && element == null)
+            AddFolding();
+
         // Scene only: the game starts at the clicked point (the editor's level is not changed).
         if (createAt is { } playAt && vm.CanPlay)
             menu.Items.Add(Command(Loc.T("Play Here"), "Icon.Play", "", () => _ = vm.PlayHereAsync(playAt)));
@@ -450,6 +461,8 @@ public partial class HierarchyView : UserControl, IInternalDropTarget
             }
             if (element is ObjectElement { Reference: not null } defined)
                 menu.Items.Add(Command(Loc.T("Edit Object"), "Icon.Object", "", () => _ = vm.EditObjectAsync(defined)));
+            if (hierarchy)
+                AddFolding();
             menu.Items.Add(new Separator());
             menu.Items.Add(Command(Loc.T("Frame in Scene"), "Icon.Crosshair", "F", () => vm.RequestFrame(element)));
         }

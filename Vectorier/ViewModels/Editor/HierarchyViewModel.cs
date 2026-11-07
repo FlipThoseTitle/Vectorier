@@ -195,6 +195,19 @@ public sealed partial class HierarchyViewModel : ObservableObject
         }, DispatcherPriority.Background);
     }
 
+    /// <summary>Collapse All / Uncollapse All: every Object of the level.</summary>
+    public void SetAllExpanded(bool expand)
+    {
+        using (_editor.SuppressTracking())
+        {
+            foreach (var root in _editor.Document.Roots)
+                foreach (var e in SceneDocument.Walk(root))
+                    if (e is ObjectElement o)
+                        o.IsExpanded = expand;
+        }
+        Rebuild();
+    }
+
     /// <param name="recursive">Ctrl held: every descendant object expands / collapses with it.</param>
     public void ToggleExpanded(HierarchyRow row, bool recursive = false)
     {

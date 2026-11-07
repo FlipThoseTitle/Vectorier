@@ -68,6 +68,24 @@ public sealed class TriggerTemplateFile
         return true;
     }
 
+    /// <summary>Adds an empty template (an empty &lt;Init&gt;, no loops) at the end of the file.</summary>
+    public XElement Add(string name)
+    {
+        var template = new XElement("Template", new XAttribute("Name", name), new XElement("Init"));
+        if (Templates.LastOrDefault() is { } last)
+            last.AddAfterSelf(template);
+        else
+            Root.Add(template);
+        return template;
+    }
+
+    /// <summary>Removes a template from the file.</summary>
+    public void Remove(XElement template)
+    {
+        if (template.Parent == Root)
+            template.Remove();
+    }
+
     /// <summary>The template's content as the Trigger Editor reads it (&lt;Init&gt; and &lt;Loop&gt;s).</summary>
     public static string ContentOf(XElement template) => XmlHelpers.FormatFragment(template.Nodes());
 

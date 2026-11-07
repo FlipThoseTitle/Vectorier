@@ -20,6 +20,7 @@ public static class ViewRegistry
         ViewLocator.Register<ProjectSelectionViewModel>(() => new ProjectSelectionView());
         ViewLocator.Register<MessageDialogViewModel>(() => new MessageDialogView());
         ViewLocator.Register<TutorialWelcomeViewModel>(() => new TutorialWelcomeView());
+        ViewLocator.Register<KeybindsViewModel>(() => new KeybindsView());
         ViewLocator.Register<ImportDialogViewModel>(() => new ImportDialogView());
         ViewLocator.Register<ImageCropViewModel>(() => new ImageCropView());
         ViewLocator.Register<CollabStartViewModel>(() => new CollabStartView());

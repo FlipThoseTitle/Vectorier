@@ -84,7 +84,7 @@
             <TextBox DockPanel.Dock="Top" Margin="4" PlaceholderText="{l:Tr 'Search…'}" Text="{Binding Hierarchy.FilterText}" />
             <Panel>
                 <ListBox Name="RowList" Classes="rows" ItemsSource="{Binding Hierarchy.Rows}" Background="Transparent" BorderThickness="0"
-                         SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                         SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto" Padding="0,0,0,16">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:HierarchyRow">
                             <Border Classes="row" Classes.selected="{Binding Element.IsSelected, FallbackValue=False}" Height="20" Tag="{Binding}">

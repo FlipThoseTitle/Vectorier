@@ -602,63 +602,8 @@ public partial class EditorView : UserControl
         => await Services.Tutorial.TutorialGuide.RestartFromHelpAsync();
 
     /// <summary>Help > Keybinds: the editor's general controls, in the same window as the Credits (read only).</summary>
-    private async void OnHelpKeybinds(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        static string Section(string title, params (string Keys, string Action)[] rows) =>
-            Loc.T(title) + "\n" + string.Concat(rows.Select(r => "• " + r.Keys + "  —  " + Loc.T(r.Action) + "\n"));
-
-        string text =
-            Section("Scene View",
-                ("RMB " + Loc.T("drag"), "Pan"),
-                ("MMB " + Loc.T("drag"), "Pan"),
-                ("Space + LMB " + Loc.T("drag"), "Pan"),
-                ("Alt + RMB " + Loc.T("drag"), "Zoom"),
-                (Loc.T("Mouse wheel"), "Zoom at the pointer"),
-                ("Shift + " + Loc.T("drag"), "Pan faster"),
-                ("F", "Frame the selection"),
-                ("RMB " + Loc.T("click"), "Create menu")) + "\n" +
-            Section("Selection",
-                ("LMB " + Loc.T("click"), "Select"),
-                ("Ctrl / Shift + LMB", "Add to / remove from the selection"),
-                (Loc.T("Double click"), "Select the next element underneath"),
-                ("MMB " + Loc.T("click"), "Select the element's root Object"),
-                ("Ctrl + A", "Select all"),
-                ("Ctrl + Shift + D / Esc", "Clear the selection"),
-                ("H", "Hide / show the selection"),
-                ("L", "Lock / unlock the selection (everything when nothing is selected)")) + "\n" +
-            Section("Tools",
-                ("Q / W / E / T / B", "Move / Rotate / Scale / Rect / Brush tool"),
-                ("G / R / S", "Move / rotate / scale with the pointer (click confirms, right click or Esc cancels)"),
-                ("X / Y", "Lock G / R / S to an axis"),
-                ("Ctrl", "Snap rotation by 15°"),
-                ("Z", "Pivot / Center"),
-                ("X", "Global / Local"),
-                (Loc.T("Arrow keys") + " (+ Shift)", "Nudge by 1 (10)"),
-                ("[ / ]", "Order in Layer (brush size with the Brush)"),
-                ("1 … 0, Shift + 1 … 3", "Pick an Element Bar entry")) + "\n" +
-            Section("Snapping",
-                ("V " + Loc.T("held"), "Snap to everything"),
-                ("C " + Loc.T("held"), "Snap to Platforms"),
-                ("A " + Loc.T("while snapping"), "Scale instead of move")) + "\n" +
-            Section("Editing",
-                ("Ctrl + Z / Ctrl + Y", "Undo / Redo"),
-                ("Ctrl + C / X / V", "Copy / Cut / Paste"),
-                ("Ctrl + Shift + V", "Paste into the selected Object"),
-                ("Ctrl + D", "Duplicate (while dragging or G / R / S: keep moving the copies)"),
-                ("Alt + " + Loc.T("drag"), "Duplicate and drag (keep Alt held to stamp more)"),
-                ("Ctrl + G / Ctrl + Shift + G", "Group / Ungroup"),
-                ("Delete", "Delete")) + "\n" +
-            Section("File",
-                ("Ctrl + N / Ctrl + O", "New / Open level"),
-                ("Ctrl + S / Ctrl + Shift + S", "Save / Save As"),
-                ("F5 / Shift + F5", "Play level / Play in Hunter Mode")) + "\n" +
-            Section("Dynamic Editor (timeline focused)",
-                ("Space", "Play / Pause"),
-                (Loc.T("Arrow keys") + " (+ Shift)", "Previous / next frame (10 frames)"),
-                ("Ctrl + C / X / V / D", "Copy / Cut / Paste / Duplicate keys"),
-                ("Delete", "Delete keys"));
-        await Services.AppServices.Dialogs.ShowMessageAsync(Loc.T("Keybinds"), text.TrimEnd(), Services.MessageKind.Info);
-    }
+    private async void OnHelpKeybinds(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        await Services.AppServices.Dialogs.ShowAsync(new ViewModels.Dialogs.KeybindsViewModel());
 
     private async void OnHelpCheckUpdates(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         await Services.UpdateChecker.CheckNowAsync();

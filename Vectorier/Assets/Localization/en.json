@@ -1558,6 +1558,22 @@
     "Click Spawn, then click in the Scene to start running.": "Click Spawn, then click in the Scene to start running.",
     "Use the arrow keys to control the runner.": "Use the arrow keys to control the runner.",
     "Esc stops spawning. Restart spawns it again.": "Esc stops spawning. Restart spawns it again.",
-    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Only Platforms, Trapezoids and Areas are used. Triggers don't run."
+    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Only Platforms, Trapezoids and Areas are used. Triggers don't run.",
+    "Add Template": "Add Template",
+    "Template name:": "Template name:",
+    "A template with this name already exists.": "A template with this name already exists.",
+    "Remove Template": "Remove Template",
+    "Remove the template '{0}'? Triggers that use it will no longer find it.": "Remove the template '{0}'? Triggers that use it will no longer find it.",
+    "From {0}": "From {0}",
+    "Only WAV files are supported. Not imported:\n{0}": "Only WAV files are supported. Not imported:\n{0}",
+    "Library: only holds loops for other templates to use": "Library: only holds loops for other templates to use",
+    "Remove template": "Remove template",
+    "Hold Ctrl while resizing to size freely.": "Hold Ctrl while resizing to size freely.",
+    "Contains {0} element(s)": "Contains {0} element(s)",
+    "Recommended size: 512 × 340.": "Recommended size: 512 × 340.",
+    "Collapse All": "Collapse All",
+    "Uncollapse All": "Uncollapse All",
+    "No shortcut matches the search.": "No shortcut matches the search.",
+    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use."
   }
 }

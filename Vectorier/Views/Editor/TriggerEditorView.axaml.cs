@@ -282,24 +282,43 @@ public partial class TriggerEditorView : UserControl
         var file = _vm!.TemplateFile;
         if (file == null) return;
         panel.Children.Add(new TextBlock { Text = Loc.T("Trigger Templates"), Classes = { "block-title" } });
-        panel.Children.Add(Hint("Pick a template to edit it. The arrows change the order in the file; a Library template is a set of loops other templates use, without <Init>."));
+        panel.Children.Add(Hint("Click a template to edit it. Tick Library for a template that only holds loops for other templates to use."));
         var templates = file.Templates;
         if (templates.Count == 0)
             panel.Children.Add(Hint("TriggerTemplates.xml has no templates."));
 
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,90,Auto,Auto"), Margin = new Thickness(6, 8, 6, 2) };
-        header.Children.Add(new TextBlock { Text = Loc.T("Template"), FontWeight = FontWeight.SemiBold });
-        var libHead = new TextBlock { Text = Loc.T("Library"), FontWeight = FontWeight.SemiBold };
+        // The header and the rows share their column widths (the buttons' columns too), so each title sits over
+        // its column.
+        Grid.SetIsSharedSizeScope(panel, true);
+        static Grid Columns() => new()
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(new GridLength(90)),
+                new ColumnDefinition(GridLength.Auto) { SharedSizeGroup = "TplUp" },
+                new ColumnDefinition(GridLength.Auto) { SharedSizeGroup = "TplDown" },
+                new ColumnDefinition(GridLength.Auto) { SharedSizeGroup = "TplRemove" },
+            },
+        };
+        var header = Columns();
+        header.Children.Add(new TextBlock { Text = Loc.T("Template"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0) });
+        var libHead = new TextBlock { Text = Loc.T("Library"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0) };
         Grid.SetColumn(libHead, 1);
         header.Children.Add(libHead);
-        panel.Children.Add(header);
+        if (templates.Count > 0)
+            panel.Children.Add(new Border
+            {
+                Classes = { "card" }, Padding = new Thickness(2), Margin = new Thickness(0, 8, 0, 0),
+                Background = Brushes.Transparent, BorderBrush = Brushes.Transparent, Child = header,
+            });
 
         for (int i = 0; i < templates.Count; i++)
         {
             var t = templates[i];
             string name = TriggerCatalog.FriendlyText(TriggerTemplateFile.NameOf(t));
             int loops = t.Elements("Loop").Count() + t.Elements("Template").Count();
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,90,Auto,Auto") };
+            var row = Columns();
 
             var open = new Button { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Classes = { "tool" } };
             var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -311,8 +330,8 @@ public partial class TriggerEditorView : UserControl
             open.Click += (_, _) => _vm!.OpenTemplate(t);
             row.Children.Add(open);
 
-            var library = new CheckBox { IsChecked = TriggerTemplateFile.IsLibrary(t), Margin = new Thickness(6, 0, 0, 0) };
-            ToolTip.SetTip(library, Loc.T("Library: used by other templates, has no <Init> (removed when ticked)"));
+            var library = new CheckBox { IsChecked = TriggerTemplateFile.IsLibrary(t), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            ToolTip.SetTip(library, Loc.T("Library: only holds loops for other templates to use"));
             library.IsCheckedChanged += (_, _) => _vm!.SetTemplateLibrary(t, library.IsChecked == true);
             Grid.SetColumn(library, 1);
             row.Children.Add(library);
@@ -325,9 +344,13 @@ public partial class TriggerEditorView : UserControl
             down.IsEnabled = i < templates.Count - 1;
             Grid.SetColumn(down, 3);
             row.Children.Add(down);
+            var remove = IconButton("Icon.Delete", Loc.T("Remove template"), () => _ = _vm!.RemoveTemplateAsync(t));
+            Grid.SetColumn(remove, 4);
+            row.Children.Add(remove);
 
             panel.Children.Add(new Border { Classes = { "card" }, Padding = new Thickness(2), Child = row });
         }
+        panel.Children.Add(AddButtonSimple("Add Template", () => _ = _vm!.AddTemplateAsync()));
     }
 
     // ---------------- <Using> (template loops) ----------------

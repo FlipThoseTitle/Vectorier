@@ -1558,6 +1558,22 @@
     "Click Spawn, then click in the Scene to start running.": "Нажмите «Spawn», затем щёлкните на сцене, чтобы начать бег.",
     "Use the arrow keys to control the runner.": "Управляйте бегуном стрелками.",
     "Esc stops spawning. Restart spawns it again.": "Esc — прекратить размещение. «Сначала» создаёт его снова.",
-    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Используются только платформы, трапеции и зоны. Триггеры не работают."
+    "Only Platforms, Trapezoids and Areas are used. Triggers don't run.": "Используются только платформы, трапеции и зоны. Триггеры не работают.",
+    "Add Template": "Добавить шаблон",
+    "Template name:": "Имя шаблона:",
+    "A template with this name already exists.": "Шаблон с таким именем уже существует.",
+    "Remove Template": "Удалить шаблон",
+    "Remove the template '{0}'? Triggers that use it will no longer find it.": "Удалить шаблон «{0}»? Триггеры, которые его используют, больше не найдут его.",
+    "From {0}": "Из {0}",
+    "Only WAV files are supported. Not imported:\n{0}": "Поддерживаются только файлы WAV. Не импортировано:\n{0}",
+    "Library: only holds loops for other templates to use": "Library: только содержит циклы для других шаблонов",
+    "Remove template": "Удалить шаблон",
+    "Hold Ctrl while resizing to size freely.": "Удерживайте Ctrl при изменении размера, чтобы менять его свободно.",
+    "Contains {0} element(s)": "Содержит элементов: {0}",
+    "Recommended size: 512 × 340.": "Рекомендуемый размер: 512 × 340.",
+    "Collapse All": "Свернуть все",
+    "Uncollapse All": "Развернуть все",
+    "No shortcut matches the search.": "Нет сочетаний клавиш, подходящих под поиск.",
+    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Щёлкните шаблон, чтобы изменить его. Отметьте «Library» для шаблона, который только содержит циклы для других шаблонов."
   }
 }

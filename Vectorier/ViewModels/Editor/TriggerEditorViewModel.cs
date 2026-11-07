@@ -128,6 +128,41 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
         RaiseStructure();
     }
 
+    /// <summary>Add Template: asks for a name and opens the new, empty template.</summary>
+    public async Task AddTemplateAsync()
+    {
+        if (TemplateFile is not { } file)
+            return;
+        var names = file.Templates.Select(TriggerTemplateFile.NameOf).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        string suggestion = "NewTemplate";
+        for (int n = 2; names.Contains(suggestion); n++)
+            suggestion = "NewTemplate" + n;
+        string? name = await AppServices.Dialogs.PromptAsync(Loc.T("Add Template"), Loc.T("Template name:"), suggestion,
+            text => string.IsNullOrWhiteSpace(text) ? Loc.T("Enter a name.")
+                : names.Contains(text.Trim()) ? Loc.T("A template with this name already exists.")
+                : null,
+            Loc.T("Add"));
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+        var template = file.Add(name.Trim());
+        TemplatesDirty = true;
+        OpenTemplate(template);
+    }
+
+    /// <summary>Removes a template from the list (after asking).</summary>
+    public async Task RemoveTemplateAsync(System.Xml.Linq.XElement template)
+    {
+        if (TemplateFile is not { } file)
+            return;
+        string name = TriggerTemplateFile.NameOf(template);
+        if (!await AppServices.Dialogs.ConfirmAsync(Loc.T("Remove Template"),
+                Loc.F("Remove the template '{0}'? Triggers that use it will no longer find it.", name), Loc.T("Remove"), Loc.T("Cancel"), MessageKind.Warning))
+            return;
+        file.Remove(template);
+        TemplatesDirty = true;
+        StructureChanged?.Invoke();
+    }
+
     /// <summary>Moves a template up (-1) or down (+1) in the list.</summary>
     public void MoveTemplate(System.Xml.Linq.XElement template, int direction)
     {

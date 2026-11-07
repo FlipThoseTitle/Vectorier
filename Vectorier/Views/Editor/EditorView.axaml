@@ -270,10 +270,10 @@
                                   ToolTip.Tip="{l:Tr 'Hard: solid edge · Soft: feathered edge · Airbrush: keeps spraying while held · Blur: softens what is painted (Opacity = strength, Size = how wide)'}" />
                         <TextBlock Text="{l:Tr 'Size'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
-                                       FormatString="0.#" Width="64" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Brush diameter in level pixels ([ / ])'}" />
+                                       FormatString="0.#" Width="64" ShowButtonSpinner="False" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="{l:Tr 'Brush diameter in level pixels ([ / ])'}" />
                         <TextBlock Text="{l:Tr 'Opacity'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Opacity, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="0" Maximum="100"
-                                       FormatString="0'%'" Width="58" ShowButtonSpinner="False" />
+                                       FormatString="0'%'" Width="58" ShowButtonSpinner="False" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" />
                         <ColorPicker Color="{Binding Paint.Color}" IsAlphaEnabled="False" VerticalAlignment="Center" ToolTip.Tip="{l:Tr 'Brush color'}" />
                         <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BlendModes}" SelectedItem="{Binding Paint.Blend}" Width="100"
                                   ToolTip.Tip="{l:Tr 'Blending mode'}" IsEnabled="{Binding !Paint.Erase}" />

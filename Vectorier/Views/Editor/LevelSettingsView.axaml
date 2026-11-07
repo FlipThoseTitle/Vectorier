@@ -131,7 +131,7 @@
                                 <Button Command="{Binding CaptureThumbnailCommand}" HorizontalAlignment="Left">
                                     <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource Icon.Camera}" /><TextBlock Text="{l:Tr 'Capture from Scene…'}" /></StackPanel>
                                 </Button>
-                                <TextBlock Classes="dim" TextWrapping="Wrap" Text="{l:Tr 'Recommended size: 512 × 340. Saved right away to icons/stories.'}" />
+                                <TextBlock Classes="dim" TextWrapping="Wrap" Text="{l:Tr 'Recommended size: 512 × 340.'}" />
                             </StackPanel>
                         </Grid>
 

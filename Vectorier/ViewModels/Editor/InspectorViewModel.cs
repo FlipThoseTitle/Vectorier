@@ -177,7 +177,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             case nameof(SceneElement.Selection): OnPropertyChanged(nameof(Selection)); break;
             case nameof(ImageElement.Rotation): OnPropertyChanged(nameof(Rotation)); break;
             case nameof(ImageElement.Color): OnPropertyChanged(nameof(ImageColor)); break;
-            case nameof(ObjectElement.Reference): OnPropertyChanged(nameof(ReferenceText)); break;
+            case nameof(ObjectElement.Reference): OnPropertyChanged(nameof(ReferenceText)); OnPropertyChanged(nameof(HasReferenceText)); break;
             case nameof(PlatformElement.Surface): RaiseSurface(); break;
             case nameof(TriggerElement.ContentXml): _ = RefreshTriggerAnimationAsync(); break;
             case nameof(AreaElement.AreaType):
@@ -482,9 +482,11 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public string ReferenceText => _target is ObjectElement obj
         ? obj.Reference != null
-            ? Loc.F("Content from {0}", obj.Reference.SourceFile)
-            : string.IsNullOrEmpty(obj.Name) ? Loc.T("Group (no definition)") : Loc.T("No definition with this name in the level's Sets")
+            ? Loc.F("From {0}", obj.Reference.SourceFile)
+            : string.IsNullOrEmpty(obj.Name) ? string.Empty : Loc.T("No definition with this name in the level's Sets")
         : string.Empty;
+
+    public bool HasReferenceText => ReferenceText.Length > 0;
 
     public int ChildCount => _target is ObjectElement obj ? obj.Children.Count : 0;
 

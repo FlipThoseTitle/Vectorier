@@ -618,7 +618,14 @@ public sealed partial class SceneView
                 Cursor = null;
                 UpdateCursor(pos);
                 if (menu)
-                    ContextMenuRequested?.Invoke(_renderer.HitTest(Viewport, pos)?.Owner.Root, ScreenToLevel(pos));
+                {
+                    // The element under the pointer is picked as a left click would pick it (a selection that
+                    // already holds it is kept, so the menu acts on all of it).
+                    SceneElement? picked = _renderer.HitTest(Viewport, pos) is { } menuHit ? ResolveClick(menuHit.Owner, 1, pos) : null;
+                    if (picked != null && !picked.IsSelected)
+                        _editor.Select(picked);
+                    ContextMenuRequested?.Invoke(picked, ScreenToLevel(pos));
+                }
                 if (pickRoot && _renderer.HitTest(Viewport, pos) is { } rootHit)
                 {
                     var root = rootHit.Owner.Root;

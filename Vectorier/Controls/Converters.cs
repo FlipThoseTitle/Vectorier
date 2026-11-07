@@ -62,6 +62,18 @@ public sealed class ColorToBrushConverter : IValueConverter
 }
 
 /// <summary>True when the value's text equals the converter parameter (enum names, numbers...).</summary>
+/// <summary>A number above zero → true (shows a line only when there is something to count).</summary>
+public sealed class PositiveConverter : IValueConverter
+{
+    public static readonly PositiveConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is IConvertible c && c.ToDouble(CultureInfo.InvariantCulture) > 0;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 public sealed class EqualsConverter : IValueConverter
 {
     public static readonly EqualsConverter Instance = new();

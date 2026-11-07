@@ -381,6 +381,9 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
 
     private readonly string _folder;
     private readonly string[] _extensions;
+
+    /// <summary>Audio the game cannot play (Musics and Sounds take WAV only): a warning names them.</summary>
+    private static readonly string[] OtherAudio = { ".mp3", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".opus", ".aif", ".aiff", ".mid", ".midi" };
     private readonly HashSet<string> _protected;
     private readonly bool _includeLevels;
     private readonly List<FileItemViewModel> _all = new();
@@ -401,7 +404,7 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         new(o, Loc.T("Models"), "Models", "models", new[] { ".xml" }, new[] { "0", "1" });
 
     public static FileListPageViewModel Musics(ProjectManagerViewModel o) =>
-        new(o, Loc.T("Musics"), "Music", "music", new[] { ".wav", ".mp3", ".ogg" }, new[] { "menu" }, canPlay: true);
+        new(o, Loc.T("Musics"), "Music", "music", new[] { ".wav" }, new[] { "menu" }, canPlay: true);
 
     public static FileListPageViewModel Sounds(ProjectManagerViewModel o) =>
         new(o, Loc.T("Sounds"), "Sounds", "sounds", new[] { ".wav" }, new[]
@@ -477,16 +480,26 @@ public sealed partial class FileListPageViewModel : PmPageViewModel
         try
         {
             var replace = new ReplaceAsker(Loc.T("Import"));
+            var refused = new List<string>();
             foreach (var (file, _) in await TextureImport.CollectAsync(items))
             {
                 if (!VPath.HasExtension(file.Name, _extensions))
+                {
+                    if (CanPlay && VPath.HasExtension(file.Name, OtherAudio))
+                        refused.Add(file.Name);
                     continue;
+                }
                 string target = VPath.Combine(FolderPath, file.Name);
                 bool exists = await AppServices.FileSystem.FileExistsAsync(target);
                 if (exists && !await replace.AskAsync(Loc.F("'{0}' already exists. Replace it?", file.Name)))
                     continue;
                 await StorageImport.CopyFileAsync(AppServices.FileSystem, file, target);
             }
+            // Musics and Sounds: the game plays WAV files only.
+            if (refused.Count > 0)
+                await AppServices.Dialogs.ShowMessageAsync(Loc.T("Import"),
+                    Loc.F("Only WAV files are supported. Not imported:\n{0}", string.Join("\n", refused.Take(10)) + (refused.Count > 10 ? "\n…" : "")),
+                    MessageKind.Warning);
             if (_folder == "models")
                 ProjectContext.For(Project).Models.Invalidate();
             if (_folder == "xmlroot")

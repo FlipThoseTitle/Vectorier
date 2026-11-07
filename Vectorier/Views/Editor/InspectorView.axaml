@@ -93,9 +93,11 @@
                             <Border Classes="component">
                                 <StackPanel>
                                     <TextBlock Classes="component-title" Text="{l:Tr 'Object'}" />
-                                    <TextBlock Classes="dim" TextWrapping="Wrap" Name="ObjectInfo" Text="{Binding Children.Count, Converter={x:Static l:FormatTrConverter.Instance}, ConverterParameter='{}{0} inline child element(s)'}" />
-                                    <TextBlock Classes="dim" TextWrapping="Wrap" Margin="0,2,0,0"
-                                               Text="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).ReferenceText, FallbackValue=''}" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Name="ObjectInfo"
+                                               Text="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).ReferenceText, FallbackValue=''}"
+                                               IsVisible="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).HasReferenceText, FallbackValue=False}" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Margin="0,2,0,0" IsVisible="{Binding Children.Count, Converter={x:Static c:PositiveConverter.Instance}}"
+                                               Text="{Binding Children.Count, Converter={x:Static l:FormatTrConverter.Instance}, ConverterParameter='{}Contains {0} element(s)'}" />
                                     <WrapPanel Margin="0,6,0,0">
                                         <Button Margin="0,0,6,4" Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).Editor.UngroupCommand, FallbackValue={x:Null}}"
                                                 ToolTip.Tip="{l:Tr 'Without a definition: its children move out of it. With one: its content becomes editable elements (Ctrl+Shift+G)'}">
@@ -108,7 +110,7 @@
                                         </Button>
                                     </WrapPanel>
                                     <StackPanel IsVisible="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).HasTrickAreas, FallbackValue=False}" Margin="0,6,0,0" Spacing="2">
-                                        <TextBlock Classes="label" Text="{l:Tr 'Trick Areas'}" />
+                                        <TextBlock Classes="label" FontWeight="SemiBold" Text="{l:Tr 'Trick Areas'}" />
                                         <ItemsControl ItemsSource="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).TrickAreas, FallbackValue={x:Null}}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:TrickAreaEntry">
@@ -251,11 +253,7 @@
                                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.TrapezoidTypes}" SelectedItem="{Binding TrapezoidType}"
                                                   ToolTip.Tip="{l:Tr '1 rises to the right, 2 rises to the left'}" />
                                     </Grid>
-                                    <Grid Classes="row" ColumnDefinitions="90,*">
-                                        <TextBlock Text="{l:Tr 'Base Height'}" />
-                                        <NumericUpDown Grid.Column="1" Value="{Binding BaseHeight, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Increment="1" />
-                                    </Grid>
-                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="{l:Tr 'The slope keeps its 26.565° angle. Hold Ctrl while resizing in the Scene to size freely.'}" />
+                                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="{l:Tr 'Hold Ctrl while resizing to size freely.'}" />
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

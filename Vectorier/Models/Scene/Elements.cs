@@ -206,6 +206,7 @@ public sealed partial class ImageElement : SceneElement
 public sealed partial class TriggerElement : SceneElement
 {
     public override ElementType Type => ElementType.Trigger;
+    public override bool LayerEditable => false; // always on the track layer
 
     /// <summary>Inner XML of &lt;Content&gt; (Init, Loop, Template...).</summary>
     [ObservableProperty] private string _contentXml = string.Empty;
@@ -261,6 +262,7 @@ public sealed partial class AreaElement : SceneElement
     public static readonly string[] KnownTypes = { "Animation", "Catch", "Trick", "Help" };
 
     public override ElementType Type => ElementType.Area;
+    public override bool LayerEditable => false; // always on the track layer
 
     [ObservableProperty] private string _areaType = "Animation";
     [ObservableProperty] private int _distance = 300;

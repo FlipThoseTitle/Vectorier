@@ -104,6 +104,7 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             Library = _vm.Textures;
             UpdateTileSize();
         }
+        UpdateContentSpan();
         ScheduleRows();
     }
 
@@ -116,8 +117,19 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         }
         else if (e.PropertyName is nameof(ProjectWindowViewModel.ShowsItems) or nameof(ProjectWindowViewModel.Context))
         {
+            UpdateContentSpan();
             ScheduleRows();
         }
+    }
+
+    /// <summary>Without the folder panel (and its splitter), the content takes the whole width.</summary>
+    private void UpdateContentSpan()
+    {
+        if (this.FindControl<Control>("ContentArea") is not { } content)
+            return;
+        bool folders = _vm?.ShowsFolders ?? true;
+        Grid.SetColumn(content, folders ? 2 : 0);
+        Grid.SetColumnSpan(content, folders ? 1 : 3);
     }
 
     private void UpdateTileSize()
