@@ -1574,6 +1574,8 @@
     "Collapse All": "Collapse All",
     "Uncollapse All": "Uncollapse All",
     "No shortcut matches the search.": "No shortcut matches the search.",
-    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use."
+    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.",
+    "Moving": "Moving",
+    "Static: plays in place (e.g. papers)\nMoving: flies off along its arrow (e.g. birds)": "Static: plays in place (e.g. papers)\nMoving: flies off along its arrow (e.g. birds)"
   }
 }

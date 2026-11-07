@@ -538,12 +538,21 @@ public sealed class SceneXmlWriter
         var x = new XElement("Animation");
         Attr(x, "X", animation.X);
         Attr(x, "Y", animation.Y);
-        Attr(x, "Width", animation.Width);
-        Attr(x, "Height", animation.Height);
+        // The original size and the scale that gives the size shown in the editor (the game multiplies them).
+        double width = animation.Width, height = animation.Height, scaleX = animation.ScaleX, scaleY = animation.ScaleY;
+        if (animation.NativeWidth > 0 && animation.NativeHeight > 0)
+        {
+            width = animation.NativeWidth;
+            height = animation.NativeHeight;
+            scaleX = Math.Round(animation.Width / width, 6);
+            scaleY = Math.Round(animation.Height / height, 6);
+        }
+        Attr(x, "Width", width);
+        Attr(x, "Height", height);
         Attr(x, "ClassName", animation.ClassName);
         Attr(x, "Type", animation.AnimationType);
-        Attr(x, "ScaleX", animation.ScaleX);
-        Attr(x, "ScaleY", animation.ScaleY);
+        Attr(x, "ScaleX", scaleX);
+        Attr(x, "ScaleY", scaleY);
         if (animation.AnimationType == 1)
         {
             Attr(x, "Direction", animation.Direction);

@@ -26,6 +26,7 @@ internal enum InteractionMode
     ModalScale,
     Stamp,
     DynamicSupport,
+    AnimationDirection,
     SnapMove,
     SnapScale,
     Paint,
@@ -204,6 +205,10 @@ public sealed partial class SceneView
             e.Handled = true;
             return;
         }
+
+        // A Moving Animation: drag the tip of its direction arrow.
+        if (point.Properties.IsLeftButtonPressed && _mode == InteractionMode.None && TryStartAnimationDirection(e, pos))
+            return;
 
         if (_mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale or InteractionMode.Stamp)
         {
@@ -544,6 +549,9 @@ public sealed partial class SceneView
             case InteractionMode.PlaceDrag:
                 InvalidateVisual();
                 return;
+            case InteractionMode.AnimationDirection:
+                DragAnimationDirection(pos);
+                return;
             case InteractionMode.DynamicSupport:
             {
                 if (_editor.Dynamics.ActiveTrack is { } track && _editor.Dynamics.CurrentSegment(track) is { } seg)
@@ -603,6 +611,12 @@ public sealed partial class SceneView
 
         switch (_mode)
         {
+            case InteractionMode.AnimationDirection:
+                EndAnimationDirection();
+                _mode = InteractionMode.None;
+                e.Pointer.Capture(null);
+                UpdateCursor(pos);
+                return;
             case InteractionMode.Pan:
             case InteractionMode.Zoom:
             case InteractionMode.DynamicSupport:

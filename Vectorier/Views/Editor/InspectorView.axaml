@@ -347,24 +347,24 @@
                                     <Grid Classes="row" ColumnDefinitions="90,*">
                                         <TextBlock Text="{l:Tr 'Type'}" />
                                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.AnimationTypes}" SelectedItem="{Binding AnimationType}"
-                                                  ToolTip.Tip="{l:Tr '0 - animated only (e.g. papers)&#10;1 - animated with direction and acceleration (e.g. birds)'}" />
+                                                  ToolTip.Tip="{l:Tr 'Static: plays in place (e.g. papers)&#10;Moving: flies off along its arrow (e.g. birds)'}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="x:Int32">
+                                                    <TextBlock Text="{Binding Converter={x:Static c:AnimationTypeNameConverter.Instance}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                     </Grid>
-                                    <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
-                                        <TextBlock Text="{l:Tr 'Direction'}" />
-                                        <TextBox Grid.Column="1" Text="{Binding Direction, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{l:Tr 'e.g. 2|-3 (towards the top right)'}" />
-                                    </Grid>
-                                    <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
+                                    <Grid Classes="row" ColumnDefinitions="90,*,6,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
                                         <TextBlock Text="{l:Tr 'Acceleration'}" />
-                                        <TextBox Grid.Column="1" Text="{Binding Acceleration, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{l:Tr 'Units per frame, e.g. 0.08|-0.1'}" />
+                                        <NumericUpDown Grid.Column="1" Value="{Binding AccelerationX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                                       FormatString="0.####" Increment="0.01" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'X'}" />
+                                        <NumericUpDown Grid.Column="3" Value="{Binding AccelerationUp, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
+                                                       FormatString="0.####" Increment="0.01" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Y (up is positive)'}" />
                                     </Grid>
                                     <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding AnimationType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=1}">
                                         <TextBlock Text="{l:Tr 'Time'}" />
                                         <NumericUpDown Grid.Column="1" Value="{Binding Time, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Minimum="0" ToolTip.Tip="{l:Tr 'Seconds before it disappears'}" />
-                                    </Grid>
-                                    <Grid Classes="row" ColumnDefinitions="90,*,6,*">
-                                        <TextBlock Text="{l:Tr 'Scale'}" />
-                                        <NumericUpDown Grid.Column="1" Value="{Binding ScaleX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Increment="0.1" ShowButtonSpinner="False" />
-                                        <NumericUpDown Grid.Column="3" Value="{Binding ScaleY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Increment="0.1" ShowButtonSpinner="False" />
                                     </Grid>
                                 </StackPanel>
                             </Border>

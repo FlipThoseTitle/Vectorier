@@ -119,7 +119,7 @@ public sealed partial class EditorViewModel
                 SceneElement visual = type switch
                 {
                     ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
-                    ElementType.Animation => new AnimationElement(),
+                    ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
                     _ => new ParticleElement(),
                 };
                 visual.Name = texture;
@@ -329,7 +329,7 @@ public sealed partial class EditorViewModel
                 SceneElement visual = type switch
                 {
                     ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
-                    ElementType.Animation => new AnimationElement(),
+                    ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
                     _ => new ParticleElement(),
                 };
                 visual.Name = texture;

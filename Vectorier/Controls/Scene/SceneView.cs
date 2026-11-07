@@ -570,6 +570,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     private void RenderToolOverlay(DrawingContext context, SceneViewport viewport)
     {
         RenderDynamics(context, viewport);
+        RenderAnimationDirection(context, viewport);
 
         if (_mode == InteractionMode.RubberBand)
         {

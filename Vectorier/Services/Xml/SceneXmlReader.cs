@@ -643,6 +643,14 @@ public sealed class SceneXmlReader
             ScaleX = reader.Double("ScaleX", 1),
             ScaleY = reader.Double("ScaleY", 1),
         };
+        // The editor shows the size the game draws (Width x ScaleX); the file's size is the original one.
+        if (animation.Width > 0 && animation.Height > 0)
+        {
+            animation.NativeWidth = animation.Width;
+            animation.NativeHeight = animation.Height;
+            animation.Width *= animation.ScaleX;
+            animation.Height *= animation.ScaleY;
+        }
         if (reader.Has("Direction")) animation.Direction = reader.String("Direction") ?? "0|0";
         if (reader.Has("Acceleration")) animation.Acceleration = reader.String("Acceleration") ?? "0|0";
         if (reader.Has("Time")) animation.Time = reader.Double("Time");

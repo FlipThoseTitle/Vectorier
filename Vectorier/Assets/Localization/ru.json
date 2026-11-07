@@ -1574,6 +1574,8 @@
     "Collapse All": "Свернуть все",
     "Uncollapse All": "Развернуть все",
     "No shortcut matches the search.": "Нет сочетаний клавиш, подходящих под поиск.",
-    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Щёлкните шаблон, чтобы изменить его. Отметьте «Library» для шаблона, который только содержит циклы для других шаблонов."
+    "Click a template to edit it. Tick Library for a template that only holds loops for other templates to use.": "Щёлкните шаблон, чтобы изменить его. Отметьте «Library» для шаблона, который только содержит циклы для других шаблонов.",
+    "Moving": "Движущаяся",
+    "Static: plays in place (e.g. papers)\nMoving: flies off along its arrow (e.g. birds)": "Статичная: проигрывается на месте (например, бумаги)\nДвижущаяся: улетает по своей стрелке (например, птицы)"
   }
 }

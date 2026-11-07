@@ -62,6 +62,18 @@ public sealed class ColorToBrushConverter : IValueConverter
 }
 
 /// <summary>True when the value's text equals the converter parameter (enum names, numbers...).</summary>
+/// <summary>An Animation's Type as the Inspector shows it: 0 Static, 1 Moving (the file keeps the number).</summary>
+public sealed class AnimationTypeNameConverter : IValueConverter
+{
+    public static readonly AnimationTypeNameConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is 1 ? Vectorier.Services.Localization.Loc.T("Moving") : Vectorier.Services.Localization.Loc.T("Static");
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>A number above zero → true (shows a line only when there is something to count).</summary>
 public sealed class PositiveConverter : IValueConverter
 {
