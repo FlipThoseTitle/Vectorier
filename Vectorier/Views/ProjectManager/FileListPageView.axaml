@@ -40,7 +40,7 @@
                                 </Button>
                             </Panel>
                             <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Margin="4,0" />
-                            <PathIcon Grid.Column="2" Data="{StaticResource Icon.Lock}" ToolTip.Tip="{l:Tr 'Required by the game; cannot be deleted'}" IsVisible="{Binding IsProtected}" />
+                            <PathIcon Grid.Column="2" Data="{StaticResource Icon.Lock}" ToolTip.Tip="{l:Tr 'Used by the game, can\'t be deleted'}" IsVisible="{Binding IsProtected}" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

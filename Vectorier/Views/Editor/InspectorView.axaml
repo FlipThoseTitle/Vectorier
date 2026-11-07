@@ -73,17 +73,17 @@
                 <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding LayerEditable}">
                     <TextBlock Text="{l:Tr 'Layer'}" />
                     <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.LayerNames}"
-                              SelectedItem="{Binding Layer}" ToolTip.Tip="{l:Tr 'Parallax layer of the top-level element (children inherit it)'}" />
+                              SelectedItem="{Binding Layer}" ToolTip.Tip="{l:Tr 'Parallax layer&#10;Children use their parent\'s layer'}" />
                 </Grid>
                 <Grid Classes="row" ColumnDefinitions="90,*" IsEnabled="{Binding OrderEditable}">
                     <TextBlock Text="{l:Tr 'Order in Layer'}" />
                     <NumericUpDown Grid.Column="1" Value="{Binding Order, Converter={x:Static c:IntToDecimalConverter.Instance}}"
-                                   FormatString="0" Increment="1" ToolTip.Tip="{l:Tr 'Draw order among siblings'}" />
+                                   FormatString="0" Increment="1" ToolTip.Tip="{l:Tr 'Order in the layer&#10;Higher number stays on top'}" />
                 </Grid>
                 <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding SupportsSelection}">
                     <TextBlock Text="{l:Tr 'Game Mode'}" />
                     <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.SelectionModes}"
-                              SelectedItem="{Binding Selection}" ToolTip.Tip="{l:Tr 'Selection: All modes, Common Mode only or Hunter Mode only'}" />
+                              SelectedItem="{Binding Selection}" ToolTip.Tip="{l:Tr 'Which game mode it appears in'}" />
                 </Grid>
 
                 <!-- Components -->
@@ -100,12 +100,12 @@
                                                Text="{Binding Children.Count, Converter={x:Static l:FormatTrConverter.Instance}, ConverterParameter='{}Contains {0} element(s)'}" />
                                     <WrapPanel Margin="0,6,0,0">
                                         <Button Margin="0,0,6,4" Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).Editor.UngroupCommand, FallbackValue={x:Null}}"
-                                                ToolTip.Tip="{l:Tr 'Without a definition: its children move out of it. With one: its content becomes editable elements (Ctrl+Shift+G)'}">
+                                                ToolTip.Tip="{l:Tr 'Ungroup (Ctrl+Shift+G)&#10;Turns the object\'s content into separate elements'}">
                                             <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Group}" Width="12" Height="12" /><TextBlock Text="{l:Tr 'Ungroup'}" /></StackPanel>
                                         </Button>
                                         <Button Margin="0,0,6,4" IsVisible="{Binding IsReference}"
                                                 Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).Editor.EditObjectCommand, FallbackValue={x:Null}}"
-                                                CommandParameter="{Binding}" ToolTip.Tip="{l:Tr 'Edit this object\'s definition in the Object tab'}">
+                                                CommandParameter="{Binding}" ToolTip.Tip="{l:Tr 'Edit the object\'s definition'}">
                                             <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Object}" Width="12" Height="12" /><TextBlock Text="{l:Tr 'Edit Object'}" /></StackPanel>
                                         </Button>
                                     </WrapPanel>
@@ -138,7 +138,7 @@
                                     <Grid Classes="row" ColumnDefinitions="90,*">
                                         <TextBlock Text="{l:Tr 'Type'}" />
                                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:InspectorViewModel.ImageTypes}" SelectedItem="{Binding ImageType}"
-                                                  ToolTip.Tip="{l:Tr 'None - Default&#10;Static&#10;Vanishing - disappears under a trigger with a None event&#10;Dynamic - plays the image\'s sprite sheet'}" />
+                                                  ToolTip.Tip="{l:Tr 'None: default&#10;Static&#10;Vanishing: disappears on a trigger\'s None event&#10;Dynamic: plays its sprite sheet'}" />
                                     </Grid>
                                     <Grid Classes="row" ColumnDefinitions="90,*">
                                         <TextBlock Text="{l:Tr 'Depth'}" />
@@ -151,7 +151,7 @@
                                     <Grid Classes="row" ColumnDefinitions="90,*">
                                         <TextBlock Text="{l:Tr 'Skew'}" />
                                         <NumericUpDown Grid.Column="1" Value="{Binding Skew, Converter={x:Static c:DoubleToDecimalConverter.Instance}}"
-                                                       FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Degrees between the width and height axes'}" />
+                                                       FormatString="0.###" Increment="1" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Angle between the width and height axes'}" />
                                     </Grid>
                                     <Grid Classes="row" ColumnDefinitions="90,*,*">
                                         <TextBlock Text="{l:Tr 'Flip'}" />
@@ -159,7 +159,7 @@
                                         <CheckBox Grid.Column="2" Content="{l:Tr 'Y'}" IsChecked="{Binding FlipY}" />
                                     </Grid>
                                     <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnEditImage"
-                                            ToolTip.Tip="{l:Tr 'Paint on this image with the Brush. With several images selected, they are merged into one first.'}">
+                                            ToolTip.Tip="{l:Tr 'Paint on this image&#10;Several selected images are merged first'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                             <PathIcon Data="{StaticResource Icon.Brush}" />
                                             <TextBlock Text="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).EditImageText}" />
@@ -181,7 +181,7 @@
                                     </Button>
                                     <Button HorizontalAlignment="Stretch" Height="32" Click="OnPreviewTriggerAnimation"
                                             IsVisible="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).CanPreviewTriggerAnimation}"
-                                            ToolTip.Tip="{l:Tr 'Play the trigger\'s Force Animation where the model meets the trigger'}">
+                                            ToolTip.Tip="{l:Tr 'Preview the Force Animation'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                             <PathIcon Data="{StaticResource Icon.Play}" />
                                             <TextBlock Text="{l:Tr 'Preview Animation'}" />
@@ -210,7 +210,7 @@
                                     <Grid Classes="row" ColumnDefinitions="90,*,Auto" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Trick}">
                                         <TextBlock Text="{l:Tr 'Trick'}" />
                                         <TextBox Grid.Column="1" Text="{Binding ItemName, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{l:Tr 'Trick name (TRICK_...)'}" />
-                                        <Button Grid.Column="2" Margin="4,0,0,0" Content="{l:Tr 'Select…'}" Click="OnSelectTrick" ToolTip.Tip="{l:Tr 'Pick the trick from the project\'s tricks (one per Area)'}" />
+                                        <Button Grid.Column="2" Margin="4,0,0,0" Content="{l:Tr 'Select…'}" Click="OnSelectTrick" ToolTip.Tip="{l:Tr 'Pick a trick from the project'}" />
                                     </Grid>
                                     <Grid Classes="row" ColumnDefinitions="90,*" IsVisible="{Binding AreaType, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Trick}">
                                         <TextBlock Text="{l:Tr 'Score'}" />
@@ -276,8 +276,8 @@
                                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" MaxDropDownHeight="360"
                                                   ItemsSource="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).MoveNames}"
                                                   SelectedItem="{Binding MoveName}" DropDownOpened="OnSpawnMoveOpened" DropDownClosed="OnSpawnMoveClosed"
-                                                  ToolTip.Tip="{l:Tr 'The move the player starts with (moves.xml). Picking one opens the preview to set the start frame.'}" />
-                                        <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" Click="OnPickSpawnFrame" ToolTip.Tip="{l:Tr 'Open the preview window to pick the start frame'}">
+                                                  ToolTip.Tip="{l:Tr 'Starting move&#10;Picking one opens the preview to set the frame'}" />
+                                        <Button Grid.Column="2" Classes="tool" Margin="2,0,0,0" Click="OnPickSpawnFrame" ToolTip.Tip="{l:Tr 'Pick the start frame'}">
                                             <PathIcon Data="{StaticResource Icon.Timeline}" />
                                         </Button>
                                     </Grid>
@@ -288,7 +288,7 @@
                                     <Grid Classes="row" ColumnDefinitions="90,*">
                                         <TextBlock Text="{l:Tr 'Reverse'}" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding Reverse}"
-                                                  ToolTip.Tip="{l:Tr 'The player starts facing left (adds |1 to the Animation, e.g. JumpOff|18|1)'}" />
+                                                  ToolTip.Tip="{l:Tr 'Start facing left'}" />
                                     </Grid>
                                     <Button HorizontalAlignment="Stretch" Margin="0,6,0,0" Height="32" Click="OnPreviewMove">
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
@@ -428,7 +428,7 @@
                                 <Grid Classes="row" ColumnDefinitions="90,*">
                                     <TextBlock Text="{l:Tr 'Floor'}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding SurfaceFloor}" IsEnabled="{Binding SurfaceFloorEnabled}"
-                                              ToolTip.Tip="{l:Tr 'Floor tiles (Smooth never makes floor tiles: v_black covers the top)'}" />
+                                              ToolTip.Tip="{l:Tr 'Floor tiles&#10;Not used by Smooth'}" />
                                 </Grid>
                                 <Grid Classes="row" ColumnDefinitions="90,*">
                                     <TextBlock Text="{l:Tr 'Left Wall'}" />
@@ -453,7 +453,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="1" HorizontalAlignment="Stretch" Margin="2,0,0,0" Content="{l:Tr 'Remove Surface'}" Command="{Binding RemoveSurfaceCommand}"
-                                        ToolTip.Tip="{l:Tr 'Removes the generated textures; the Platform stays'}" />
+                                        ToolTip.Tip="{l:Tr 'Remove the generated textures&#10;The Platform stays'}" />
                             </Grid>
                         </StackPanel>
                     </StackPanel>
@@ -473,7 +473,7 @@
                                             <TextBlock Classes="dim" Text="{Binding Summary}" />
                                         </StackPanel>
                                         <Button Grid.Column="1" Padding="8,2" FontSize="11" Content="{l:Tr 'Preview'}"
-                                                ToolTip.Tip="{l:Tr 'Open in the Dynamic Editor and play'}"
+                                                ToolTip.Tip="{l:Tr 'Play in the Dynamic Editor'}"
                                                 Command="{Binding $parent[UserControl].((vm:InspectorViewModel)DataContext).PreviewDynamicCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding Name}" />
                                     </Grid>

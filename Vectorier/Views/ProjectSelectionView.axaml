@@ -36,7 +36,7 @@
                                 <Button Classes="tool" ToolTip.Tip="{l:Tr 'Duplicate Project'}" Command="{Binding DuplicateProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.Duplicate}" />
                                 </Button>
-                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Open Folder (import an existing project)'}" Command="{Binding ImportProjectCommand}">
+                                <Button Classes="tool" ToolTip.Tip="{l:Tr 'Import a project folder'}" Command="{Binding ImportProjectCommand}">
                                     <PathIcon Data="{StaticResource Icon.FolderImport}" />
                                 </Button>
                                 <Button Classes="tool" ToolTip.Tip="{l:Tr 'Refresh'}" Command="{Binding RefreshCommand}">
@@ -74,7 +74,7 @@
                     <ScrollViewer IsVisible="{Binding HasSelection}">
                         <StackPanel Margin="16" Spacing="4" MaxWidth="640">
                             <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
-                                    Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Click to choose a new thumbnail (960 × 540 recommended)'}">
+                                    Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Change thumbnail&#10;Recommended: 960 × 540'}">
                                 <Border Classes="thumbnail">
                                     <Viewbox Stretch="Uniform">
                                         <Panel Width="960" Height="540">
@@ -115,7 +115,7 @@
                             <TextBlock Text="{l:Tr 'Show in Explorer'}" />
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding PublishProjectCommand}" ToolTip.Tip="{l:Tr 'Copy the selected project to a folder (without the editor\'s .vectorier cache)'}">
+                    <Button Command="{Binding PublishProjectCommand}" ToolTip.Tip="{l:Tr 'Export the project to a folder'}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.Export}" />
                             <TextBlock Text="{l:Tr 'Publish Project'}" />

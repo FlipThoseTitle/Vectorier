@@ -60,13 +60,13 @@
                                 </TextBlock.IsVisible>
                             </TextBlock>
                             <Button Classes="tool" Command="{Binding BackCommand}" IsVisible="{Binding !IsTriggerMode}"
-                                    ToolTip.Tip="{l:Tr 'Back to the template list, or from the list back to the trigger'}">
+                                    ToolTip.Tip="{l:Tr 'Back'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.ArrowLeft}" /><TextBlock Text="{l:Tr 'Back'}" /></StackPanel>
                             </Button>
-                            <Button Classes="accent" Command="{Binding ApplyCurrentCommand}" IsVisible="{Binding IsTriggerMode}" ToolTip.Tip="{l:Tr 'Write this to the Trigger\'s content'}">
+                            <Button Classes="accent" Command="{Binding ApplyCurrentCommand}" IsVisible="{Binding IsTriggerMode}" ToolTip.Tip="{l:Tr 'Apply to the trigger'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Check}" Foreground="White" /><TextBlock Text="{l:Tr 'Apply'}" /></StackPanel>
                             </Button>
-                            <Button Classes="accent" Command="{Binding ApplyCurrentCommand}" IsVisible="{Binding !IsTriggerMode}" ToolTip.Tip="{l:Tr 'Write the templates to TriggerTemplates.xml'}">
+                            <Button Classes="accent" Command="{Binding ApplyCurrentCommand}" IsVisible="{Binding !IsTriggerMode}" ToolTip.Tip="{l:Tr 'Save templates'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" Foreground="White" /><TextBlock Text="{l:Tr 'Save Templates'}" /></StackPanel>
                             </Button>
                             <Button Classes="tool" Command="{Binding CloseEditorCommand}" ToolTip.Tip="{l:Tr 'Close the Trigger Editor'}">
@@ -82,14 +82,14 @@
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
                             <Button Classes="tool" Command="{Binding EditTemplatesCommand}" IsVisible="{Binding IsTriggerMode}"
-                                    ToolTip.Tip="{l:Tr 'Edit the project\'s TriggerTemplates.xml'}">
+                                    ToolTip.Tip="{l:Tr 'Edit Trigger Templates'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Pencil}" /><TextBlock Text="{l:Tr 'Edit Templates'}" /></StackPanel>
                             </Button>
                             <ToggleButton Classes="tool" IsChecked="{Binding ShowXml}" IsVisible="{Binding IsForm}" ToolTip.Tip="{l:Tr 'Preview the XML this produces'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Code}" /><TextBlock Text="{l:Tr 'XML'}" /></StackPanel>
                             </ToggleButton>
                             <Button Classes="tool" Command="{Binding ReloadTemplatesCommand}"
-                                    ToolTip.Tip="{l:Tr 'Re-read TriggerTemplates.xml, the level\'s models and spawns, and the project\'s moves and sounds'}">
+                                    ToolTip.Tip="{l:Tr 'Reload templates, models, spawns, moves and sounds'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Refresh}" /><TextBlock Text="{l:Tr 'Reload'}" /></StackPanel>
                             </Button>
                         </StackPanel>
@@ -98,10 +98,10 @@
                         <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTriggerMode}">
                             <TextBlock Text="{l:Tr 'Preset'}" Classes="dim" VerticalAlignment="Center" />
                             <ComboBox Name="PresetBox" ItemsSource="{Binding Presets}" Width="170" />
-                            <Button Classes="tool" Command="{Binding SavePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="{l:Tr 'Overwrite this preset with what\'s on screen'}">
+                            <Button Classes="tool" Command="{Binding SavePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="{l:Tr 'Update this preset'}">
                                 <PathIcon Data="{StaticResource Icon.Save}" />
                             </Button>
-                            <Button Classes="tool" Command="{Binding NewPresetCommand}" ToolTip.Tip="{l:Tr 'Save the current trigger as a new preset'}">
+                            <Button Classes="tool" Command="{Binding NewPresetCommand}" ToolTip.Tip="{l:Tr 'Save as a new preset'}">
                                 <PathIcon Data="{StaticResource Icon.Plus}" />
                             </Button>
                             <Button Classes="tool" Command="{Binding RenamePresetCommand}" IsEnabled="{Binding IsCustomPreset}" ToolTip.Tip="{l:Tr 'Rename this preset'}">

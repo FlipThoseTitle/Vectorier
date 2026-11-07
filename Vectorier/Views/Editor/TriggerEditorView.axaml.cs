@@ -416,7 +416,7 @@ public partial class TriggerEditorView : UserControl
             row.Children.Add(type);
 
             var complex = new CheckBox { IsChecked = u.complexName, Margin = new Thickness(8, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
-            ToolTip.SetTip(complex, Loc.T("ComplexName: the name gets the Prefix of the block that uses this loop"));
+            ToolTip.SetTip(complex, Loc.T("ComplexName\nAdds the Prefix of the block that uses it"));
             complex.IsCheckedChanged += (_, _) => { u.complexName = complex.IsChecked == true; Touch(); };
             Grid.SetColumn(complex, 3);
             row.Children.Add(complex);
@@ -502,7 +502,7 @@ public partial class TriggerEditorView : UserControl
         if (!L.HasName)
         {
             var unnamed = new TextBlock { Text = Loc.T("(unnamed)"), Classes = { "hint" } };
-            ToolTip.SetTip(unnamed, Loc.T("A loop called 'Loop' is written without a Name attribute."));
+            ToolTip.SetTip(unnamed, Loc.T("Saved without a name"));
             row.Children.Add(unnamed);
         }
         row.Children.Add(new TextBlock { Text = Loc.T("Build From"), Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -1012,7 +1012,7 @@ public partial class TriggerEditorView : UserControl
         Grid.SetColumn(tpl, 1);
         row.Children.Add(tpl);
         var pl = new TextBlock { Text = Loc.T("Prefix"), Margin = new Thickness(8, 0, 4, 0) };
-        ToolTip.SetTip(pl, Loc.T("Makes the template read 1Sound instead of Sound, for example."));
+        ToolTip.SetTip(pl, Loc.T("Added before the template's variable names\ne.g. 1Sound instead of Sound"));
         Grid.SetColumn(pl, 2);
         row.Children.Add(pl);
         var pre = new TextBox { Text = prefix ?? string.Empty };
@@ -1495,13 +1495,13 @@ public partial class TriggerEditorView : UserControl
             Changed();
         }
 
-        var play = IconButton("Icon.Play", Loc.T("Preview this animation on the character"), () => Preview(box.Text ?? string.Empty));
+        var play = IconButton("Icon.Play", Loc.T("Preview on the character"), () => Preview(box.Text ?? string.Empty));
         play.Margin = new Thickness(2, 0, 0, 0);
         Grid.SetColumn(play, 1);
         grid.Children.Add(play);
 
         var button = new Button { Classes = { "tool" }, Padding = new Thickness(2), MinWidth = 22, Margin = new Thickness(2, 0, 0, 0), Content = new PathIcon { Data = IconGeometry("Icon.ChevronDown"), Width = 10, Height = 10 } };
-        ToolTip.SetTip(button, Loc.T("Pick a move: it opens in the preview, Apply uses it"));
+        ToolTip.SetTip(button, Loc.T("Pick a move"));
         var menu = new MenuFlyout();
         var choices = _vm!.Animations;
         if (choices.Count == 0)

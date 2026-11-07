@@ -19,7 +19,7 @@
                 </Button>
                 <Separator DockPanel.Dock="Top" Margin="8,2" />
                 <Button DockPanel.Dock="Bottom" Classes="tool" HorizontalAlignment="Stretch" Margin="4,2,4,8" Padding="4,6"
-                        Command="{Binding OpenEmptyEditorCommand}" ToolTip.Tip="{l:Tr 'Open the Level Editor with a new level'}">
+                        Command="{Binding OpenEmptyEditorCommand}" ToolTip.Tip="{l:Tr 'New level'}">
                     <StackPanel Spacing="2">
                         <PathIcon Data="{StaticResource Icon.Pencil}" Width="18" Height="18" />
                         <TextBlock Text="{l:Tr 'Editor'}" FontSize="11" HorizontalAlignment="Center" />

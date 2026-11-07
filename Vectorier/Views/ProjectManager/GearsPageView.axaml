@@ -11,11 +11,11 @@
                 <Border DockPanel.Dock="Top" Classes="toolbar">
                     <DockPanel>
                     <Button DockPanel.Dock="Right" Command="{Binding PreviewCommand}" IsVisible="{Binding CanPreview}"
-                            ToolTip.Tip="{l:Tr 'Play run.bin on models/0.xml + 1.xml with this gear attached'}">
+                            ToolTip.Tip="{l:Tr 'Preview this gear on the character'}">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" /><TextBlock Text="{l:Tr 'Preview'}" /></StackPanel>
                     </Button>
                     <StackPanel Orientation="Horizontal" Spacing="1">
-                        <Button Classes="tool" ToolTip.Tip="{l:Tr 'New Gear (choose its model XML)'}" Command="{Binding AddCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
+                        <Button Classes="tool" ToolTip.Tip="{l:Tr 'New gear'}" Command="{Binding AddCommand}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
                         <Button Classes="tool" ToolTip.Tip="{l:Tr 'Remove'}" Command="{Binding RemoveCommand}"><PathIcon Data="{StaticResource Icon.Delete}" /></Button>
                         <Button Classes="tool" ToolTip.Tip="{l:Tr 'Move Up'}" Command="{Binding MoveUpCommand}"><PathIcon Data="{StaticResource Icon.ArrowUp}" /></Button>
                         <Button Classes="tool" ToolTip.Tip="{l:Tr 'Move Down'}" Command="{Binding MoveDownCommand}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>

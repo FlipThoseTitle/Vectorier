@@ -37,12 +37,12 @@
             <!-- ===== Settings ===== -->
             <TextBlock Classes="section" Text="{l:Tr 'Settings'}" />
             <CheckBox Content="{l:Tr 'Render Trajectory'}" IsChecked="{Binding RenderTrajectory}" IsVisible="{Binding IsAnimationMode}"
-                      ToolTip.Tip="{l:Tr 'Draw the path of the center of mass'}" />
+                      ToolTip.Tip="{l:Tr 'Show the center of mass path'}" />
             <CheckBox Content="{l:Tr 'Follow Camera'}" IsChecked="{Binding FollowCamera}"
-                      ToolTip.Tip="{l:Tr 'Keep the Scene View centered on the model\'s Camera node (in Gameplay the Game View always follows it)'}" />
-            <CheckBox Content="{l:Tr 'Reverse'}" IsChecked="{Binding Reverse}" IsVisible="{Binding IsAnimationMode}" ToolTip.Tip="{l:Tr 'Mirror the move (runs to the left)'}" />
+                      ToolTip.Tip="{l:Tr 'Follow the model\'s camera'}" />
+            <CheckBox Content="{l:Tr 'Reverse'}" IsChecked="{Binding Reverse}" IsVisible="{Binding IsAnimationMode}" ToolTip.Tip="{l:Tr 'Mirror (run to the left)'}" />
             <CheckBox Content="{l:Tr 'Reverse'}" IsChecked="{Binding Reverse}" IsVisible="{Binding IsGameplayMode}"
-                      ToolTip.Tip="{l:Tr 'Spawn the runner again where it last spawned, running to the left (JumpOff|18|1)'}" />
+                      ToolTip.Tip="{l:Tr 'Respawn facing left'}" />
 
             <!-- ===== Spawn ===== -->
             <StackPanel Margin="0,10,0,0" Spacing="2" IsVisible="{Binding !ShowsSelectedTrickArea}">
@@ -50,7 +50,7 @@
                     <TextBlock Text="{l:Tr 'Spawn Mode'}" />
                     <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:MoveVisualizerViewModel.SpawnModes}"
                               SelectedItem="{Binding SpawnMode}"
-                              ToolTip.Tip="{l:Tr 'Animation: plays a move where you click. Gameplay: spawns a runner you play with the arrow keys.'}" />
+                              ToolTip.Tip="{l:Tr 'Animation: play a move where you click&#10;Gameplay: run with the arrow keys'}" />
                 </Grid>
 
                 <Grid Classes="row" ColumnDefinitions="110,*" IsVisible="{Binding IsAnimationMode}">
@@ -127,7 +127,7 @@
             <!-- ===== Gameplay ===== -->
             <StackPanel IsVisible="{Binding IsGameplayMode}" Margin="0,10,0,0" Spacing="4">
                 <Button Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding RestartCommand}"
-                        Content="{l:Tr 'Restart'}" IsEnabled="{Binding CanRestart}" ToolTip.Tip="{l:Tr 'Spawn the runner again where it last spawned'}" />
+                        Content="{l:Tr 'Restart'}" IsEnabled="{Binding CanRestart}" ToolTip.Tip="{l:Tr 'Respawn'}" />
                 <Grid ColumnDefinitions="110,*" IsVisible="{Binding IsGameplaySpawned}">
                     <TextBlock Classes="dim" Text="{l:Tr 'Move'}" />
                     <TextBlock Grid.Column="1" Text="{Binding GameplayStateText}" TextTrimming="CharacterEllipsis" />

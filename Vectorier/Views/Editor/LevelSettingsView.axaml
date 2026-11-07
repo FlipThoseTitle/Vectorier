@@ -28,21 +28,21 @@
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Name'}" /><TextBox Grid.Column="1" Text="{Binding Name}" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Type'}" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.TypeNames}"
-                                  SelectedIndex="{Binding TypeIndex}" ToolTip.Tip="{l:Tr 'Player is controlled by the player, AI by the game'}" /></Grid>
+                                  SelectedIndex="{Binding TypeIndex}" ToolTip.Tip="{l:Tr 'Player: you control it&#10;AI: the game controls it'}" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Color'}" />
                         <ColorPicker Grid.Column="1" HorizontalAlignment="Left" Color="{Binding ColorValue}" IsAlphaEnabled="False"
-                                     ToolTip.Tip="{l:Tr 'Black is written as 0, other colors as RRGGBB'}" /></Grid>
+                                     ToolTip.Tip="{l:Tr 'Model color'}" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Birth Spawn'}" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding BirthSpawnChoices}" SelectedItem="{Binding BirthSpawn}"
-                                  ToolTip.Tip="{l:Tr 'Spawn of the level where this model appears'}" /></Grid>
+                                  ToolTip.Tip="{l:Tr 'Where this model appears'}" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*,6,110"><TextBlock Text="{l:Tr 'AI'}" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ModelDefinitionViewModel.AiModes}" SelectedIndex="{Binding AiMode}"
-                                  ToolTip.Tip="{l:Tr 'AI number, used by triggers to tell models apart'}" />
+                                  ToolTip.Tip="{l:Tr 'AI number&#10;Triggers use it to tell models apart'}" />
                         <NumericUpDown Grid.Column="3" IsVisible="{Binding IsAiCustom}" Value="{Binding AI, Converter={x:Static c:IntToDecimalConverter.Instance}}"
                                        FormatString="0" Minimum="0" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Time'}" />
                         <NumericUpDown Grid.Column="1" Value="{Binding Time, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###"
-                                       Increment="0.1" Minimum="0" ToolTip.Tip="{l:Tr 'Delay before this model spawns'}">
+                                       Increment="0.1" Minimum="0" ToolTip.Tip="{l:Tr 'Delay before it spawns'}">
                             <NumericUpDown.InnerRightContent>
                                 <TextBlock Classes="dim" Text="{l:Tr 'second'}" VerticalAlignment="Center" Margin="0,0,6,0" />
                             </NumericUpDown.InnerRightContent>
@@ -79,12 +79,12 @@
                             </DropDownButton.Flyout>
                         </DropDownButton></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*" RowDefinitions="Auto,Auto"><TextBlock Text="{l:Tr 'Skins'}" />
-                        <TextBox Grid.Column="1" Text="{Binding Skins}" ToolTip.Tip="{l:Tr 'Model XML names separated by |, e.g. 0|myawesomeskins'}" />
+                        <TextBox Grid.Column="1" Text="{Binding Skins}" ToolTip.Tip="{l:Tr 'Model XML names, separated by |&#10;e.g. 0|myawesomeskins'}" />
                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,0" Orientation="Horizontal" Spacing="6">
                             <Button Command="{Binding AddSkinsCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="{l:Tr 'Add Skins…'}" /></StackPanel>
                             </Button>
-                            <Button Command="{Binding PreviewCommand}" ToolTip.Tip="{l:Tr 'See the character with these skins running (models/0.xml + skins, 1.xml when there are none)'}">
+                            <Button Command="{Binding PreviewCommand}" ToolTip.Tip="{l:Tr 'Preview these skins'}">
                                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Play}" /><TextBlock Text="{l:Tr 'Preview'}" /></StackPanel>
                             </Button>
                         </StackPanel></Grid>
@@ -94,7 +94,7 @@
                         <TextBox Grid.Column="3" Text="{Binding Stocks}" IsVisible="{Binding IsStocksCustom}" PlaceholderText="{l:Tr 'Model XML name'}" /></Grid>
                     <Grid Classes="row" ColumnDefinitions="120,*"><TextBlock Text="{l:Tr 'Life Time'}" />
                         <NumericUpDown Grid.Column="1" Value="{Binding LifeTime, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="0"
-                                       ToolTip.Tip="{l:Tr 'How long this model stays alive (0: not written)'}" /></Grid>
+                                       ToolTip.Tip="{l:Tr 'How long it stays alive&#10;0: default'}" /></Grid>
                     <WrapPanel Margin="120,6,0,0">
                         <CheckBox Content="{l:Tr 'Perform Tricks'}" IsChecked="{Binding Trick}" Margin="0,0,12,0" />
                         <CheckBox Content="{l:Tr 'Collect Items'}" IsChecked="{Binding Item}" Margin="0,0,12,0" />
@@ -142,7 +142,7 @@
                             <TextBlock Text="{l:Tr 'Name'}" />
                             <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding MusicChoices}" SelectedItem="{Binding MusicName}"
                                       PlaceholderText="{l:Tr 'No music files in the project'}" />
-                            <Button Grid.Column="2" Margin="6,0,0,0" Command="{Binding ToggleMusicPreviewCommand}" ToolTip.Tip="{l:Tr 'Preview the music (play / stop)'}"
+                            <Button Grid.Column="2" Margin="6,0,0,0" Command="{Binding ToggleMusicPreviewCommand}" ToolTip.Tip="{l:Tr 'Play / stop the music'}"
                                     IsEnabled="{Binding MusicName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <Panel>
                                     <PathIcon Data="{StaticResource Icon.Play}" Width="12" Height="12" IsVisible="{Binding !IsMusicPlaying}" />
@@ -177,7 +177,7 @@
                                     <Button Command="{Binding MoveModelCommand}" CommandParameter="Down" ToolTip.Tip="{l:Tr 'Move down'}"><PathIcon Data="{StaticResource Icon.ArrowDown}" /></Button>
                                 </StackPanel>
                                 <Button Content="{l:Tr 'Default'}" Command="{Binding ResetModelsCommand}" HorizontalAlignment="Stretch"
-                                        ToolTip.Tip="{l:Tr 'Restore the default Player and Hunter of both modes'}" />
+                                        ToolTip.Tip="{l:Tr 'Reset to the default Player and Hunter'}" />
                             </StackPanel>
                             <ListBox ItemsSource="{Binding CurrentModels}" SelectedItem="{Binding SelectedModel}">
                                 <ListBox.ItemTemplate>

@@ -62,7 +62,7 @@
                                                         </Border>
                                                         <PathIcon Data="{StaticResource Icon.Lock}" Width="12" Height="12" Margin="3"
                                                                   HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding IsProtected}"
-                                                                  ToolTip.Tip="{l:Tr 'Used by the game itself: it cannot be deleted'}" />
+                                                                  ToolTip.Tip="{l:Tr 'Used by the game, can\'t be deleted'}" />
                                                     </Panel>
                                                 </Border>
                                                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" MaxWidth="106" />

@@ -15,7 +15,7 @@
                             <TextBlock Text="{l:Tr 'Add Files...'}" />
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding AddFoldersCommand}" IsVisible="{Binding CanPickFolders}" ToolTip.Tip="{l:Tr 'Pick folders (imported recursively)'}">
+                    <Button Command="{Binding AddFoldersCommand}" IsVisible="{Binding CanPickFolders}" ToolTip.Tip="{l:Tr 'Pick folders&#10;Subfolders are included'}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource Icon.Folder}" Width="13" Height="13" />
                             <TextBlock Text="{l:Tr 'Add Folders...'}" />

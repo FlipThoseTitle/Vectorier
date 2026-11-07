@@ -57,7 +57,7 @@
             <Border DockPanel.Dock="Top" Classes="panel-header">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="22" MinHeight="22" Command="{Binding CreateFolderCommand}"
-                            ToolTip.Tip="{l:Tr 'New folder (Objects: new XML file)'}">
+                            ToolTip.Tip="{l:Tr 'New folder&#10;For Objects: a new XML file'}">
                         <PathIcon Data="{StaticResource Icon.FolderPlus}" Width="13" Height="13" />
                     </Button>
                     <Button DockPanel.Dock="Right" Classes="tool" Padding="2" MinWidth="22" MinHeight="22" Command="{Binding ReloadCommand}" ToolTip.Tip="{l:Tr 'Reload'}">
@@ -78,7 +78,7 @@
                                     <!-- Object XML type (like the "Anim" badge of animated textures) -->
                                     <Border DockPanel.Dock="Right" IsVisible="{Binding HasTypeBadge}" CornerRadius="3" Padding="4,0" Margin="4,0,2,0"
                                             VerticalAlignment="Center" Background="{DynamicResource AppAccent}" Opacity="0.85"
-                                            ToolTip.Tip="{l:Tr 'Object XML type (right click › Type to change)'}">
+                                            ToolTip.Tip="{l:Tr 'Object XML type&#10;Right-click › Type to change'}">
                                         <TextBlock Text="{Binding TypeBadge}" FontSize="9" FontWeight="SemiBold" Foreground="White" />
                                     </Border>
                                     <!-- A Grid (not a StackPanel) so the name is trimmed before the badge instead of running under it. -->

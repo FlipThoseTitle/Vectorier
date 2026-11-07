@@ -34,10 +34,10 @@
                 <StackPanel Orientation="Horizontal" Spacing="2" DockPanel.Dock="Right">
                     <TextBlock Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0" IsVisible="{Binding IsBound}"
                                Text="{Binding Tracks.Count, Converter={x:Static l:FormatTrConverter.Instance}, ConverterParameter='{}{0} element(s)'}" />
-                    <Button Classes="tool" Command="{Binding AddTriggerCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Add a trigger next to the edited elements that plays their transformations when the player enters it'}">
+                    <Button Classes="tool" Command="{Binding AddTriggerCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Add a trigger that plays these transformations'}">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Plus}" /><TextBlock Text="{l:Tr 'Add Trigger'}" /></StackPanel>
                     </Button>
-                    <Button Classes="tool" Command="{Binding ExitCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Stop editing (restores the elements)'}">
+                    <Button Classes="tool" Command="{Binding ExitCommand}" IsVisible="{Binding IsBound}" ToolTip.Tip="{l:Tr 'Stop editing&#10;Restores the elements'}">
                         <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Close}" /><TextBlock Text="{l:Tr 'Exit'}" /></StackPanel>
                     </Button>
                 </StackPanel>
@@ -54,17 +54,17 @@
                     <NumericUpDown Value="{Binding Fps, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1" Maximum="240"
                                    Width="60" ShowButtonSpinner="False" />
                     <Rectangle Width="1" Margin="6,3" Fill="{DynamicResource AppBorder}" />
-                    <ToggleButton Classes="tool" IsChecked="{Binding CustomEase}" ToolTip.Tip="{l:Tr 'Custom ease: edit Bezier supports directly (drag the handle in the Scene)'}">
+                    <ToggleButton Classes="tool" IsChecked="{Binding CustomEase}" ToolTip.Tip="{l:Tr 'Custom ease&#10;Drag the curve handle in the Scene'}">
                         <TextBlock Text="{l:Tr 'Custom Ease'}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" IsChecked="{Binding Onion}" ToolTip.Tip="{l:Tr 'Onion skin: transparent previews of the previous and next keys'}">
+                    <ToggleButton Classes="tool" IsChecked="{Binding Onion}" ToolTip.Tip="{l:Tr 'Onion skin&#10;Show the previous and next keys'}">
                         <TextBlock Text="{l:Tr 'Onion'}" />
                     </ToggleButton>
-                    <ToggleButton Classes="tool" IsChecked="{Binding ShowPath}" ToolTip.Tip="{l:Tr 'Show the motion paths and their keys in the Scene'}">
+                    <ToggleButton Classes="tool" IsChecked="{Binding ShowPath}" ToolTip.Tip="{l:Tr 'Show motion paths'}">
                         <TextBlock Text="{l:Tr 'Path'}" />
                     </ToggleButton>
                     <ToggleButton Classes="tool autokey" IsChecked="{Binding AutoKey}"
-                                  ToolTip.Tip="{l:Tr 'Auto Key: moving, resizing, rotating or recoloring an edited element keys its pose at the playhead when you finish the change'}">
+                                  ToolTip.Tip="{l:Tr 'Auto Key&#10;Changing an element adds a key at the playhead'}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource AppForegroundDim}" VerticalAlignment="Center" />
                             <TextBlock Text="{l:Tr 'Auto Key'}" />
@@ -78,8 +78,8 @@
                         <ComboBox ItemsSource="{x:Static vm:DynamicEditorViewModel.EasePresets}" SelectedItem="{Binding ActiveEase}" Width="110" IsVisible="{Binding ShowEaseCombo}" />
                         <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowSupport}">
                             <TextBlock Text="{l:Tr 'Support'}" Classes="dim" VerticalAlignment="Center" />
-                            <NumericUpDown Value="{Binding SupportX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'X, relative to the previous key'}" />
-                            <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Y (up is positive), relative to the previous key'}" />
+                            <NumericUpDown Value="{Binding SupportX, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'X (from the previous key)'}" />
+                            <NumericUpDown Value="{Binding SupportY, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" FormatString="0.###" Width="90" ShowButtonSpinner="False" ToolTip.Tip="{l:Tr 'Y, up is positive (from the previous key)'}" />
                         </StackPanel>
                     </StackPanel>
                 </WrapPanel>
@@ -122,8 +122,8 @@
                                         <TextBlock Text="{l:Tr 'End'}" Classes="dim" VerticalAlignment="Center" />
                                         <NumericUpDown Value="{Binding TotalFrames, Converter={x:Static c:IntToDecimalConverter.Instance}}" FormatString="0" Minimum="1"
                                                        Width="80" ShowButtonSpinner="False" Tag="{Binding}" ValueChanged="OnEndChanged" />
-                                        <Button Content="{l:Tr 'Add Key'}" Tag="{Binding}" Click="OnAddKey" ToolTip.Tip="{l:Tr 'Key the element\'s current pose at the playhead'}" />
-                                        <Button Content="{l:Tr 'Delete Key'}" Tag="{Binding}" Click="OnDeleteKey" ToolTip.Tip="{l:Tr 'Delete the selected keys (or the key at the playhead)'}" />
+                                        <Button Content="{l:Tr 'Add Key'}" Tag="{Binding}" Click="OnAddKey" ToolTip.Tip="{l:Tr 'Add a key at the playhead'}" />
+                                        <Button Content="{l:Tr 'Delete Key'}" Tag="{Binding}" Click="OnDeleteKey" ToolTip.Tip="{l:Tr 'Delete selected keys'}" />
                                         <Button Content="{l:Tr 'Clear'}" Tag="{Binding}" Click="OnClear" />
                                     </StackPanel>
                                     <!-- Wraps when the panel is narrow (display scaling above 100%). -->
@@ -135,7 +135,7 @@
                                         <Button Classes="tool" Tag="{Binding}" Click="OnRename" ToolTip.Tip="{l:Tr 'Rename'}"><PathIcon Data="{StaticResource Icon.Pencil}" /></Button>
                                         <Button Classes="tool" Tag="{Binding}" Click="OnNewTransformation" ToolTip.Tip="{l:Tr 'New transformation'}"><PathIcon Data="{StaticResource Icon.Plus}" /></Button>
                                         <Button Classes="tool" Tag="{Binding}" Click="OnRemoveTransformation" ToolTip.Tip="{l:Tr 'Remove transformation'}"><PathIcon Data="{StaticResource Icon.Minus}" /></Button>
-                                        <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="{l:Tr 'Name the transformation and bake the keys into it'}">
+                                        <Button Tag="{Binding}" Click="OnSave" ToolTip.Tip="{l:Tr 'Save as a transformation'}">
                                             <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource Icon.Save}" /><TextBlock Text="{l:Tr 'Save'}" /></StackPanel>
                                         </Button>
                                     </WrapPanel>

@@ -311,8 +311,8 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public string NameTip => _target switch
     {
-        AreaElement { IsTrick: true } => Loc.T("A Trick Area is named after its trick's TriggerName in moves.xml (set automatically from the trick)."),
-        _ => Loc.T("Image, Animation and Particle names are their texture: rename them in the Project Window."),
+        AreaElement { IsTrick: true } => Loc.T("Named after its trick (set automatically)"),
+        _ => Loc.T("Rename it in the Project Window"),
     };
 
     public string Name

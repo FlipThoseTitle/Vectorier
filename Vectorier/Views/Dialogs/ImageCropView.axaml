@@ -11,7 +11,7 @@
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="{l:Tr 'Background:'}" VerticalAlignment="Center" />
                     <ComboBox ItemsSource="{Binding BackgroundOptions}" SelectedItem="{Binding SelectedBackground}" MinWidth="120"
-                              ToolTip.Tip="{l:Tr 'What fills the parts of the canvas the image does not cover'}" />
+                              ToolTip.Tip="{l:Tr 'Background color'}" />
                 </StackPanel>
                 <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding SizeText}" />
             </DockPanel>
@@ -19,9 +19,9 @@
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}" BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                    <Button Content="{l:Tr 'Fit'}" Command="{Binding FitCommand}" ToolTip.Tip="{l:Tr 'Show the whole image inside the canvas'}" />
-                    <Button Content="{l:Tr 'Fill'}" Command="{Binding FillCommand}" ToolTip.Tip="{l:Tr 'Cover the whole canvas (the edges that stick out are cut off)'}" />
-                    <Button Content="{l:Tr 'Center'}" Command="{Binding CenterImageCommand}" ToolTip.Tip="{l:Tr 'Move the image to the middle of the canvas'}" />
+                    <Button Content="{l:Tr 'Fit'}" Command="{Binding FitCommand}" ToolTip.Tip="{l:Tr 'Fit'}" />
+                    <Button Content="{l:Tr 'Fill'}" Command="{Binding FillCommand}" ToolTip.Tip="{l:Tr 'Fill&#10;Edges that stick out are cut off'}" />
+                    <Button Content="{l:Tr 'Center'}" Command="{Binding CenterImageCommand}" ToolTip.Tip="{l:Tr 'Center'}" />
                     <Button Classes="accent" Content="{l:Tr 'Apply'}" MinWidth="80" Command="{Binding ApplyCommand}" IsDefault="True" IsEnabled="{Binding !IsBusy}" />
                     <Button Content="{l:Tr 'Cancel'}" MinWidth="80" Command="{Binding CancelCropCommand}" IsCancel="True" />
                 </StackPanel>
@@ -30,7 +30,7 @@
                 <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" MinWidth="80" Margin="8,0" Text="{Binding ZoomText}" />
                 <TextBlock Classes="dim" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"
                            Text="{l:Tr 'Drag to move, scroll to zoom.'}"
-                           ToolTip.Tip="{l:Tr 'Drag with the left or right mouse button to move the image, scroll to zoom around the pointer, arrow keys to nudge by one pixel (Shift: ten).'}" />
+                           ToolTip.Tip="{l:Tr 'Drag: move&#10;Scroll: zoom&#10;Arrow keys: nudge 1 px (Shift: 10 px)'}" />
             </DockPanel>
         </Border>
         <c:ImageCropCanvas Crop="{Binding}" />

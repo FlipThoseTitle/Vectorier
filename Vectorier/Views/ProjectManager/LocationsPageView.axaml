@@ -93,7 +93,7 @@
                 <ScrollViewer IsVisible="{Binding HasSelection}">
                     <StackPanel Margin="12" Spacing="3">
                         <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"
-                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Click to change the location image (1329 × 512 recommended)'}">
+                                Command="{Binding ChangeThumbnailCommand}" ToolTip.Tip="{l:Tr 'Change image&#10;Recommended: 1329 × 512'}">
                             <Border Classes="thumbnail">
                                 <Viewbox Stretch="Uniform">
                                     <Panel Width="665" Height="256">
