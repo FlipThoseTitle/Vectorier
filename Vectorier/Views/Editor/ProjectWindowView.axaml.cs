@@ -33,6 +33,9 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
     public static readonly StyledProperty<TextureLibrary?> LibraryProperty =
         AvaloniaProperty.Register<ProjectWindowView, TextureLibrary?>(nameof(Library));
 
+    public static readonly StyledProperty<ModelLibrary?> ModelsProperty =
+        AvaloniaProperty.Register<ProjectWindowView, ModelLibrary?>(nameof(Models));
+
     private ProjectWindowViewModel? _vm;
     private bool _rowsScheduled;
     private Border? _dropFolder;
@@ -86,6 +89,12 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         set => SetValue(LibraryProperty, value);
     }
 
+    public ModelLibrary? Models
+    {
+        get => GetValue(ModelsProperty);
+        set => SetValue(ModelsProperty, value);
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
@@ -102,6 +111,7 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
             _vm.RevealRequested += OnRevealRequested;
             _vm.PropertyChanged += OnVmPropertyChanged;
             Library = _vm.Textures;
+            Models = _vm.ModelAssets;
             UpdateTileSize();
         }
         UpdateContentSpan();

@@ -6,7 +6,7 @@ using Vectorier.Models.Scene;
 
 namespace Vectorier.ViewModels.Editor;
 
-/// <summary>The changes Play Here makes to a level's XML for one run.</summary>
+/// <summary>Changes made to a level's XML for one run only (Play Here, an empty level played).</summary>
 public static class PlayHereXml
 {
     public const string SpawnName = "_PlayHereSpawn";
@@ -63,6 +63,28 @@ public static class PlayHereXml
             if ((string?)model.Attribute("AI") == "0")
                 model.SetAttributeValue("BirthSpawn", SpawnName);
         }
+    }
+
+    /// <summary>
+    /// An empty level played: a spawn named DefaultSpawn at (0, 0) on the main layer, where every model starts, so
+    /// the game has a player instead of nothing.
+    /// </summary>
+    public static void AddDefaultSpawn(XDocument xml)
+    {
+        var root = xml.Root ?? throw new InvalidDataException("The level has no root element.");
+        var track = root.Element("Track");
+        if (track == null)
+        {
+            track = new XElement("Track");
+            root.Add(track);
+        }
+        MainLayerContent(track).Add(new XElement("Spawn",
+            new XAttribute("X", "0"),
+            new XAttribute("Y", "0"),
+            new XAttribute("Name", SpawnElement.DefaultName),
+            new XAttribute("Animation", SpawnElement.DefaultAnimation)));
+        foreach (var model in root.Elements("Models").Elements("Model"))
+            model.SetAttributeValue("BirthSpawn", SpawnElement.DefaultName);
     }
 
     private static XElement SetVariable(string name, string value) =>

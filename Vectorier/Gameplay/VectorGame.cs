@@ -141,6 +141,10 @@ public class VectorGame
     /// </summary>
     public void Start(string level, bool hunterMode, bool loadMoves)
     {
+        // Every play starts running: a pause left on from the last game would look like a frozen level.
+        pause = false;
+        stepOneFrame = false;
+
         if (loadMoves)
         {
             LoadMoves();
@@ -251,7 +255,7 @@ public class VectorGame
 
                 Raylib.BeginDrawing();
                 {
-                    Raylib.ClearBackground(Color.Gray);
+                    Raylib.ClearBackground(Color.White); // shows where the level draws nothing
 
                     DrawWorldAntiAliased();
 

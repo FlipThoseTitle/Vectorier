@@ -160,7 +160,7 @@
                                                     <Panel>
                                                         <c:TexturePreview Library="{Binding $parent[views:ProjectWindowView].Library}" TextureName="{Binding PreviewTexture}" Entry="{Binding Texture}"
                                                                           IsVisible="{Binding PreviewTexture, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="2" />
-                                                        <c:ObjectPreview Library="{Binding $parent[views:ProjectWindowView].Library}" Definition="{Binding Definition}"
+                                                        <c:ObjectPreview Library="{Binding $parent[views:ProjectWindowView].Library}" Models="{Binding $parent[views:ProjectWindowView].Models}" Definition="{Binding Definition}"
                                                                          IsVisible="{Binding Definition, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="2" />
                                                         <Path Data="{Binding Silhouette}" Fill="Black" Stretch="Uniform" Margin="4"
                                                               IsVisible="{Binding Silhouette, Converter={x:Static ObjectConverters.IsNotNull}}" />

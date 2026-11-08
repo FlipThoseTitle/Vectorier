@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Vectorier.Controls.Scene;
 using Vectorier.Models.Scene;
 using Vectorier.Services.Assets;
 
@@ -12,7 +15,8 @@ namespace Vectorier.Controls;
 /// <summary>
 /// Thumbnail of an object definition (prefab): every element it contains, nested references included,
 /// fitted inside the control. The picture is rendered once into a bitmap of the tile's size from downscaled
-/// textures (sized for the tile, not the full-resolution files), so browsing objects stays light.
+/// textures (sized for the tile, not the full-resolution files), so browsing objects stays light. Spawns show their
+/// gizmo and Models their silhouette, as in the Scene.
 /// </summary>
 public sealed class ObjectPreview : Control
 {
@@ -21,6 +25,9 @@ public sealed class ObjectPreview : Control
 
     public static readonly StyledProperty<TextureLibrary?> LibraryProperty =
         AvaloniaProperty.Register<ObjectPreview, TextureLibrary?>(nameof(Library));
+
+    public static readonly StyledProperty<ModelLibrary?> ModelsProperty =
+        AvaloniaProperty.Register<ObjectPreview, ModelLibrary?>(nameof(Models));
 
     private static readonly IBrush TriggerFill = new SolidColorBrush(Color.FromArgb(0x60, 0xFF, 0xFF, 0x00));
     private static readonly IBrush AreaFill = new SolidColorBrush(Color.FromArgb(0x60, 0xFF, 0x00, 0x00));
@@ -49,11 +56,23 @@ public sealed class ObjectPreview : Control
         set => SetValue(LibraryProperty, value);
     }
 
+    /// <summary>Where the silhouettes of Model elements come from.</summary>
+    public ModelLibrary? Models
+    {
+        get => GetValue(ModelsProperty);
+        set => SetValue(ModelsProperty, value);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property == DefinitionProperty)
             Collect();
+        else if (change.Property == ModelsProperty)
+        {
+            _version++;
+            InvalidateVisual();
+        }
         else if (change.Property == LibraryProperty)
         {
             if (change.OldValue is TextureLibrary old) old.TextureLoaded -= OnTextureLoaded;
@@ -198,6 +217,15 @@ public sealed class ObjectPreview : Control
                 }
             }
         }
+        // Models take the size of their silhouette once it is loaded.
+        foreach (var (e, _) in _leaves)
+        {
+            if (e is ModelElement model && Silhouette(model, ref complete) is { } silhouette && model.SilhouetteBounds != silhouette.Bounds)
+            {
+                model.SilhouetteBounds = silhouette.Bounds;
+                resized = true;
+            }
+        }
         if (resized)
         {
             UpdateBounds();
@@ -223,6 +251,22 @@ public sealed class ObjectPreview : Control
                         // On-screen width of the image decides the decode width of its texture.
                         double px = Math.Sqrt(matrix.M11 * matrix.M11 + matrix.M12 * matrix.M12) * scaling;
                         complete &= DrawTexture(context, library, image.ClassName, matrix, px, image.Color.A / 255.0);
+                        break;
+                    }
+                case SpawnElement:
+                    {
+                        if (SceneRenderer.MarkBitmap is not { } mark)
+                            goto default;
+                        var red = TintCache.Get(mark, Colors.Red) ?? mark;
+                        var c = e.GetLocalCorners();
+                        var r = new Rect(new Point(c[0].X + o.X, c[0].Y + o.Y).Transform(fit), new Point(c[2].X + o.X, c[2].Y + o.Y).Transform(fit));
+                        context.DrawImage(red, new Rect(0, 0, red.PixelSize.Width, red.PixelSize.Height), r);
+                        break;
+                    }
+                case ModelElement model when model.SilhouetteBounds != null && Silhouette(model, ref complete) is { } silhouette:
+                    {
+                        using (context.PushTransform(Matrix.CreateTranslation(model.X + o.X, model.Y + o.Y) * fit))
+                            context.DrawGeometry(Brushes.Black, null, silhouette.Geometry);
                         break;
                     }
                 case AnimationElement or ParticleElement:
@@ -254,6 +298,56 @@ public sealed class ObjectPreview : Control
             }
         }
         return complete;
+    }
+
+    // ================= MODELS ================= //
+
+    private sealed record ModelSilhouette(Geometry Geometry, Rect Bounds);
+
+    /// <summary>Silhouettes per model library (shared by every preview), loaded once per model.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ModelLibrary, Dictionary<string, Task<ModelSilhouette?>>> Silhouettes = new();
+
+    private readonly HashSet<string> _awaitedModels = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The model's silhouette, or null when it has none (unreadable, skipped) or while it loads.</summary>
+    private ModelSilhouette? Silhouette(ModelElement model, ref bool complete)
+    {
+        var models = Models;
+        string name = model.ClassName;
+        if (models == null || string.IsNullOrEmpty(name) || ModelLibrary.IsSkipped(name))
+            return null;
+        var table = Silhouettes.GetValue(models, _ => new Dictionary<string, Task<ModelSilhouette?>>(StringComparer.OrdinalIgnoreCase));
+        if (!table.TryGetValue(name, out var task))
+            table[name] = task = LoadSilhouette(models, name);
+        if (task.IsCompleted)
+            return task.Result;
+        complete = false;
+        // Drawn again once it is there.
+        if (_awaitedModels.Add(name))
+            task.ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+            {
+                _awaitedModels.Remove(name);
+                _version++;
+                InvalidateVisual();
+            }), TaskScheduler.Default);
+        return null;
+    }
+
+    private static async Task<ModelSilhouette?> LoadSilhouette(ModelLibrary models, string name)
+    {
+        try
+        {
+            var data = await models.GetAsync(name);
+            if (data is not { IsSelfContained: true })
+                return null;
+            var geometry = data.BuildSilhouette(out var bounds);
+            return new ModelSilhouette(geometry, bounds);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ObjectPreview] model {name}: {ex.Message}");
+            return null;
+        }
     }
 
     private static (double W, double H) NaturalSize(TextureLibrary library, TextureEntry entry)

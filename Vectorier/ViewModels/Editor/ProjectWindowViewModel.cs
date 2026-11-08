@@ -35,6 +35,7 @@ public sealed partial class ProjectWindowViewModel : ObservableObject
     private EditorCache Cache => Assets.EditorCache;
 
     public TextureLibrary Textures => Assets.Textures;
+    public ModelLibrary ModelAssets => Assets.Models;
 
     /// <summary>Folders shown on the left (filtered by <see cref="FolderSearchText"/>).</summary>
     public ObservableCollection<PwFolder> Folders { get; } = new();

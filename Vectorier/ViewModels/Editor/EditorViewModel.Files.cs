@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
@@ -253,7 +254,18 @@ public partial class EditorViewModel
             if (string.Equals(Document.FilePath, target, StringComparison.Ordinal))
                 MarkSaved();
 
-            if (await StartGameAsync(levelName, data, hunter, Loc.T("Play Level")))
+            // An empty level gets a spawn for this run only (the file keeps the level as it is).
+            byte[] run = data;
+            if (!Document.AllElements().Any())
+            {
+                XDocument xml;
+                using (var stream = new MemoryStream(data))
+                    xml = XDocument.Load(stream);
+                PlayHereXml.AddDefaultSpawn(xml);
+                run = XmlHelpers.ToBytes(xml);
+            }
+
+            if (await StartGameAsync(levelName, run, hunter, Loc.T("Play Level")))
                 StatusText = hunter ? Loc.F("Playing {0} in Hunter Mode", levelName) : Loc.F("Playing {0}", levelName);
         }
         catch (Exception ex)

@@ -93,7 +93,8 @@ public partial class SceneRenderer
         }
     }
 
-    private static Bitmap? MarkBitmap
+    /// <summary>The Spawn gizmo (also drawn by the Project Window's object previews).</summary>
+    internal static Bitmap? MarkBitmap
     {
         get
         {
