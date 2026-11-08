@@ -1,57 +1,43 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Transformation
+namespace Vectorier.Gameplay.Transformation;
+
+public abstract class TransformPrototype
 {
-    public abstract class TransformPrototype
+    protected Runner _Runner;
+
+    protected bool _Pause;
+
+    protected Type _Type;
+
+    public virtual Runner Runner
     {
-        protected Runner _Runner;
+        get => _Runner;
+        set => _Runner = value;
+    }
 
-        protected bool _Pause;
+    public bool Pause
+    {
+        get => _Pause;
+        set => _Pause = value;
+    }
 
-        protected Type _Type;
+    public Type Type => _Type;
 
-        public virtual Runner Runner
-        {
-            get => _Runner;
-            set => _Runner = value;
-        }
+    public abstract int Frames { get; }
 
-        public bool Pause
-        {
-            get => _Pause;
-            set => _Pause = value;
-        }
+    public abstract void Parse(XmlNode Node);
 
-        public Type Type => _Type;
+    public abstract bool Iteration();
 
-        public bool IsMoveType => _Type == Type.Move;
+    public abstract void CalcDelta();
 
-        public abstract int Frames
-        {
-            get;
-        }
+    public abstract TransformPrototype Clone();
 
-        public abstract void Parse(XmlNode Node);
-
-        public abstract bool Iteration();
-
-        public abstract void CalcDelta();
-
-        public abstract TransformPrototype Clone();
-
-        public virtual void Reset()
-        {
-            _Pause = false;
-        }
+    public virtual void Reset()
+    {
+        _Pause = false;
     }
 }

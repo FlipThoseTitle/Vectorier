@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 

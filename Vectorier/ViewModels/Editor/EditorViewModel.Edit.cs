@@ -7,8 +7,8 @@ using Avalonia;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
-using Vectorier.Services.Projects;
 using Vectorier.Services.Localization;
+using Vectorier.Services.Projects;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -112,76 +112,76 @@ public sealed partial class EditorViewModel
             case ElementType.Image:
             case ElementType.Animation:
             case ElementType.Particle:
-            {
-                string texture = source?.TextureName ?? ParticleElement.DefaultClassName;
-                var asset = await Context.Textures.GetAsync(texture);
-                double w = asset?.Width ?? 100, h = asset?.Height ?? 100;
-                SceneElement visual = type switch
                 {
-                    ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
-                    ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
-                    _ => new ParticleElement(),
-                };
-                visual.Name = texture;
-                visual.Width = w;
-                visual.Height = h;
-                visual.X = Math.Round(pos.X - w / 2);
-                visual.Y = Math.Round(pos.Y - h / 2);
-                element = visual;
-                break;
-            }
+                    string texture = source?.TextureName ?? ParticleElement.DefaultClassName;
+                    var asset = await Context.Textures.GetAsync(texture);
+                    double w = asset?.Width ?? 100, h = asset?.Height ?? 100;
+                    SceneElement visual = type switch
+                    {
+                        ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
+                        ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
+                        _ => new ParticleElement(),
+                    };
+                    visual.Name = texture;
+                    visual.Width = w;
+                    visual.Height = h;
+                    visual.X = Math.Round(pos.X - w / 2);
+                    visual.Y = Math.Round(pos.Y - h / 2);
+                    element = visual;
+                    break;
+                }
 
             case ElementType.Trigger:
-            {
-                var stored = source?.Trigger;
-                var trigger = new TriggerElement
                 {
-                    Name = stored?.Name ?? "Trigger",
-                    ContentXml = stored?.Content ?? string.Empty,
-                    Width = size?.Width ?? stored?.Width ?? 100,
-                    Height = size?.Height ?? stored?.Height ?? 100,
-                };
-                element = PlaceRect(trigger, pos, size);
-                break;
-            }
+                    var stored = source?.Trigger;
+                    var trigger = new TriggerElement
+                    {
+                        Name = stored?.Name ?? "Trigger",
+                        ContentXml = stored?.Content ?? string.Empty,
+                        Width = size?.Width ?? stored?.Width ?? 100,
+                        Height = size?.Height ?? stored?.Height ?? 100,
+                    };
+                    element = PlaceRect(trigger, pos, size);
+                    break;
+                }
 
             case ElementType.Area:
-            {
-                var stored = source?.Area;
-                var area = new AreaElement
                 {
-                    Name = stored?.Name ?? "Area",
-                    Width = size?.Width ?? stored?.Width ?? 100,
-                    Height = size?.Height ?? stored?.Height ?? 100,
-                };
-                if (stored != null)
-                {
-                    area.AreaType = stored.AreaType;
-                    area.Distance = stored.Distance;
-                    area.ItemName = stored.ItemName;
-                    area.Score = stored.Score;
-                    area.Key = stored.Key;
-                    area.Description = stored.Description;
+                    var stored = source?.Area;
+                    var area = new AreaElement
+                    {
+                        Name = stored?.Name ?? "Area",
+                        Width = size?.Width ?? stored?.Width ?? 100,
+                        Height = size?.Height ?? stored?.Height ?? 100,
+                    };
+                    if (stored != null)
+                    {
+                        area.AreaType = stored.AreaType;
+                        area.Distance = stored.Distance;
+                        area.ItemName = stored.ItemName;
+                        area.Score = stored.Score;
+                        area.Key = stored.Key;
+                        area.Description = stored.Description;
+                    }
+                    if (area.IsTrick)
+                    {
+                        await EnsureTrickTriggersAsync();
+                        area.Name = TrickAreaName(area.ItemName);
+                    }
+                    element = PlaceRect(area, pos, size);
+                    break;
                 }
-                if (area.IsTrick)
-                {
-                    await EnsureTrickTriggersAsync();
-                    area.Name = TrickAreaName(area.ItemName);
-                }
-                element = PlaceRect(area, pos, size);
-                break;
-            }
 
             case ElementType.Platform when source?.PlatformSurface is { } surface:
-            {
-                // Rough / Smooth / Block: the Platform dressed with block textures, 500 × 500 unless dragged.
-                var rect = size is { } sz
-                    ? new Rect(Math.Round(pos.X), Math.Round(pos.Y), Math.Round(sz.Width), Math.Round(sz.Height))
-                    : new Rect(Math.Round(pos.X - 250), Math.Round(pos.Y - 250), 500, 500);
-                element = await Services.Assets.PlatformSurface.BuildAsync(Context.Textures, surface, rect, Random.Shared.Next(1, int.MaxValue));
-                element.Name = string.Empty;
-                break;
-            }
+                {
+                    // Rough / Smooth / Block: the Platform dressed with block textures, 500 × 500 unless dragged.
+                    var rect = size is { } sz
+                        ? new Rect(Math.Round(pos.X), Math.Round(pos.Y), Math.Round(sz.Width), Math.Round(sz.Height))
+                        : new Rect(Math.Round(pos.X - 250), Math.Round(pos.Y - 250), 500, 500);
+                    element = await Services.Assets.PlatformSurface.BuildAsync(Context.Textures, surface, rect, Random.Shared.Next(1, int.MaxValue));
+                    element.Name = string.Empty;
+                    break;
+                }
 
             case ElementType.Platform:
                 element = PlaceRect(new PlatformElement { Width = size?.Width ?? 100, Height = size?.Height ?? 100 }, pos, size);
@@ -189,66 +189,66 @@ public sealed partial class EditorViewModel
                 break;
 
             case ElementType.Trapezoid:
-            {
-                var trapezoid = new TrapezoidElement { TrapezoidType = 1, Width = Math.Max(2, Math.Round(size?.Width ?? 200)), BaseHeight = 20 };
-                trapezoid.ApplySlopeAngle();
-                trapezoid.X = Math.Round(pos.X - (size == null ? trapezoid.Width / 2 : 0));
-                trapezoid.Y = Math.Round(pos.Y - (size == null ? trapezoid.Height / 2 : 0));
-                element = trapezoid;
-                break;
-            }
+                {
+                    var trapezoid = new TrapezoidElement { TrapezoidType = 1, Width = Math.Max(2, Math.Round(size?.Width ?? 200)), BaseHeight = 20 };
+                    trapezoid.ApplySlopeAngle();
+                    trapezoid.X = Math.Round(pos.X - (size == null ? trapezoid.Width / 2 : 0));
+                    trapezoid.Y = Math.Round(pos.Y - (size == null ? trapezoid.Height / 2 : 0));
+                    element = trapezoid;
+                    break;
+                }
 
             case ElementType.Camera:
-            {
-                var cameras = Document.AllElements().OfType<CameraElement>().ToList();
-                if (cameras.Count >= 2)
                 {
-                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Create Camera"),
-                        Loc.T("This level already has a Camera for Common Mode and one for Hunter Mode. Delete one of them first."), MessageKind.Warning);
-                    return null;
-                }
-                var camera = new CameraElement { Name = "Camera", X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
-                if (cameras.Count == 1)
-                {
-                    var existing = cameras[0];
-                    if (existing.Selection == ModeSelection.All)
+                    var cameras = Document.AllElements().OfType<CameraElement>().ToList();
+                    if (cameras.Count >= 2)
                     {
-                        existing.Selection = ModeSelection.CommonMode;
-                        StatusText = Loc.T("The existing Camera now applies to Common Mode only; the new one to Hunter Mode.");
+                        await AppServices.Dialogs.ShowMessageAsync(Loc.T("Create Camera"),
+                            Loc.T("This level already has a Camera for Common Mode and one for Hunter Mode. Delete one of them first."), MessageKind.Warning);
+                        return null;
                     }
-                    camera.Selection = existing.Selection == ModeSelection.HunterMode ? ModeSelection.CommonMode : ModeSelection.HunterMode;
+                    var camera = new CameraElement { Name = "Camera", X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
+                    if (cameras.Count == 1)
+                    {
+                        var existing = cameras[0];
+                        if (existing.Selection == ModeSelection.All)
+                        {
+                            existing.Selection = ModeSelection.CommonMode;
+                            StatusText = Loc.T("The existing Camera now applies to Common Mode only; the new one to Hunter Mode.");
+                        }
+                        camera.Selection = existing.Selection == ModeSelection.HunterMode ? ModeSelection.CommonMode : ModeSelection.HunterMode;
+                    }
+                    element = camera;
+                    break;
                 }
-                element = camera;
-                break;
-            }
 
             case ElementType.Spawn:
-            {
-                var spawn = new SpawnElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
-                element = spawn;
-                break;
-            }
+                {
+                    var spawn = new SpawnElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
+                    element = spawn;
+                    break;
+                }
 
             case ElementType.Model:
-            {
-                string? model = source?.ModelName;
-                if (string.IsNullOrEmpty(model))
                 {
-                    await AppServices.Dialogs.ShowMessageAsync(Loc.T("Place Model"), Loc.T("Select a model in the Project Window first."), MessageKind.Error);
-                    return null;
+                    string? model = source?.ModelName;
+                    if (string.IsNullOrEmpty(model))
+                    {
+                        await AppServices.Dialogs.ShowMessageAsync(Loc.T("Place Model"), Loc.T("Select a model in the Project Window first."), MessageKind.Error);
+                        return null;
+                    }
+                    element = new ModelElement { Name = model, X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
+                    break;
                 }
-                element = new ModelElement { Name = model, X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
-                break;
-            }
 
             case ElementType.Item:
-            {
-                var item = new ItemElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
-                item.ItemType = source?.ItemType ?? Models.Scene.ItemType.Bonus;
-                item.Name = item.ItemType == Models.Scene.ItemType.Bonus ? "Bonus" : "Coin";
-                element = item;
-                break;
-            }
+                {
+                    var item = new ItemElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
+                    item.ItemType = source?.ItemType ?? Models.Scene.ItemType.Bonus;
+                    item.Name = item.ItemType == Models.Scene.ItemType.Bonus ? "Bonus" : "Coin";
+                    element = item;
+                    break;
+                }
 
             case ElementType.Comment:
                 element = PlaceRect(new CommentElement { Name = "Comment", Width = size?.Width ?? 300, Height = size?.Height ?? 150 }, pos, size);
@@ -256,24 +256,24 @@ public sealed partial class EditorViewModel
 
             case ElementType.BuildingIn:
             case ElementType.BuildingOut:
-            {
-                // One In and one Out per Building: placing again moves the existing marker.
-                bool isIn = type == ElementType.BuildingIn;
-                if (!IsEditingBuilding)
-                    return null;
-                var existing = Document.Roots.OfType<BuildingMarkerElement>().FirstOrDefault(m => m.IsIn == isIn);
-                if (existing != null)
                 {
-                    existing.X = Math.Round(pos.X);
-                    existing.Y = Math.Round(pos.Y);
-                    MarkChanged();
-                    SceneInvalidated?.Invoke();
-                    return existing;
+                    // One In and one Out per Building: placing again moves the existing marker.
+                    bool isIn = type == ElementType.BuildingIn;
+                    if (!IsEditingBuilding)
+                        return null;
+                    var existing = Document.Roots.OfType<BuildingMarkerElement>().FirstOrDefault(m => m.IsIn == isIn);
+                    if (existing != null)
+                    {
+                        existing.X = Math.Round(pos.X);
+                        existing.Y = Math.Round(pos.Y);
+                        MarkChanged();
+                        SceneInvalidated?.Invoke();
+                        return existing;
+                    }
+                    element = new BuildingMarkerElement(isIn) { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
+                    parent = null;
+                    break;
                 }
-                element = new BuildingMarkerElement(isIn) { X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
-                parent = null;
-                break;
-            }
 
             default:
                 return null;
@@ -320,26 +320,26 @@ public sealed partial class EditorViewModel
             case ElementType.Image:
             case ElementType.Animation:
             case ElementType.Particle:
-            {
-                string texture = source?.TextureName ?? ParticleElement.DefaultClassName;
-                var asset = Context.Textures.TryGet(texture);
-                if (asset == null)
-                    return null; // loading: shown once it is ready
-                double w = asset.Width, h = asset.Height;
-                SceneElement visual = type switch
                 {
-                    ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
-                    ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
-                    _ => new ParticleElement(),
-                };
-                visual.Name = texture;
-                visual.Width = w;
-                visual.Height = h;
-                visual.X = Math.Round(pos.X - w / 2);
-                visual.Y = Math.Round(pos.Y - h / 2);
-                if (visual is ImageElement image) image.AutoSize = false;
-                return visual;
-            }
+                    string texture = source?.TextureName ?? ParticleElement.DefaultClassName;
+                    var asset = Context.Textures.TryGet(texture);
+                    if (asset == null)
+                        return null; // loading: shown once it is ready
+                    double w = asset.Width, h = asset.Height;
+                    SceneElement visual = type switch
+                    {
+                        ElementType.Image => new ImageElement { NativeWidth = (int)w, NativeHeight = (int)h },
+                        ElementType.Animation => new AnimationElement { NativeWidth = w, NativeHeight = h },
+                        _ => new ParticleElement(),
+                    };
+                    visual.Name = texture;
+                    visual.Width = w;
+                    visual.Height = h;
+                    visual.X = Math.Round(pos.X - w / 2);
+                    visual.Y = Math.Round(pos.Y - h / 2);
+                    if (visual is ImageElement image) image.AutoSize = false;
+                    return visual;
+                }
 
             case ElementType.Trigger:
                 return PlaceRect(new TriggerElement { Name = source?.Trigger?.Name ?? "Trigger", Width = source?.Trigger?.Width ?? 100, Height = source?.Trigger?.Height ?? 100 }, pos, null);
@@ -348,19 +348,19 @@ public sealed partial class EditorViewModel
             case ElementType.Platform when source is { PlatformSurface: not null, Definition: { } preview }:
                 return new ObjectElement { Reference = preview, X = Math.Round(pos.X - 250), Y = Math.Round(pos.Y - 250) };
             case ElementType.Platform:
-            {
-                var platform = PlaceRect(new PlatformElement { Width = 100, Height = 100 }, pos, null);
-                platform.ApplyIntegerLock();
-                return platform;
-            }
+                {
+                    var platform = PlaceRect(new PlatformElement { Width = 100, Height = 100 }, pos, null);
+                    platform.ApplyIntegerLock();
+                    return platform;
+                }
             case ElementType.Trapezoid:
-            {
-                var trapezoid = new TrapezoidElement { TrapezoidType = 1, Width = 200, BaseHeight = 20 };
-                trapezoid.ApplySlopeAngle();
-                trapezoid.X = Math.Round(pos.X - trapezoid.Width / 2);
-                trapezoid.Y = Math.Round(pos.Y - trapezoid.Height / 2);
-                return trapezoid;
-            }
+                {
+                    var trapezoid = new TrapezoidElement { TrapezoidType = 1, Width = 200, BaseHeight = 20 };
+                    trapezoid.ApplySlopeAngle();
+                    trapezoid.X = Math.Round(pos.X - trapezoid.Width / 2);
+                    trapezoid.Y = Math.Round(pos.Y - trapezoid.Height / 2);
+                    return trapezoid;
+                }
             case ElementType.Camera:
                 return new CameraElement { Name = "Camera", X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
             case ElementType.Spawn:
@@ -368,11 +368,11 @@ public sealed partial class EditorViewModel
             case ElementType.Model:
                 return string.IsNullOrEmpty(source?.ModelName) ? null : new ModelElement { Name = source!.ModelName!, X = Math.Round(pos.X), Y = Math.Round(pos.Y) };
             case ElementType.Item:
-            {
-                var item = new ItemElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y), ItemType = source?.ItemType ?? Models.Scene.ItemType.Bonus };
-                item.Name = item.ItemType == Models.Scene.ItemType.Bonus ? "Bonus" : "Coin";
-                return item;
-            }
+                {
+                    var item = new ItemElement { X = Math.Round(pos.X), Y = Math.Round(pos.Y), ItemType = source?.ItemType ?? Models.Scene.ItemType.Bonus };
+                    item.Name = item.ItemType == Models.Scene.ItemType.Bonus ? "Bonus" : "Coin";
+                    return item;
+                }
             case ElementType.Comment:
                 return PlaceRect(new CommentElement { Name = "Comment", Width = 300, Height = 150 }, pos, null);
             case ElementType.BuildingIn:
@@ -737,19 +737,5 @@ public sealed partial class EditorViewModel
         RaiseStructureChanged();
         MarkChanged();
         return true;
-    }
-
-    /// <summary>Unity's Order in Layer for siblings is kept; this moves an element up/down among its siblings.</summary>
-    public void MoveSibling(SceneElement element, int delta)
-    {
-        var siblings = Document.SiblingsOf(element);
-        int i = siblings.IndexOf(element);
-        int j = Math.Clamp(i + delta, 0, siblings.Count - 1);
-        if (i == j)
-            return;
-        siblings.RemoveAt(i);
-        siblings.Insert(j, element);
-        RaiseStructureChanged();
-        MarkChanged();
     }
 }

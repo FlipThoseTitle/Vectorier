@@ -1,66 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Vectorier.Models.Scene;
 using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
-
-/// <summary>A visible line of the Hierarchy (the tree is flattened so long levels stay fast).</summary>
-public sealed class HierarchyRow : ObservableObject
-{
-    private bool _hasChildren;
-    private bool _isReference;
-
-    public HierarchyRow(SceneElement? element, int depth, string? rootName = null)
-    {
-        Element = element;
-        Depth = depth;
-        RootName = rootName;
-        _hasChildren = ComputeHasChildren();
-        _isReference = Element is ObjectElement { IsReference: true };
-    }
-
-    /// <summary>Null for the root line showing the level name.</summary>
-    public SceneElement? Element { get; }
-
-    public string? RootName { get; }
-
-    public bool IsRoot => Element == null;
-
-    public int Depth { get; }
-
-    public Avalonia.Thickness Indent => new(4 + Depth * 14, 0, 0, 0);
-
-    public bool HasChildren => _hasChildren;
-
-    public bool IsReference => _isReference;
-
-    public StreamGeometry? Icon => Element == null ? ElementTypeInfo.GetIcon(ElementType.Object) : ElementTypeInfo.GetIcon(Element.Type);
-
-    private bool ComputeHasChildren() => Element is ObjectElement obj && obj.Children.Count > 0;
-
-    /// <summary>A reused row picks up changes of its element (children added, reference resolved).</summary>
-    internal void Refresh()
-    {
-        bool has = ComputeHasChildren();
-        if (has != _hasChildren)
-        {
-            _hasChildren = has;
-            OnPropertyChanged(nameof(HasChildren));
-        }
-        bool reference = Element is ObjectElement { IsReference: true };
-        if (reference != _isReference)
-        {
-            _isReference = reference;
-            OnPropertyChanged(nameof(IsReference));
-        }
-    }
-}
 
 /// <summary>Scene structure panel: the level name as root, then every element (inline content only).</summary>
 public sealed partial class HierarchyViewModel : ObservableObject
@@ -320,11 +266,4 @@ public sealed partial class HierarchyViewModel : ObservableObject
         }
         return false;
     }
-}
-
-public enum HierarchyDropPosition
-{
-    Before,
-    Inside,
-    After
 }

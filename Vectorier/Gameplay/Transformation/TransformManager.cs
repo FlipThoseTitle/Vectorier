@@ -1,114 +1,88 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-namespace Vectorier.Gameplay.Transformation
+namespace Vectorier.Gameplay.Transformation;
+
+public class TransformManager
 {
-    public class TransformManager
+    private List<TransformSystem> _storage = new List<TransformSystem>();
+
+    private List<TransformSystem> _flushStorage = new List<TransformSystem>();
+
+    public void Clear()
     {
-        private List<TransformSystem> _Storage = new List<TransformSystem>();
-
-        private List<TransformSystem> _FlushStorage = new List<TransformSystem>();
-
-        public void Clear()
+        foreach (var t in _storage)
         {
-            foreach (var t in _Storage)
-            {
-                t.Reset();
-            }
-            _Storage.Clear();
-            _FlushStorage.Clear();
+            t.Reset();
         }
+        _storage.Clear();
+        _flushStorage.Clear();
+    }
 
-        public void Add(TransformSystem system)
-        {
-            if (!_Storage.Contains(system))
-            {
-                foreach (var t in system.Storage)
-                {
-                    if (t.Type == Type.Move)
-                    {
-                        t.Runner.AddMoveSystem((MoveTransform)t);
-                        t.Runner.TransformationStart();
-                    }
-                    if (t.Type == Type.Scale)
-                    {
-                        t.Runner.TransformationStart();
-                    }
-                }
-                _Storage.Add(system);
-            }
-
-        }
-
-        public void Remove(TransformSystem system)
+    public void Add(TransformSystem system)
+    {
+        if (!_storage.Contains(system))
         {
             foreach (var t in system.Storage)
             {
                 if (t.Type == Type.Move)
                 {
-                    t.Runner.RemoveMoveSystem((MoveTransform)t);
+                    t.Runner.AddMoveSystem((MoveTransform)t);
+                    t.Runner.TransformationStart();
                 }
-            }
-            _FlushStorage.Add(system);
-        }
-
-        public List<TransformSystem> Find(string name)
-        {
-            List<TransformSystem> list = new List<TransformSystem>();
-            for (int i = 0; i < _Storage.Count; i++)
-            {
-                var t = _Storage[i];
-                if (t.Name == name)
+                if (t.Type == Type.Scale)
                 {
-                    list.Add(t);
+                    t.Runner.TransformationStart();
                 }
             }
-            return list;
+            _storage.Add(system);
         }
 
-        public void Update()
+    }
+
+    public void Remove(TransformSystem system)
+    {
+        foreach (var t in system.Storage)
         {
-            for (int i = 0; i < _Storage.Count; i++)
+            if (t.Type == Type.Move)
             {
-                if (!_Storage[i].Update())
-                {
-                    Remove(_Storage[i]);
-                }
+                t.Runner.RemoveMoveSystem((MoveTransform)t);
             }
-            if (_FlushStorage.Count == 0)
-            {
-                return;
-            }
-            for (int i = 0; i < _FlushStorage.Count; i++)
-            {
-                _FlushStorage[i].Parent.TransformationEnd();
-                _Storage.Remove(_FlushStorage[i]);
-            }
-            _FlushStorage.Clear();
         }
+        _flushStorage.Add(system);
+    }
 
-        public void RemoveEndedTransformation()
+    public List<TransformSystem> Find(string name)
+    {
+        List<TransformSystem> list = new List<TransformSystem>();
+        for (int i = 0; i < _storage.Count; i++)
         {
-            if (_FlushStorage.Count == 0)
+            var t = _storage[i];
+            if (t.Name == name)
             {
-                return;
+                list.Add(t);
             }
-            for (int i = 0; i < _FlushStorage.Count; i++)
-            {
-                if (_FlushStorage[i].Parent != null)
-                {
-                    _FlushStorage[i].Parent.TransformationEnd();
-
-                }
-                _Storage.Remove(_FlushStorage[i]);
-            }
-            _FlushStorage.Clear();
         }
+        return list;
+    }
+
+    public void Update()
+    {
+        for (int i = 0; i < _storage.Count; i++)
+        {
+            if (!_storage[i].Update())
+            {
+                Remove(_storage[i]);
+            }
+        }
+        if (_flushStorage.Count == 0)
+        {
+            return;
+        }
+        for (int i = 0; i < _flushStorage.Count; i++)
+        {
+            _flushStorage[i].Parent.TransformationEnd();
+            _storage.Remove(_flushStorage[i]);
+        }
+        _flushStorage.Clear();
     }
 }

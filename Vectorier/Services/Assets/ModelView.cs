@@ -7,7 +7,6 @@ using Avalonia;
 using Avalonia.Media;
 using Vectorier.Gameplay.Controllers;
 using Vectorier.Gameplay.Models;
-using Vectorier.Gameplay.Node;
 using Vectorier.Models.Scene;
 using Math = System.Math;
 
@@ -63,8 +62,6 @@ public sealed class ModelView
 
     /// <summary>Every node as the files place it, in load order.</summary>
     public IReadOnlyList<Vector3> RestPose => _rest;
-
-    public int IndexOf(string name) => Object.GetNode(name)?.Id ?? -1;
 
     public Vector3? Node(string name) => Object.GetNode(name)?.Start;
 

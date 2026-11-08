@@ -5,7 +5,6 @@ using Avalonia;
 using Avalonia.Input;
 using Vectorier.Models.Scene;
 using Vectorier.ViewModels.Editor;
-using Vectorier.Services.Localization;
 
 namespace Vectorier.Controls.Scene;
 
@@ -44,63 +43,6 @@ internal enum RectHandle
     Rotate = 32,
 }
 
-/// <summary>Transform values of a set of elements and their descendants, restored before each step of a drag.</summary>
-internal sealed class TransformMemento
-{
-    private readonly record struct State(SceneElement Element, double X, double Y, double W, double H,
-        double Rotation, double Skew, bool FlipX, bool FlipY, double BaseHeight, bool AutoSize);
-
-    private readonly List<State> _states = new();
-
-    public TransformMemento(IEnumerable<SceneElement> roots)
-    {
-        foreach (var root in roots)
-        {
-            foreach (var e in SceneDocument.Walk(root))
-            {
-                var image = e as ImageElement;
-                _states.Add(new State(e, e.X, e.Y, e.Width, e.Height,
-                    image?.Rotation ?? 0, image?.Skew ?? 0, image?.FlipX ?? false, image?.FlipY ?? false,
-                    (e as TrapezoidElement)?.BaseHeight ?? 0, image?.AutoSize ?? false));
-            }
-        }
-    }
-
-    public void Restore()
-    {
-        foreach (var s in _states)
-        {
-            var e = s.Element;
-            e.X = s.X;
-            e.Y = s.Y;
-            e.Width = s.W;
-            e.Height = s.H;
-            if (e is ImageElement image)
-            {
-                image.Rotation = s.Rotation;
-                image.Skew = s.Skew;
-                image.FlipX = s.FlipX;
-                image.FlipY = s.FlipY;
-                image.AutoSize = s.AutoSize;
-            }
-            else if (e is TrapezoidElement trapezoid)
-            {
-                trapezoid.BaseHeight = s.BaseHeight;
-            }
-        }
-    }
-
-    public (double X, double Y) StartPosition(SceneElement element)
-    {
-        foreach (var s in _states)
-        {
-            if (ReferenceEquals(s.Element, element))
-                return (s.X, s.Y);
-        }
-        return (element.X, element.Y);
-    }
-}
-
 public sealed partial class SceneView
 {
     private const double DragThreshold = 4;
@@ -113,7 +55,6 @@ public sealed partial class SceneView
     private double _startZoom;
     private bool _dragStarted;
     private bool _rubberAdd;
-    private bool _pointerInside;
     private SceneElement? _pendingDrill;
     private List<SceneElement> _targets = new();
     private TransformMemento? _memento;
@@ -129,13 +70,13 @@ public sealed partial class SceneView
     protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
-        _pointerInside = true;
+        IsPointerInside = true;
     }
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        _pointerInside = false;
+        IsPointerInside = false;
         if (_editor != null)
             _editor.ScenePointer = null;
         if (!_ghostFromDrag)
@@ -148,7 +89,7 @@ public sealed partial class SceneView
     }
 
     /// <summary>The pointer is over the Scene (Blender shortcuts only apply there).</summary>
-    public bool IsPointerInside => _pointerInside;
+    public bool IsPointerInside { get; private set; }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
@@ -160,7 +101,7 @@ public sealed partial class SceneView
         {
             StopFrameAnimation();
             double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
-            _center -= e.Delta * TouchpadInput.PixelsPerUnit / _zoom * speed;
+            _center -= e.Delta * TouchpadInput.PixelsPerUnit / Zoom * speed;
             UpdateEditorCenter();
             InvalidateVisual();
         }
@@ -185,7 +126,7 @@ public sealed partial class SceneView
         base.OnPointerPressed(e);
         if (IsGameView)
             return;
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return;
         Focus();
         var point = e.GetCurrentPoint(this);
@@ -233,7 +174,7 @@ public sealed partial class SceneView
             StopFrameAnimation();
             _pressScreen = pos;
             _startCenter = _center;
-            _startZoom = _zoom;
+            _startZoom = Zoom;
             _mode = InteractionMode.Pan;
             _rightMoved = true; // never opens the Create menu
             Cursor = HandCursor;
@@ -249,7 +190,7 @@ public sealed partial class SceneView
             StopFrameAnimation();
             _pressScreen = pos;
             _startCenter = _center;
-            _startZoom = _zoom;
+            _startZoom = Zoom;
             _mode = InteractionMode.Pan;
             _rightMoved = false;
             e.Pointer.Capture(this);
@@ -262,7 +203,7 @@ public sealed partial class SceneView
             StopFrameAnimation();
             _pressScreen = pos;
             _startCenter = _center;
-            _startZoom = _zoom;
+            _startZoom = Zoom;
             // Right drag pans (hand cursor); Alt + right drag zooms (magnifier), like Unity.
             _mode = (mods & KeyModifiers.Alt) != 0 ? InteractionMode.Zoom : InteractionMode.Pan;
             _zoomUseY = false;
@@ -333,14 +274,14 @@ public sealed partial class SceneView
             if (zone != RectHandle.None && (mods & KeyModifiers.Alt) == 0)
             {
                 _rectHandle = zone;
-                _rectStart = _renderer.ScreenBounds(Viewport, _editor.GetTopmostSelection());
+                _rectStart = Renderer.ScreenBounds(Viewport, _editor.GetTopmostSelection());
                 _pivotScreen = _rectStart.Center;
                 BeginTransform(InteractionMode.RectTransform, _editor.GetTopmostSelection());
                 return;
             }
         }
 
-        var hit = _renderer.HitTest(Viewport, pos);
+        var hit = Renderer.HitTest(Viewport, pos);
         bool ctrl = (mods & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
         bool shift = (mods & KeyModifiers.Shift) != 0;
 
@@ -408,17 +349,14 @@ public sealed partial class SceneView
     /// <summary>Element pressed but not selected yet: a release without dragging selects it.</summary>
     private SceneElement? _clickTarget;
 
-    private bool _spacePanHeld;
-
     /// <summary>Space held over the Scene: left dragging pans the view.</summary>
     public bool SpacePanHeld
     {
-        get => _spacePanHeld;
-        set
+        get; set
         {
-            if (_spacePanHeld == value)
+            if (field == value)
                 return;
-            _spacePanHeld = value;
+            field = value;
             if (_mode == InteractionMode.None)
                 Cursor = value ? HandCursor : null;
         }
@@ -433,9 +371,9 @@ public sealed partial class SceneView
 
     private SceneElement ResolveClick(SceneElement element, int clickCount, Point screen)
     {
-        if (_renderer == null || _editor == null)
+        if (Renderer == null || _editor == null)
             return element;
-        var hits = _renderer.HitTestAll(Viewport, screen);
+        var hits = Renderer.HitTestAll(Viewport, screen);
         var current = _editor.ActiveElement;
         if (clickCount < 2)
         {
@@ -476,7 +414,7 @@ public sealed partial class SceneView
 
     private void StartPivotTransform(Point pos)
     {
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return;
         var targets = _editor.GetTopmostSelection();
         _pivotScreen = GizmoOrigin(Viewport, targets);
@@ -499,7 +437,7 @@ public sealed partial class SceneView
         var pos = e.GetPosition(this);
         var previous = _lastPointer;
         _lastPointer = pos;
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return;
         _editor.ScenePointer = ScreenToLevel(pos);
 
@@ -527,24 +465,24 @@ public sealed partial class SceneView
                 UpdateCursor(pos);
                 return;
             case InteractionMode.Pan:
-            {
-                if (pos != _pressScreen)
                 {
-                    _rightMoved = true;
-                    Cursor = HandCursor; // a middle click only shows the hand once it moves
+                    if (pos != _pressScreen)
+                    {
+                        _rightMoved = true;
+                        Cursor = HandCursor; // a middle click only shows the hand once it moves
+                    }
+                    double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
+                    _center -= (pos - previous) / Zoom * speed;
+                    UpdateEditorCenter();
+                    InvalidateVisual();
+                    return;
                 }
-                double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
-                _center -= (pos - previous) / _zoom * speed;
-                UpdateEditorCenter();
-                InvalidateVisual();
-                return;
-            }
             case InteractionMode.Zoom:
-            {
-                double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
-                ZoomAt(_pressScreen, Math.Exp(NiceMouseDelta(pos - previous) * 0.005 * speed));
-                return;
-            }
+                {
+                    double speed = (e.KeyModifiers & KeyModifiers.Shift) != 0 ? 3 : 1;
+                    ZoomAt(_pressScreen, Math.Exp(NiceMouseDelta(pos - previous) * 0.005 * speed));
+                    return;
+                }
             case InteractionMode.RubberBand:
             case InteractionMode.PlaceDrag:
                 InvalidateVisual();
@@ -553,18 +491,18 @@ public sealed partial class SceneView
                 DragAnimationDirection(pos);
                 return;
             case InteractionMode.DynamicSupport:
-            {
-                if (_editor.Dynamics.ActiveTrack is { } track && _editor.Dynamics.CurrentSegment(track) is { } seg)
                 {
-                    var element = track.Element;
-                    var level = Viewport.ScreenToLevel(pos, _renderer.GroupFor(element));
-                    var origin = element.ParentWorldPosition;
-                    var off = PivotToCenter(element);
-                    _editor.Dynamics.SetSupport(track, seg.A, seg.B, new Point(level.X - origin.X - off.X, level.Y - origin.Y - off.Y));
+                    if (_editor.Dynamics.ActiveTrack is { } track && _editor.Dynamics.CurrentSegment(track) is { } seg)
+                    {
+                        var element = track.Element;
+                        var level = Viewport.ScreenToLevel(pos, Renderer.GroupFor(element));
+                        var origin = element.ParentWorldPosition;
+                        var off = PivotToCenter(element);
+                        _editor.Dynamics.SetSupport(track, seg.A, seg.B, new Point(level.X - origin.X - off.X, level.Y - origin.Y - off.Y));
+                    }
+                    InvalidateVisual();
+                    return;
                 }
-                InvalidateVisual();
-                return;
-            }
             case InteractionMode.ModalMove:
             case InteractionMode.ModalRotate:
             case InteractionMode.ModalScale:
@@ -599,7 +537,7 @@ public sealed partial class SceneView
         if (IsGameView)
             return;
         var pos = e.GetPosition(this);
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return;
 
         if (_mode == InteractionMode.Paint)
@@ -620,34 +558,34 @@ public sealed partial class SceneView
             case InteractionMode.Pan:
             case InteractionMode.Zoom:
             case InteractionMode.DynamicSupport:
-            {
-                // A right click without any movement at all opens the Create menu.
-                bool menu = _mode == InteractionMode.Pan && !_rightMoved && pos == _pressScreen && e.InitialPressMouseButton == MouseButton.Right;
-                // A middle click without any movement selects the root Object under the pointer.
-                bool pickRoot = _mode == InteractionMode.Pan && !_rightMoved && e.InitialPressMouseButton == MouseButton.Middle;
-                if (_mode == InteractionMode.DynamicSupport)
-                    _editor.EndGesture();
-                _mode = InteractionMode.None;
-                e.Pointer.Capture(null);
-                Cursor = null;
-                UpdateCursor(pos);
-                if (menu)
                 {
-                    // The element under the pointer is picked as a left click would pick it (a selection that
-                    // already holds it is kept, so the menu acts on all of it).
-                    SceneElement? picked = _renderer.HitTest(Viewport, pos) is { } menuHit ? ResolveClick(menuHit.Owner, 1, pos) : null;
-                    if (picked != null && !picked.IsSelected)
-                        _editor.Select(picked);
-                    ContextMenuRequested?.Invoke(picked, ScreenToLevel(pos));
+                    // A right click without any movement at all opens the Create menu.
+                    bool menu = _mode == InteractionMode.Pan && !_rightMoved && pos == _pressScreen && e.InitialPressMouseButton == MouseButton.Right;
+                    // A middle click without any movement selects the root Object under the pointer.
+                    bool pickRoot = _mode == InteractionMode.Pan && !_rightMoved && e.InitialPressMouseButton == MouseButton.Middle;
+                    if (_mode == InteractionMode.DynamicSupport)
+                        _editor.EndGesture();
+                    _mode = InteractionMode.None;
+                    e.Pointer.Capture(null);
+                    Cursor = null;
+                    UpdateCursor(pos);
+                    if (menu)
+                    {
+                        // The element under the pointer is picked as a left click would pick it (a selection that
+                        // already holds it is kept, so the menu acts on all of it).
+                        SceneElement? picked = Renderer.HitTest(Viewport, pos) is { } menuHit ? ResolveClick(menuHit.Owner, 1, pos) : null;
+                        if (picked != null && !picked.IsSelected)
+                            _editor.Select(picked);
+                        ContextMenuRequested?.Invoke(picked, ScreenToLevel(pos));
+                    }
+                    if (pickRoot && Renderer.HitTest(Viewport, pos) is { } rootHit)
+                    {
+                        var root = rootHit.Owner.Root;
+                        _editor.Select(root);
+                        _editor.RevealInHierarchy(root);
+                    }
+                    return;
                 }
-                if (pickRoot && _renderer.HitTest(Viewport, pos) is { } rootHit)
-                {
-                    var root = rootHit.Owner.Root;
-                    _editor.Select(root);
-                    _editor.RevealInHierarchy(root);
-                }
-                return;
-            }
 
             case InteractionMode.SnapMove:
             case InteractionMode.SnapScale:
@@ -656,92 +594,92 @@ public sealed partial class SceneView
                 return;
 
             case InteractionMode.RubberBand:
-            {
-                _mode = InteractionMode.None;
-                e.Pointer.Capture(null);
-                var rect = RectEx.Box(_pressScreen, pos);
-                var clicked = _clickTarget;
-                _clickTarget = null;
-                if (rect.Width < DragThreshold && rect.Height < DragThreshold)
                 {
-                    if (clicked != null)
-                        _editor.Select(clicked);
-                    else if (!_rubberAdd)
-                        _editor.ClearSelection();
+                    _mode = InteractionMode.None;
+                    e.Pointer.Capture(null);
+                    var rect = RectEx.Box(_pressScreen, pos);
+                    var clicked = _clickTarget;
+                    _clickTarget = null;
+                    if (rect.Width < DragThreshold && rect.Height < DragThreshold)
+                    {
+                        if (clicked != null)
+                            _editor.Select(clicked);
+                        else if (!_rubberAdd)
+                            _editor.ClearSelection();
+                    }
+                    else
+                    {
+                        var found = Renderer.QueryRect(Viewport, rect);
+                        _editor.Select(found, _rubberAdd ? SelectMode.Add : SelectMode.Replace);
+                    }
+                    InvalidateVisual();
+                    return;
                 }
-                else
-                {
-                    var found = _renderer.QueryRect(Viewport, rect);
-                    _editor.Select(found, _rubberAdd ? SelectMode.Add : SelectMode.Replace);
-                }
-                InvalidateVisual();
-                return;
-            }
 
             case InteractionMode.PlaceDrag:
-            {
-                _mode = InteractionMode.None;
-                e.Pointer.Capture(null);
-                var placing = _editor.PlacementType;
-                if (placing == null)
+                {
+                    _mode = InteractionMode.None;
+                    e.Pointer.Capture(null);
+                    var placing = _editor.PlacementType;
+                    if (placing == null)
+                        return;
+                    var a = ScreenToLevel(_pressScreen);
+                    var b = ScreenToLevel(pos);
+                    var rect = RectEx.Box(a, b);
+                    bool sized = Math.Abs(pos.X - _pressScreen.X) >= DragThreshold && Math.Abs(pos.Y - _pressScreen.Y) >= DragThreshold;
+                    if (sized)
+                    {
+                        if (placing == ElementType.Platform)
+                            rect = new Rect(Math.Round(rect.X), Math.Round(rect.Y), Math.Max(1, Math.Round(rect.Width)), Math.Max(1, Math.Round(rect.Height)));
+                        await PlaceAsync(placing.Value, _pressScreen, rect);
+                    }
+                    else
+                    {
+                        await PlaceAsync(placing.Value, pos, null);
+                    }
+                    InvalidateVisual();
                     return;
-                var a = ScreenToLevel(_pressScreen);
-                var b = ScreenToLevel(pos);
-                var rect = RectEx.Box(a, b);
-                bool sized = Math.Abs(pos.X - _pressScreen.X) >= DragThreshold && Math.Abs(pos.Y - _pressScreen.Y) >= DragThreshold;
-                if (sized)
-                {
-                    if (placing == ElementType.Platform)
-                        rect = new Rect(Math.Round(rect.X), Math.Round(rect.Y), Math.Max(1, Math.Round(rect.Width)), Math.Max(1, Math.Round(rect.Height)));
-                    await PlaceAsync(placing.Value, _pressScreen, rect);
                 }
-                else
-                {
-                    await PlaceAsync(placing.Value, pos, null);
-                }
-                InvalidateVisual();
-                return;
-            }
 
             case InteractionMode.Move:
             case InteractionMode.Rotate:
             case InteractionMode.Scale:
             case InteractionMode.RectTransform:
             case InteractionMode.TrapezoidBase:
-            {
-                // Read before releasing the capture: that raises OnPointerCaptureLost, which already resets _mode.
-                var released = _mode;
-                bool dragged = _dragStarted;
-                e.Pointer.Capture(null);
-                if (dragged)
                 {
-                    switch (released)
+                    // Read before releasing the capture: that raises OnPointerCaptureLost, which already resets _mode.
+                    var released = _mode;
+                    bool dragged = _dragStarted;
+                    e.Pointer.Capture(null);
+                    if (dragged)
                     {
-                        case InteractionMode.Move: Services.Tutorial.TutorialSignals.MoveDrags++; break;
-                        case InteractionMode.Rotate: Services.Tutorial.TutorialSignals.RotateDrags++; break;
-                        case InteractionMode.Scale: Services.Tutorial.TutorialSignals.ScaleDrags++; break;
-                        case InteractionMode.RectTransform: Services.Tutorial.TutorialSignals.RectDrags++; break;
+                        switch (released)
+                        {
+                            case InteractionMode.Move: Services.Tutorial.TutorialSignals.MoveDrags++; break;
+                            case InteractionMode.Rotate: Services.Tutorial.TutorialSignals.RotateDrags++; break;
+                            case InteractionMode.Scale: Services.Tutorial.TutorialSignals.ScaleDrags++; break;
+                            case InteractionMode.RectTransform: Services.Tutorial.TutorialSignals.RectDrags++; break;
+                        }
                     }
-                }
-                _mode = InteractionMode.None;
-                _gizmoHandle = GizmoHandle.None;
-                _memento = null;
-                if (dragged)
-                    _editor.EndGesture();
-                else if (_pendingDrill != null)
-                    _editor.Select(_pendingDrill);
-                _pendingDrill = null;
+                    _mode = InteractionMode.None;
+                    _gizmoHandle = GizmoHandle.None;
+                    _memento = null;
+                    if (dragged)
+                        _editor.EndGesture();
+                    else if (_pendingDrill != null)
+                        _editor.Select(_pendingDrill);
+                    _pendingDrill = null;
 
-                // Keep Alt held after an Alt-drag to keep stamping duplicates.
-                if (_altStampArmed && (e.KeyModifiers & KeyModifiers.Alt) != 0)
-                {
+                    // Keep Alt held after an Alt-drag to keep stamping duplicates.
+                    if (_altStampArmed && (e.KeyModifiers & KeyModifiers.Alt) != 0)
+                    {
+                        _altStampArmed = false;
+                        StartStamp(pos);
+                    }
                     _altStampArmed = false;
-                    StartStamp(pos);
+                    InvalidateVisual();
+                    return;
                 }
-                _altStampArmed = false;
-                InvalidateVisual();
-                return;
-            }
         }
     }
 
@@ -793,7 +731,7 @@ public sealed partial class SceneView
 
     private void OnSceneDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (IsGameView || _editor == null || _renderer == null || _editor.PlacementType != null)
+        if (IsGameView || _editor == null || Renderer == null || _editor.PlacementType != null)
             return;
         if ((e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0)
             return;
@@ -812,464 +750,5 @@ public sealed partial class SceneView
         var created = await _editor.CreateElementAsync(type, position, size, source);
         if (created != null)
             _editor.Select(created);
-    }
-
-    // ================= TRANSFORMS ================= //
-
-    private Point LevelPointFor(SceneElement element, Point screen)
-    {
-        var group = _renderer!.GroupFor(element);
-        var level = Viewport.ScreenToLevel(screen, group);
-        var parent = element.ParentWorldPosition;
-        return new Point(level.X - parent.X, level.Y - parent.Y);
-    }
-
-    private double PixelsToLevel(SceneElement element) => 1 / (_zoom * _renderer!.GroupFor(element).FrameScale);
-
-    private void ApplyTransform(Point pos, KeyModifiers mods)
-    {
-        if (_editor == null || _renderer == null || _memento == null)
-            return;
-        _memento.Restore();
-        bool ctrl = (mods & KeyModifiers.Control) != 0;
-        bool shift = (mods & KeyModifiers.Shift) != 0;
-
-        switch (_mode)
-        {
-            case InteractionMode.Move:
-            case InteractionMode.ModalMove:
-            case InteractionMode.Stamp:
-            {
-                Vector delta = new(pos.X - _pressScreen.X, pos.Y - _pressScreen.Y);
-                if (_mode == InteractionMode.ModalMove && _axis == 'X') delta = new Vector(delta.X, 0);
-                else if (_mode == InteractionMode.ModalMove && _axis == 'Y') delta = new Vector(0, delta.Y);
-                else if (_mode == InteractionMode.Move && _gizmoHandle is GizmoHandle.MoveX or GizmoHandle.MoveY) delta = ConstrainMove(delta);
-                else if (shift && _mode == InteractionMode.Move) delta = Math.Abs(delta.X) >= Math.Abs(delta.Y) ? new Vector(delta.X, 0) : new Vector(0, delta.Y);
-                foreach (var t in _targets)
-                {
-                    double k = PixelsToLevel(t);
-                    var (sx, sy) = _memento.StartPosition(t);
-                    t.X = sx + delta.X * k;
-                    t.Y = sy + delta.Y * k;
-                    if (t.IntegerTransform)
-                    {
-                        t.X = Math.Round(t.X);
-                        t.Y = Math.Round(t.Y);
-                    }
-                }
-                break;
-            }
-
-            case InteractionMode.Rotate:
-            case InteractionMode.ModalRotate:
-            {
-                double a0 = Math.Atan2(_pressScreen.Y - _pivotScreen.Y, _pressScreen.X - _pivotScreen.X);
-                double a1 = Math.Atan2(pos.Y - _pivotScreen.Y, pos.X - _pivotScreen.X);
-                double angle = a1 - a0;
-                if (ctrl)
-                {
-                    double step = Math.PI / 12;
-                    angle = Math.Round(angle / step) * step;
-                }
-                RotateTargets(angle);
-                _editor.StatusText = Loc.F("Rotate {0:0.##}°", -angle * 180 / Math.PI);
-                break;
-            }
-
-            case InteractionMode.Scale:
-            case InteractionMode.ModalScale:
-            {
-                var d0 = _pressScreen - _pivotScreen;
-                var d1 = pos - _pivotScreen;
-                double len0 = Math.Max(1, Math.Sqrt(d0.X * d0.X + d0.Y * d0.Y));
-                double len1 = Math.Sqrt(d1.X * d1.X + d1.Y * d1.Y);
-                double s = len1 / len0;
-                double sx = s, sy = s;
-                if (_mode == InteractionMode.Scale && _gizmoHandle is GizmoHandle.ScaleX or GizmoHandle.ScaleY or GizmoHandle.ScaleUniform)
-                {
-                    (sx, sy) = GizmoScale(pos);
-                    if (!ScaleLocal(sx, sy))
-                        ScaleTargets(_pivotScreen, sx, sy, ctrl);
-                    _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
-                    break;
-                }
-                if (_axis == 'X') sy = 1;
-                else if (_axis == 'Y') sx = 1;
-                else if (shift)
-                {
-                    sx = Math.Abs(d0.X) > 2 ? Math.Abs(d1.X / d0.X) : 1;
-                    sy = Math.Abs(d0.Y) > 2 ? Math.Abs(d1.Y / d0.Y) : 1;
-                }
-                ScaleTargets(_pivotScreen, sx, sy, ctrl);
-                _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
-                break;
-            }
-
-            case InteractionMode.RectTransform:
-                ApplyRect(pos, ctrl, shift);
-                break;
-
-            case InteractionMode.TrapezoidBase:
-            {
-                if (_targets.FirstOrDefault() is TrapezoidElement trapezoid)
-                {
-                    double slope = trapezoid.SlopeHeight;
-                    double dy = (pos.Y - _pressScreen.Y) * PixelsToLevel(trapezoid);
-                    trapezoid.BaseHeight = Math.Max(1, Math.Round(trapezoid.BaseHeight + dy));
-                    trapezoid.Height = trapezoid.BaseHeight + slope;
-                }
-                break;
-            }
-        }
-        InvalidateVisual();
-    }
-
-    private void RotateTargets(double angle)
-    {
-        _editor?.Dynamics.NoteTransform(DynamicTransformKind.Rotate);
-        bool single = _targets.Count == 1;
-        foreach (var t in _targets)
-        {
-            var pivot = LevelPointFor(t, _pivotScreen);
-            if (t.CanRotate || t is ObjectElement)
-            {
-                t.RotateAround(pivot, angle);
-                continue;
-            }
-            if (single)
-                continue; // Platforms, Trapezoids, Models... cannot rotate.
-
-            // In a multi-selection they orbit the pivot by their center.
-            var b = t.GetLocalBounds();
-            var c = b.Center;
-            double cos = Math.Cos(angle), sin = Math.Sin(angle);
-            double dx = c.X - pivot.X, dy = c.Y - pivot.Y;
-            var nc = new Point(pivot.X + dx * cos - dy * sin, pivot.Y + dx * sin + dy * cos);
-            t.X += nc.X - c.X;
-            t.Y += nc.Y - c.Y;
-            t.ApplyIntegerLock();
-        }
-    }
-
-    private void ScaleTargets(Point pivotScreen, double sx, double sy, bool free)
-    {
-        _editor?.Dynamics.NoteTransform(DynamicTransformKind.Scale);
-        foreach (var t in _targets)
-        {
-            if (t is ModelElement && _targets.Count == 1)
-                continue; // Models can only be moved.
-            var pivot = LevelPointFor(t, pivotScreen);
-            double tx = sx, ty = sy;
-            if (t is TrapezoidElement && !free)
-                ty = tx = Math.Abs(sx - 1) > Math.Abs(sy - 1) ? sx : sy; // keep the 26.565° slope
-            t.ScaleAround(pivot, tx, ty);
-            if (t.IntegerTransform)
-            {
-                t.ApplyIntegerLock();
-                if (t is TrapezoidElement trapezoid && !free)
-                    trapezoid.ApplySlopeAngle();
-            }
-        }
-    }
-
-    private void ApplyRect(Point pos, bool ctrl, bool shift)
-    {
-        if ((_rectHandle & RectHandle.Move) != 0)
-        {
-            Vector delta = new(pos.X - _pressScreen.X, pos.Y - _pressScreen.Y);
-            if (shift) delta = Math.Abs(delta.X) >= Math.Abs(delta.Y) ? new Vector(delta.X, 0) : new Vector(0, delta.Y);
-            foreach (var t in _targets)
-            {
-                double k = PixelsToLevel(t);
-                var (sx0, sy0) = _memento!.StartPosition(t);
-                t.X = sx0 + delta.X * k;
-                t.Y = sy0 + delta.Y * k;
-                if (t.IntegerTransform)
-                {
-                    t.X = Math.Round(t.X);
-                    t.Y = Math.Round(t.Y);
-                }
-            }
-            return;
-        }
-
-        if ((_rectHandle & RectHandle.Rotate) != 0)
-        {
-            double a0 = Math.Atan2(_pressScreen.Y - _pivotScreen.Y, _pressScreen.X - _pivotScreen.X);
-            double a1 = Math.Atan2(pos.Y - _pivotScreen.Y, pos.X - _pivotScreen.X);
-            double angle = a1 - a0;
-            if (ctrl)
-                angle = Math.Round(angle / (Math.PI / 12)) * (Math.PI / 12);
-            RotateTargets(angle);
-            return;
-        }
-
-        // Resize: the opposite edge / corner stays fixed.
-        var r = _rectStart;
-        double left = r.Left, right = r.Right, top = r.Top, bottom = r.Bottom;
-        if ((_rectHandle & RectHandle.Left) != 0) left = Math.Min(pos.X, right - 1);
-        if ((_rectHandle & RectHandle.Right) != 0) right = Math.Max(pos.X, left + 1);
-        if ((_rectHandle & RectHandle.Top) != 0) top = Math.Min(pos.Y, bottom - 1);
-        if ((_rectHandle & RectHandle.Bottom) != 0) bottom = Math.Max(pos.Y, top + 1);
-
-        double sx = r.Width > 0.5 ? (right - left) / r.Width : 1;
-        double sy = r.Height > 0.5 ? (bottom - top) / r.Height : 1;
-        bool horizontal = (_rectHandle & (RectHandle.Left | RectHandle.Right)) != 0;
-        bool vertical = (_rectHandle & (RectHandle.Top | RectHandle.Bottom)) != 0;
-        if (!horizontal) sx = 1;
-        if (!vertical) sy = 1;
-        if (shift && horizontal && vertical)
-            sx = sy = Math.Max(sx, sy);
-
-        var anchor = new Point(
-            (_rectHandle & RectHandle.Left) != 0 ? r.Right : r.Left,
-            (_rectHandle & RectHandle.Top) != 0 ? r.Bottom : r.Top);
-
-        // Shift on a side handle: uniform scale too, the other axis growing evenly around the center.
-        if (shift && horizontal != vertical)
-        {
-            double k = horizontal ? sx : sy;
-            sx = sy = k;
-            anchor = horizontal ? new Point(anchor.X, r.Center.Y) : new Point(r.Center.X, anchor.Y);
-        }
-        ScaleTargets(anchor, sx, sy, ctrl);
-    }
-
-    private RectHandle RectZone(Point pos)
-    {
-        if (_editor == null || _renderer == null)
-            return RectHandle.None;
-        var b = _renderer.ScreenBounds(Viewport, _editor.GetTopmostSelection());
-        if (b.Width <= 0 && b.Height <= 0)
-            return RectHandle.None;
-
-        const double edge = 6, corner = 9, rotate = 24;
-        bool nearL = Math.Abs(pos.X - b.Left) <= edge, nearR = Math.Abs(pos.X - b.Right) <= edge;
-        bool nearT = Math.Abs(pos.Y - b.Top) <= edge, nearB = Math.Abs(pos.Y - b.Bottom) <= edge;
-        bool withinX = pos.X >= b.Left - edge && pos.X <= b.Right + edge;
-        bool withinY = pos.Y >= b.Top - edge && pos.Y <= b.Bottom + edge;
-
-        foreach (var (cp, h) in new[] { (b.TopLeft, RectHandle.Left | RectHandle.Top), (b.TopRight, RectHandle.Right | RectHandle.Top), (b.BottomLeft, RectHandle.Left | RectHandle.Bottom), (b.BottomRight, RectHandle.Right | RectHandle.Bottom) })
-        {
-            double dist = Math.Sqrt((pos.X - cp.X) * (pos.X - cp.X) + (pos.Y - cp.Y) * (pos.Y - cp.Y));
-            if (dist <= corner)
-                return h;
-            if (dist <= rotate && !b.Contains(pos))
-                return RectHandle.Rotate;
-        }
-
-        var result = RectHandle.None;
-        if (nearL && withinY) result |= RectHandle.Left;
-        else if (nearR && withinY) result |= RectHandle.Right;
-        if (nearT && withinX) result |= RectHandle.Top;
-        else if (nearB && withinX) result |= RectHandle.Bottom;
-        if (result != RectHandle.None)
-            return result;
-        return b.Contains(pos) ? RectHandle.Move : RectHandle.None;
-    }
-
-    /// <summary>Small handle at the bottom of a single selected trapezoid that changes its base height.</summary>
-    private Rect? TrapezoidHandle(SceneViewport viewport)
-    {
-        if (_editor == null || _renderer == null || _editor.Selection.Count != 1 || _editor.Selection[0] is not TrapezoidElement trapezoid)
-            return null;
-        var pts = _renderer.ScreenCorners(viewport, trapezoid);
-        var bottom = new Point((pts[2].X + pts[3].X) / 2, (pts[2].Y + pts[3].Y) / 2);
-        return new Rect(bottom.X - 4, bottom.Y - 4, 8, 8);
-    }
-
-    private void UpdateCursor(Point pos)
-    {
-        if (_editor == null)
-            return;
-        if (SpacePanHeld)
-        {
-            Cursor = HandCursor;
-            return;
-        }
-        StandardCursorType type = StandardCursorType.Arrow;
-        if (_editor.PlacementType != null || Tool == EditorTool.Brush)
-            type = StandardCursorType.Cross;
-        else if (_hoverHandle != GizmoHandle.None)
-            type = StandardCursorType.Hand;
-        else if (TrapezoidHandle(Viewport) is { } h && h.Inflate(3).Contains(pos))
-            type = StandardCursorType.SizeNorthSouth;
-        else if (Tool == EditorTool.Rect && _editor.HasSelection)
-        {
-            var zone = RectZone(pos);
-            type = zone switch
-            {
-                RectHandle.Move => StandardCursorType.SizeAll,
-                RectHandle.Rotate => StandardCursorType.Hand,
-                RectHandle.Left or RectHandle.Right => StandardCursorType.SizeWestEast,
-                RectHandle.Top or RectHandle.Bottom => StandardCursorType.SizeNorthSouth,
-                RectHandle.Left | RectHandle.Top or RectHandle.Right | RectHandle.Bottom => StandardCursorType.TopLeftCorner,
-                RectHandle.Right | RectHandle.Top or RectHandle.Left | RectHandle.Bottom => StandardCursorType.TopRightCorner,
-                _ => StandardCursorType.Arrow,
-            };
-        }
-        Cursor = type == StandardCursorType.Arrow ? null : new Cursor(type);
-    }
-
-    // ================= MODAL (G / R / S) AND STAMPING ================= //
-
-    /// <summary>Blender-style transforms that follow the pointer until a click.</summary>
-    public bool StartModal(char key)
-    {
-        if (_editor == null || _renderer == null || !_editor.HasSelection || _mode != InteractionMode.None)
-            return false;
-        var targets = _editor.GetTopmostSelection();
-        _editor.BeginGesture();
-        _targets = targets;
-        _memento = new TransformMemento(targets);
-        _pressScreen = _lastPointer;
-        _pivotScreen = GizmoOrigin(Viewport, targets);
-        _axis = '\0';
-        _mode = key switch { 'G' => InteractionMode.ModalMove, 'R' => InteractionMode.ModalRotate, _ => InteractionMode.ModalScale };
-        _editor.StatusText = key switch
-        {
-            'G' => Loc.T("Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)"),
-            'R' => Loc.T("Rotate: click to confirm, right click or Esc to cancel (Ctrl snaps 15°)"),
-            _ => Loc.T("Scale: click to confirm, right click or Esc to cancel (X / Y lock an axis)"),
-        };
-        InvalidateVisual();
-        return true;
-    }
-
-    private void StartStamp(Point pos)
-    {
-        if (_editor == null || !_editor.HasSelection)
-            return;
-        _editor.BeginGesture();
-        var copies = _editor.DuplicateSelection();
-        _editor.Select(copies);
-        _targets = _editor.GetTopmostSelection();
-        _memento = new TransformMemento(_targets);
-        _pressScreen = pos;
-        _mode = InteractionMode.Stamp;
-        _editor.StatusText = Loc.T("Keep Alt held and click to place more copies; release Alt to stop.");
-    }
-
-    private void FinishGesture()
-    {
-        _mode = InteractionMode.None;
-        _memento = null;
-        _axis = '\0';
-        _editor?.EndGesture();
-        InvalidateVisual();
-    }
-
-    /// <summary>Esc / right click: reverts a modal transform or stamping.</summary>
-    public bool CancelCurrent()
-    {
-        if (_editor == null)
-            return false;
-        if (_mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale or InteractionMode.Stamp)
-        {
-            _mode = InteractionMode.None;
-            _memento = null;
-            _axis = '\0';
-            _editor.CancelGesture();
-            _editor.StatusText = Loc.T("Cancelled");
-            InvalidateVisual();
-            return true;
-        }
-        return false;
-    }
-
-    public bool IsModal => _mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale or InteractionMode.Stamp;
-
-    /// <summary>A transform of the selection is in progress (left drag, gizmo, Rect tool or G / R / S).</summary>
-    public bool IsTransforming =>
-        _memento != null && (_mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale ||
-                             _dragStarted && _mode is InteractionMode.Move or InteractionMode.Rotate or InteractionMode.Scale or InteractionMode.RectTransform);
-
-    /// <summary>
-    /// Ctrl+D while dragging or during G / R / S: the selection is duplicated where it is now, the copies become the
-    /// selection and the transform goes on with them (the originals stay where they were left). The whole thing stays
-    /// one undo step.
-    /// </summary>
-    public bool DuplicateDuringTransform()
-    {
-        if (_editor == null || _renderer == null || !IsTransforming)
-            return false;
-        var copies = _editor.DuplicateSelection();
-        if (copies.Count == 0)
-            return false;
-        _editor.Select(copies);
-        _targets = _editor.GetTopmostSelection();
-        _memento = new TransformMemento(_targets);
-        // The transform starts over from the copies' current state and the pointer's current place.
-        _pressScreen = _lastPointer;
-        if (_mode == InteractionMode.RectTransform)
-            _rectStart = _renderer.ScreenBounds(Viewport, _targets);
-        _editor.StatusText = Loc.F("Duplicated {0} element(s)", copies.Count);
-        InvalidateVisual();
-        return true;
-    }
-
-    /// <summary>Keys that only make sense in the Scene. Returns true when handled.</summary>
-    public bool HandleKey(Key key, KeyModifiers mods)
-    {
-        if (_editor == null || IsGameView)
-            return false;
-
-        if (IsModal)
-        {
-            switch (key)
-            {
-                case Key.Escape:
-                    return CancelCurrent();
-                case Key.Enter:
-                    if (_mode != InteractionMode.Stamp) FinishGesture();
-                    return true;
-                case Key.X:
-                case Key.Y:
-                    _axis = _axis == (char)('X' + (key - Key.X)) ? '\0' : key == Key.X ? 'X' : 'Y';
-                    ApplyTransform(_lastPointer, mods);
-                    return true;
-            }
-            return false;
-        }
-
-        if (mods != KeyModifiers.None && mods != KeyModifiers.Shift)
-            return false;
-
-        switch (key)
-        {
-            case Key.G when mods == KeyModifiers.None:
-                return StartModal('G');
-            case Key.R when mods == KeyModifiers.None && _editor.HasSelection:
-                return StartModal('R');
-            case Key.S when mods == KeyModifiers.None:
-                return StartModal('S');
-            case Key.F when mods == KeyModifiers.None:
-                if (_editor.ActiveElement != null)
-                    Frame(_editor.ActiveElement);
-                else
-                    FrameStart();
-                return true;
-            case Key.Left or Key.Right or Key.Up or Key.Down when _editor.HasSelection:
-            {
-                double step = mods == KeyModifiers.Shift ? 10 : 1;
-                double dx = key == Key.Left ? -step : key == Key.Right ? step : 0;
-                double dy = key == Key.Up ? -step : key == Key.Down ? step : 0;
-                foreach (var t in _editor.GetTopmostSelection())
-                {
-                    t.X += dx;
-                    t.Y += dy;
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    protected override void OnKeyUp(KeyEventArgs e)
-    {
-        base.OnKeyUp(e);
-        // Releasing Alt ends stamping: the floating copy is removed.
-        if (_mode == InteractionMode.Stamp && e.Key is Key.LeftAlt or Key.RightAlt)
-            CancelCurrent();
     }
 }

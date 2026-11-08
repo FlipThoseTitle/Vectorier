@@ -10,8 +10,8 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
-using Vectorier.Services.Projects;
 using Vectorier.Services.Localization;
+using Vectorier.Services.Projects;
 
 namespace Vectorier.ViewModels.ProjectManager;
 
@@ -30,12 +30,6 @@ public sealed partial class LevelItemViewModel : ObservableObject
     [ObservableProperty] private string _displayName = string.Empty;
     [ObservableProperty] private Bitmap? _thumbnail;
     [ObservableProperty] private bool _hasXml;
-
-    public void RaiseNameChanged()
-    {
-        OnPropertyChanged(nameof(Name));
-        OnPropertyChanged(nameof(Location));
-    }
 }
 
 /// <summary>Levels page: global list of levels per mode, with their properties.</summary>
@@ -45,7 +39,6 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
 
     public static string AllLocations => Loc.T("All Locations");
 
-    private LevelOperations? _ops;
     private bool _suppress;
     private readonly List<LevelItemViewModel> _allItems = new();
 
@@ -61,7 +54,7 @@ public sealed partial class LevelsPageViewModel : PmPageViewModel
 
     private LocationListService List => Owner.LocationList;
     private LocalizationService Localization => Owner.Localization;
-    private LevelOperations Ops => _ops ??= new LevelOperations(AppServices.FileSystem, Project, List, Localization);
+    private LevelOperations Ops => field ??= new LevelOperations(AppServices.FileSystem, Project, List, Localization);
 
     public ObservableCollection<LevelItemViewModel> Items { get; } = new();
     public ObservableCollection<string> LocationFilters { get; } = new();

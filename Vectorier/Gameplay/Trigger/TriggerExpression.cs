@@ -1,98 +1,90 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Trigger
+namespace Vectorier.Gameplay.Trigger;
+
+public class TriggerExpression : Variable
 {
-    public class TriggerExpression : Variable
+    private ExprParser _parser;
+
+    private float _result;
+
+    private bool _isCalculated;
+
+    public override int ValueInt
     {
-        private ExprParser _Parser;
-
-        private float _Result;
-
-        private bool _IsCalculated;
-
-        public override int ValueInt
+        get
         {
-            get
-            {
-                CalculateExpression();
-                return (int)_Result;
-            }
+            CalculateExpression();
+            return (int)_result;
         }
+    }
 
-        public override float ValueFloat
+    public override float ValueFloat
+    {
+        get
         {
-            get
-            {
-                CalculateExpression();
-                return _Result;
-            }
+            CalculateExpression();
+            return _result;
         }
+    }
 
-        public TriggerExpression(string p_value, string p_name, TriggerRunner p_parent) : base(p_value, p_name, p_parent)
+    public TriggerExpression(string value, string name, TriggerRunner parent) : base(value, name, parent)
+    {
+        type = VariableTypeE.VT_EXPRESSION;
+        value = value.Replace("{", string.Empty);
+        value = value.Replace("}", string.Empty);
+        value = value.Replace(" ", string.Empty);
+        _parser = ExprParser.Create(value, parent);
+        if (_parser == null)
         {
-            type = VariableTypeE.VT_EXPRESSION;
-            p_value = p_value.Replace("{", string.Empty);
-            p_value = p_value.Replace("}", string.Empty);
-            p_value = p_value.Replace(" ", string.Empty);
-            _Parser = ExprParser.Create(p_value, p_parent);
-            if (_Parser == null)
+            Console.WriteLine("TRIGGER EXPRESSION: expression is incorrect!");
+        }
+        else if (_parser.RequiredVariables.Count == 0)
+        {
+            _isCalculated = _parser.TryGetResult(ref _result);
+        }
+        else
+        {
+            InitVariables();
+        }
+    }
+
+    private void InitVariables()
+    {
+        if (_parser.RequiredVariables.Count == 0)
+        {
+            return;
+        }
+        foreach (string requiredVariable in _parser.RequiredVariables)
+        {
+            Variable p_var;
+            if (GetTypeByValue(requiredVariable) == VariableTypeE.VT_FUNCTION)
             {
-                Console.WriteLine("TRIGGER EXPRESSION: expression is incorrect!");
+                p_var = createVariable(requiredVariable, string.Empty, parent);
+                _parser.AddVariable(requiredVariable, p_var);
+                continue;
             }
-            else if (_Parser.RequiredVariables.Count == 0)
+            p_var = parent.GetVar(requiredVariable);
+            if (p_var != null)
             {
-                _IsCalculated = _Parser.TryGetResult(ref _Result);
+                _parser.AddVariable(requiredVariable, p_var);
             }
             else
             {
-                InitVariables();
+                Console.WriteLine("In Expression {" + strValue + "} unknown var= " + requiredVariable);
             }
         }
+        _parser.RequiredVariables.Clear();
+    }
 
-        private void InitVariables()
+    public void CalculateExpression()
+    {
+        if (!_isCalculated)
         {
-            if (_Parser.RequiredVariables.Count == 0)
-            {
-                return;
-            }
-            foreach (string requiredVariable in _Parser.RequiredVariables)
-            {
-                Variable p_var;
-                if (GetTypeByValue(requiredVariable) == VariableTypeE.VT_FUNCTION)
-                {
-                    p_var = createVariable(requiredVariable, string.Empty, parent);
-                    _Parser.AddVariable(requiredVariable, p_var);
-                    continue;
-                }
-                p_var = parent.GetVar(requiredVariable);
-                if (p_var != null)
-                {
-                    _Parser.AddVariable(requiredVariable, p_var);
-                }
-                else
-                {
-                    Console.WriteLine("In Expression {" + strValue + "} unknown var= " + requiredVariable);
-                }
-            }
-            _Parser.RequiredVariables.Clear();
-        }
-
-        public void CalculateExpression()
-        {
-            if (!_IsCalculated)
-            {
-                InitVariables();
-                _IsCalculated = _Parser.TryGetResult(ref _Result);
-            }
+            InitVariables();
+            _isCalculated = _parser.TryGetResult(ref _result);
         }
     }
 }

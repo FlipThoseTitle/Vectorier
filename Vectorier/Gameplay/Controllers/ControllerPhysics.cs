@@ -1,136 +1,111 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Numerics;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Node;
 
-namespace Vectorier.Gameplay.Controllers
+namespace Vectorier.Gameplay.Controllers;
+
+public class ControllerPhysics
 {
-    public class ControllerPhysics
+    private ModelObject _modelObject;
+    private List<ModelNode> _nodes;
+
+    private List<ModelLine> _edges;
+
+    private List<ModelLine> _edgesPhysic;
+
+    public bool IsPhysics { get; private set; }
+
+    // Outside a level (the editor's model previews) there is no slow mode.
+    public static float Gravity { get => field / (LevelMainController.current?.slowModeFrames ?? 1); } = 0.4000000059604645f;
+
+    public ControllerPhysics(ModelObject Object)
     {
-        private int _Iterative = 1;
+        _modelObject = Object;
+        _nodes = Object.NodesAll;
+        _edges = Object.EdgesAll;
+        _edgesPhysic = Object.EdgesPhysic;
+    }
 
-        private ModelObject _ModelObject;
+    public void Render()
+    {
+        TimeStep();
+        Iterative();
+        NodeReset();
+    }
 
-        private bool _IsPhysics;
+    public void Start()
+    {
+        IsPhysics = true;
+    }
 
-        private float _SlowMode = 1;
+    public void Stop()
+    {
+        IsPhysics = false;
+    }
 
-        private bool[] SArray;
-
-        private bool[] EArray;
-
-        private List<ModelNode> _Nodes;
-
-        private List<ModelLine> _Edges;
-
-        private List<ModelLine> _EdgesPhysic;
-
-        private static float _Gravity = 0.4000000059604645f;
-
-        public ModelObject ModelObject => _ModelObject;
-
-        public bool IsPhysics => _IsPhysics;
-
-        public float SlowMode => _SlowMode;
-
-        // Outside a level (the editor's model previews) there is no slow mode.
-        public static float Gravity => _Gravity / (LevelMainController.current?.slowModeFrames ?? 1);
-
-        public ControllerPhysics(ModelObject Object)
+    public void TimeStep()
+    {
+        ModelNode modelNode = null;
+        for (int i = 0; i < _nodes.Count; i++)
         {
-            _ModelObject = Object;
-            _Nodes = Object.NodesAll;
-            _Edges = Object.EdgesAll;
-            _EdgesPhysic = Object.EdgesPhysic;
-        }
-
-        public void Render()
-        {
-            TimeStep();
-            Iterative();
-            NodeReset();
-        }
-
-        public void Start()
-        {
-            _IsPhysics = true;
-        }
-
-        public void Stop()
-        {
-            _IsPhysics = false;
-        }
-
-        public void TimeStep()
-        {
-            ModelNode modelNode = null;
-            for (int i = 0; i < _Nodes.Count; i++)
+            modelNode = _nodes[i];
+            if (!modelNode.IsFixed && (IsPhysics || modelNode.IsPhysics))
             {
-                modelNode = _Nodes[i];
-                if (!modelNode.IsFixed && (_IsPhysics || modelNode.IsPhysics))
-                {
-                    modelNode.TimeStep(Gravity);
-                }
+                modelNode.TimeStep(Gravity);
             }
         }
+    }
 
-        public void Iterative()
+    public void Iterative()
+    {
+        if (!IsPhysics)
         {
-            if (!_IsPhysics)
+            foreach (var edge in _edgesPhysic)
             {
-                foreach (var edge in _EdgesPhysic)
-                {
-                    IterativeLine(edge, _IsPhysics);
-                }
-            }
-            else
-            {
-                foreach (var edge in _Edges)
-                {
-                    IterativeLine(edge, _IsPhysics);
-                }
+                IterativeLine(edge, IsPhysics);
             }
         }
-
-        public void IterativeLine(ModelLine line, bool isPhysics)
+        else
         {
-            if (isPhysics || line.Start.IsPhysics || line.End.IsPhysics)
+            foreach (var edge in _edges)
             {
-                Vector3 p_vector = line.Iterative(line.Start.Start);
-                Vector3 p_vector2 = line.Iterative(line.End.Start);
-                IterativeNode(p_vector, line.Start, isPhysics);
-                IterativeNode(p_vector2, line.End, isPhysics);
+                IterativeLine(edge, IsPhysics);
             }
+        }
+    }
 
+    public void IterativeLine(ModelLine line, bool isPhysics)
+    {
+        if (isPhysics || line.Start.IsPhysics || line.End.IsPhysics)
+        {
+            Vector3 p_vector = line.Iterative(line.Start.Start);
+            Vector3 p_vector2 = line.Iterative(line.End.Start);
+            IterativeNode(p_vector, line.Start, isPhysics);
+            IterativeNode(p_vector2, line.End, isPhysics);
         }
 
-        public void IterativeNode(Vector3 vector, ModelNode node, bool isPhysics)
-        {
-            if (!node.IsType || node.IsFixed || (!isPhysics && !node.IsPhysics))
-            {
-                return;
-            }
-            node.PositionStart(vector);
-        }
+    }
 
-        public void NodeReset()
+    public void IterativeNode(Vector3 vector, ModelNode node, bool isPhysics)
+    {
+        if (!node.IsType || node.IsFixed || (!isPhysics && !node.IsPhysics))
         {
-            if (!_IsPhysics)
-            {
-                return;
-            }
-            _ModelObject.PositionToPivot(_ModelObject.DetectorHorizontalNode);
-            _ModelObject.PositionToPivot(_ModelObject.DetectorVerticalNode);
-            _ModelObject.PositionToPivot(_ModelObject.CameraNode.Node);
-            _ModelObject.PositionToPivot(_ModelObject.CenterOfMassNode);
+            return;
         }
+        node.PositionStart(vector);
+    }
+
+    public void NodeReset()
+    {
+        if (!IsPhysics)
+        {
+            return;
+        }
+        _modelObject.PositionToPivot(_modelObject.DetectorHorizontalNode);
+        _modelObject.PositionToPivot(_modelObject.DetectorVerticalNode);
+        _modelObject.PositionToPivot(_modelObject.CameraNode.Node);
+        _modelObject.PositionToPivot(_modelObject.CenterOfMassNode);
     }
 }

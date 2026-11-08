@@ -2,13 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Vectorier.Gameplay;
 using Vectorier.Gameplay.Animation;
-using Vectorier.Gameplay.Camera;
 using Vectorier.Gameplay.Controllers;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.User;
@@ -129,30 +127,30 @@ public sealed class GameplaySession
             switch (element)
             {
                 case ObjectElement obj:
-                {
-                    var inner = parent + new Vector2((float)obj.X, (float)obj.Y);
-                    if (obj.Reference is { } def)
                     {
-                        foreach (var child in content(def))
+                        var inner = parent + new Vector2((float)obj.X, (float)obj.Y);
+                        if (obj.Reference is { } def)
+                        {
+                            foreach (var child in content(def))
+                                Visit(child, inner, depth + 1);
+                        }
+                        foreach (var child in obj.Children)
                             Visit(child, inner, depth + 1);
+                        return;
                     }
-                    foreach (var child in obj.Children)
-                        Visit(child, inner, depth + 1);
-                    return;
-                }
                 case PlatformElement or TrapezoidElement or AreaElement:
-                {
-                    if (writer.WriteElement(element) is not XElement x)
+                    {
+                        if (writer.WriteElement(element) is not XElement x)
+                            return;
+                        if (x.Name.LocalName == "Area" && (string?)x.Attribute("Type") is "Catch" or "Help")
+                            return;
+                        // The game puts an element at its object's position plus its own: one object per position.
+                        elements.Add(new XElement("Object",
+                            new XAttribute("X", parent.X.ToString(CultureInfo.InvariantCulture)),
+                            new XAttribute("Y", parent.Y.ToString(CultureInfo.InvariantCulture)),
+                            new XElement("Content", x)));
                         return;
-                    if (x.Name.LocalName == "Area" && (string?)x.Attribute("Type") is "Catch" or "Help")
-                        return;
-                    // The game puts an element at its object's position plus its own: one object per position.
-                    elements.Add(new XElement("Object",
-                        new XAttribute("X", parent.X.ToString(CultureInfo.InvariantCulture)),
-                        new XAttribute("Y", parent.Y.ToString(CultureInfo.InvariantCulture)),
-                        new XElement("Content", x)));
-                    return;
-                }
+                    }
             }
         }
 
@@ -299,7 +297,4 @@ public sealed class GameplaySession
 
     /// <summary>Where the game's camera looks (it follows the model's Camera node smoothly), in level coordinates.</summary>
     public Avalonia.Point? CameraPosition => IsActive ? new Avalonia.Point(_controller!.Camera.X, _controller.Camera.Y) : null;
-
-    /// <summary>The model's Camera node, in level coordinates.</summary>
-    public Avalonia.Point? CameraNode => IsActive && _model!.ModelObject.CameraNode?.Node is { } node ? new Avalonia.Point(node.Start.X, node.Start.Y) : null;
 }

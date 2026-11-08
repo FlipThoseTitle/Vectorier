@@ -2,9 +2,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Vectorier.Services.Localization;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
-using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.ProjectManager;
 

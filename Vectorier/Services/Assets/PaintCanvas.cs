@@ -67,7 +67,6 @@ public sealed class PaintCanvas
     private (int Width, int Height, int Left, int Top) _strokeFrame;
 
     private bool _hasStartContent;
-    private PixelRect? _paintedBounds;
     private WriteableBitmap? _bitmap;
     private PixelRect? _bitmapDirty;
 
@@ -101,8 +100,6 @@ public sealed class PaintCanvas
     /// </summary>
     public bool ClipToOriginal { get; set; }
 
-    public bool HasUndo => _undo.Count > 0;
-
     /// <summary>Something was painted since the canvas was created.</summary>
     public bool IsModified { get; private set; }
 
@@ -116,7 +113,7 @@ public sealed class PaintCanvas
     {
         Buffer.BlockCopy(premultipliedBgra, 0, _pixels, 0, Math.Min(premultipliedBgra.Length, _pixels.Length));
         _hasStartContent = true;
-        _paintedBounds = Original;
+        PaintedBounds = Original;
         _clipAlpha = new byte[Width * Height];
         for (int i = 0; i < _clipAlpha.Length; i++)
             _clipAlpha[i] = _pixels[i * 4 + 3];
@@ -238,7 +235,7 @@ public sealed class PaintCanvas
         if (_undo.Count > 40)
             _undo.RemoveAt(0);
         IsModified = true;
-        _paintedBounds = _paintedBounds is { } b ? b.Union(rect) : rect;
+        PaintedBounds = PaintedBounds is { } b ? b.Union(rect) : rect;
     }
 
     public bool Undo()
@@ -264,12 +261,12 @@ public sealed class PaintCanvas
     /// What will be kept: everything painted, plus the edited image's own area. The outline shown while painting,
     /// and it follows undo exactly.
     /// </summary>
-    public PixelRect? PaintedBounds => _paintedBounds;
+    public PixelRect? PaintedBounds { get; private set; }
 
     private void RecomputePaintedBounds()
     {
         var content = ContentBounds();
-        _paintedBounds = _hasStartContent
+        PaintedBounds = _hasStartContent
             ? (content is { } c ? Original.Union(c) : Original)
             : content;
     }
@@ -563,8 +560,8 @@ public sealed class PaintCanvas
         }
         for (int i = 0; i < _undo.Count; i++)
             _undo[i] = _undo[i] with { Rect = _undo[i].Rect.Translate(new PixelVector(left, top)) };
-        if (_paintedBounds is { } painted)
-            _paintedBounds = painted.Translate(new PixelVector(left, top));
+        if (PaintedBounds is { } painted)
+            PaintedBounds = painted.Translate(new PixelVector(left, top));
         _grownLeft += left;
         _grownTop += top;
         if (_strokeRect.Width > 0)

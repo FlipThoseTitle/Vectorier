@@ -1,87 +1,79 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 
-namespace Vectorier.Gameplay.Trigger.Actions
+namespace Vectorier.Gameplay.Trigger.Actions;
+
+public class TA_SetVariable : TriggerAction
 {
-    public class TA_SetVariable : TriggerAction
+    private Variable _setVar;
+
+    private Variable _valueVar;
+
+    private TA_SetVariable(TA_SetVariable copyAction)
+        : base(copyAction._ParentLoop)
     {
-        private Variable _SetVar;
+        _setVar = copyAction._setVar;
+        _valueVar = copyAction._valueVar;
+    }
 
-        private Variable _ValueVar;
-
-        private TA_SetVariable(TA_SetVariable p_copyAction)
-            : base(p_copyAction._ParentLoop)
+    public TA_SetVariable(XmlNode node, TriggerLoop parent)
+        : base(parent)
+    {
+        string value = node.Attributes["Name"].Value;
+        string value2 = node.Attributes["Value"].Value;
+        if (value2[0] == '_')
         {
-            _SetVar = p_copyAction._SetVar;
-            _ValueVar = p_copyAction._ValueVar;
-        }
-
-        public TA_SetVariable(XmlNode p_node, TriggerLoop p_parent)
-            : base(p_parent)
-        {
-            string value = p_node.Attributes["Name"].Value;
-            string value2 = p_node.Attributes["Value"].Value;
-            if (value2[0] == '_')
+            _valueVar = _ParentLoop.GetParentVar(value2);
+            if (_valueVar == null)
             {
-                _ValueVar = _ParentLoop.GetParentVar(value2);
-                if (_ValueVar == null)
-                {
-                    Console.WriteLine("Error create Action SetVariable no found : " + value2);
-                }
-            }
-            else
-            {
-                _ValueVar = Variable.createVariable(value2, string.Empty, p_parent.ParentTrigger);
-            }
-            if (value[0] == '?')
-            {
-                _SetVar = Variable.createVariable(value, string.Empty, p_parent.ParentTrigger);
-            }
-            else
-            {
-                _SetVar = _ParentLoop.GetParentVar("_" + value);
-            }
-            if (_SetVar == null)
-            {
-                Console.WriteLine("Error create Action SetVariable not found =" + value);
+                Console.WriteLine("Error create Action SetVariable no found : " + value2);
             }
         }
-
-        public override void Activate(ref bool p_isRunNext)
+        else
         {
-            p_isRunNext = true;
-            switch (_ValueVar.Type)
-            {
-                case VariableTypeE.VT_DOUBLE:
-                case VariableTypeE.VT_FUNCTION:
-                case VariableTypeE.VT_EXPRESSION:
-                    _SetVar.setValue(_ValueVar.ValueFloat);
-                    break;
-                case VariableTypeE.VT_STRING:
-                    _SetVar.setValue(_ValueVar.ValueString);
-                    break;
-                default:
-                    _SetVar.setValue(_ValueVar.ValueInt);
-                    break;
-            }
+            _valueVar = Variable.createVariable(value2, string.Empty, parent.ParentTrigger);
         }
-
-        public override TriggerAction Copy()
+        if (value[0] == '?')
         {
-            return new TA_SetVariable(this);
+            _setVar = Variable.createVariable(value, string.Empty, parent.ParentTrigger);
         }
-
-        public override string ToString()
+        else
         {
-            return "SetVariable Var:" + _SetVar + " Value=" + _ValueVar.DebugStringValue;
+            _setVar = _ParentLoop.GetParentVar("_" + value);
         }
+        if (_setVar == null)
+        {
+            Console.WriteLine("Error create Action SetVariable not found =" + value);
+        }
+    }
+
+    public override void Activate(ref bool isRunNext)
+    {
+        isRunNext = true;
+        switch (_valueVar.Type)
+        {
+            case VariableTypeE.VT_DOUBLE:
+            case VariableTypeE.VT_FUNCTION:
+            case VariableTypeE.VT_EXPRESSION:
+                _setVar.setValue(_valueVar.ValueFloat);
+                break;
+            case VariableTypeE.VT_STRING:
+                _setVar.setValue(_valueVar.ValueString);
+                break;
+            default:
+                _setVar.setValue(_valueVar.ValueInt);
+                break;
+        }
+    }
+
+    public override TriggerAction Copy()
+    {
+        return new TA_SetVariable(this);
+    }
+
+    public override string ToString()
+    {
+        return "SetVariable Var:" + _setVar + " Value=" + _valueVar.DebugStringValue;
     }
 }

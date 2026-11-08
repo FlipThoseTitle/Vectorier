@@ -52,7 +52,7 @@ public partial class SceneView
         origin = default;
         ax = new Vector(1, 0);
         ay = new Vector(0, -1);
-        if (_editor == null || _renderer == null || !_editor.HasSelection || _editor.PlacementType != null)
+        if (_editor == null || Renderer == null || !_editor.HasSelection || _editor.PlacementType != null)
             return false;
         var targets = _editor.GetTopmostSelection();
         if (targets.Count == 0)
@@ -85,9 +85,9 @@ public partial class SceneView
                 ? _editor.ActiveElement
                 : targets[^1];
             var p = element.ParentWorldPosition;
-            return new Point(p.X + element.X, p.Y + element.Y).Transform(viewport.LevelToScreen(_renderer!.GroupFor(element)));
+            return new Point(p.X + element.X, p.Y + element.Y).Transform(viewport.LevelToScreen(Renderer!.GroupFor(element)));
         }
-        return _renderer!.ScreenBounds(viewport, targets).Center;
+        return Renderer!.ScreenBounds(viewport, targets).Center;
     }
 
     private bool GizmoTool => Tool is EditorTool.Move or EditorTool.Rotate or EditorTool.Scale;
@@ -99,25 +99,25 @@ public partial class SceneView
         switch (Tool)
         {
             case EditorTool.Move:
-            {
-                var sq = FreeSquareCenter(o, ax, ay);
-                if (InAxisSquare(p, sq, ax, ay, 9)) return GizmoHandle.MoveFree;
-                if (NearSegment(p, o, o + ax * GizmoLength) <= GizmoHitDistance) return GizmoHandle.MoveX;
-                if (NearSegment(p, o, o + ay * GizmoLength) <= GizmoHitDistance) return GizmoHandle.MoveY;
-                return GizmoHandle.None;
-            }
+                {
+                    var sq = FreeSquareCenter(o, ax, ay);
+                    if (InAxisSquare(p, sq, ax, ay, 9)) return GizmoHandle.MoveFree;
+                    if (NearSegment(p, o, o + ax * GizmoLength) <= GizmoHitDistance) return GizmoHandle.MoveX;
+                    if (NearSegment(p, o, o + ay * GizmoLength) <= GizmoHitDistance) return GizmoHandle.MoveY;
+                    return GizmoHandle.None;
+                }
             case EditorTool.Rotate:
-            {
-                double d = Distance(p, o);
-                return Math.Abs(d - RotateRadius) <= GizmoHitDistance ? GizmoHandle.Rotate : GizmoHandle.None;
-            }
+                {
+                    double d = Distance(p, o);
+                    return Math.Abs(d - RotateRadius) <= GizmoHitDistance ? GizmoHandle.Rotate : GizmoHandle.None;
+                }
             case EditorTool.Scale:
-            {
-                if (InAxisSquare(p, o, ax, ay, 8)) return GizmoHandle.ScaleUniform;
-                if (InAxisSquare(p, o + ax * GizmoLength, ax, ay, 8) || NearSegment(p, o, o + ax * GizmoLength) <= GizmoHitDistance - 2) return GizmoHandle.ScaleX;
-                if (InAxisSquare(p, o + ay * GizmoLength, ax, ay, 8) || NearSegment(p, o, o + ay * GizmoLength) <= GizmoHitDistance - 2) return GizmoHandle.ScaleY;
-                return GizmoHandle.None;
-            }
+                {
+                    if (InAxisSquare(p, o, ax, ay, 8)) return GizmoHandle.ScaleUniform;
+                    if (InAxisSquare(p, o + ax * GizmoLength, ax, ay, 8) || NearSegment(p, o, o + ax * GizmoLength) <= GizmoHitDistance - 2) return GizmoHandle.ScaleX;
+                    if (InAxisSquare(p, o + ay * GizmoLength, ax, ay, 8) || NearSegment(p, o, o + ay * GizmoLength) <= GizmoHitDistance - 2) return GizmoHandle.ScaleY;
+                    return GizmoHandle.None;
+                }
         }
         return GizmoHandle.None;
     }
@@ -143,7 +143,7 @@ public partial class SceneView
     /// <summary>Pointer pressed on a gizmo handle: starts the matching transform. Returns false when no handle was hit.</summary>
     private bool TryStartGizmoDrag(Point pos)
     {
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return false;
         var handle = HitGizmo(pos);
         if (handle == GizmoHandle.None || !TryGetGizmo(Viewport, out var origin, out var ax, out var ay))
@@ -180,22 +180,22 @@ public partial class SceneView
         switch (_gizmoHandle)
         {
             case GizmoHandle.ScaleX:
-            {
-                double a0 = Along(d0, _gizmoAx);
-                return (Math.Abs(a0) > 4 ? Along(d1, _gizmoAx) / a0 : 1 + (Along(d1, _gizmoAx) - a0) / 100, 1);
-            }
+                {
+                    double a0 = Along(d0, _gizmoAx);
+                    return (Math.Abs(a0) > 4 ? Along(d1, _gizmoAx) / a0 : 1 + (Along(d1, _gizmoAx) - a0) / 100, 1);
+                }
             case GizmoHandle.ScaleY:
-            {
-                double a0 = Along(d0, _gizmoAy);
-                return (1, Math.Abs(a0) > 4 ? Along(d1, _gizmoAy) / a0 : 1 + (Along(d1, _gizmoAy) - a0) / 100);
-            }
+                {
+                    double a0 = Along(d0, _gizmoAy);
+                    return (1, Math.Abs(a0) > 4 ? Along(d1, _gizmoAy) / a0 : 1 + (Along(d1, _gizmoAy) - a0) / 100);
+                }
             default:
-            {
-                // Center cube: right / up grows, left / down shrinks (like Unity).
-                var drag = pos - _pressScreen;
-                double s = Math.Max(0.01, 1 + (drag.X - drag.Y) / 100);
-                return (s, s);
-            }
+                {
+                    // Center cube: right / up grows, left / down shrinks (like Unity).
+                    var drag = pos - _pressScreen;
+                    double s = Math.Max(0.01, 1 + (drag.X - drag.Y) / 100);
+                    return (s, s);
+                }
         }
     }
 
@@ -225,12 +225,12 @@ public partial class SceneView
 
     private void RenderGizmos(DrawingContext context, SceneViewport viewport)
     {
-        if (_editor == null || _renderer == null || !_editor.HasSelection || _editor.PlacementType != null || IsModal)
+        if (_editor == null || Renderer == null || !_editor.HasSelection || _editor.PlacementType != null || IsModal)
             return;
 
         if (Tool == EditorTool.Rect)
         {
-            var b = _renderer.ScreenBounds(viewport, _editor.GetTopmostSelection());
+            var b = Renderer.ScreenBounds(viewport, _editor.GetTopmostSelection());
             if (b.Width <= 0 && b.Height <= 0)
                 return;
             var pen = new Pen(new SolidColorBrush(FreeColor), 1.5);
@@ -259,16 +259,16 @@ public partial class SceneView
                 break;
 
             case EditorTool.Rotate:
-            {
-                var color = active == GizmoHandle.Rotate ? HoverColor : RingColor;
-                var pen = new Pen(new SolidColorBrush(color), 2);
-                context.DrawEllipse(new SolidColorBrush(color, 0.06), pen, origin, RotateRadius, RotateRadius);
-                // Curved arrows on the ring show the direction of rotation.
-                foreach (double start in new[] { -0.35, Math.PI - 0.35 })
-                    DrawRingArrow(context, origin, start, 0.7, color);
-                context.DrawEllipse(new SolidColorBrush(color), null, origin, 2.5, 2.5);
-                break;
-            }
+                {
+                    var color = active == GizmoHandle.Rotate ? HoverColor : RingColor;
+                    var pen = new Pen(new SolidColorBrush(color), 2);
+                    context.DrawEllipse(new SolidColorBrush(color, 0.06), pen, origin, RotateRadius, RotateRadius);
+                    // Curved arrows on the ring show the direction of rotation.
+                    foreach (double start in new[] { -0.35, Math.PI - 0.35 })
+                        DrawRingArrow(context, origin, start, 0.7, color);
+                    context.DrawEllipse(new SolidColorBrush(color), null, origin, 2.5, 2.5);
+                    break;
+                }
 
             case EditorTool.Scale:
                 DrawScaleAxis(context, origin, ax, active == GizmoHandle.ScaleX ? HoverColor : XColor);
@@ -352,14 +352,12 @@ public partial class SceneView
 
     // ================= CURSORS ================= //
 
-    private static Cursor? _handCursor;
-    private static Cursor? _zoomCursor;
 
     /// <summary>Open hand while panning with the right mouse button.</summary>
-    private static Cursor HandCursor => _handCursor ??= MakeCursor("Icon.Pan") ?? new Cursor(StandardCursorType.SizeAll);
+    private static Cursor HandCursor => field ??= MakeCursor("Icon.Pan") ?? new Cursor(StandardCursorType.SizeAll);
 
     /// <summary>Magnifying glass while zooming with Alt + right mouse button.</summary>
-    private static Cursor ZoomCursor => _zoomCursor ??= MakeCursor("Icon.Search") ?? new Cursor(StandardCursorType.SizeNorthSouth);
+    private static Cursor ZoomCursor => field ??= MakeCursor("Icon.Search") ?? new Cursor(StandardCursorType.SizeNorthSouth);
 
     /// <summary>Renders an icon of the app (black with a white outline) into a 32×32 cursor.</summary>
     private static Cursor? MakeCursor(string iconKey)

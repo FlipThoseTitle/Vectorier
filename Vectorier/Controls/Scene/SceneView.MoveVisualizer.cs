@@ -29,9 +29,9 @@ public partial class SceneView
     /// <summary>Follow Camera: centers the view on a point of the character's layer.</summary>
     private void OnMoveVisualizerFollow(Point level)
     {
-        if (_editor == null || _renderer == null) return;
+        if (_editor == null || Renderer == null) return;
         var host = _editor.MoveVisualizer.Host;
-        double factor = host != null ? _renderer.GroupFor(host).Factor : Layers.GetFactor(Layers.Default);
+        double factor = host != null ? Renderer.GroupFor(host).Factor : Layers.GetFactor(Layers.Default);
         _center = factor > 1e-9 ? new Point(level.X / factor, level.Y / factor) : level;
         UpdateEditorCenter();
         InvalidateVisual();
@@ -39,8 +39,8 @@ public partial class SceneView
 
     private Matrix MoveVisualizerMatrix(SceneViewport viewport, SceneElement? host)
     {
-        var group = host != null && _renderer != null
-            ? _renderer.GroupFor(host)
+        var group = host != null && Renderer != null
+            ? Renderer.GroupFor(host)
             : new LayerGroup(Layers.GetFactor(Layers.Default), -1);
         return viewport.LevelToScreen(group);
     }
@@ -155,18 +155,6 @@ public partial class SceneView
         for (int i = 0; i < nodes.Length; i++)
             pts[i] = toLevel(nodes[i]).Transform(m);
         return pts;
-    }
-
-    private static Rect ScreenBounds(Point[] pts, double inflate)
-    {
-        if (pts.Length == 0) return default;
-        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
-        foreach (var p in pts)
-        {
-            minX = Math.Min(minX, p.X); minY = Math.Min(minY, p.Y);
-            maxX = Math.Max(maxX, p.X); maxY = Math.Max(maxY, p.Y);
-        }
-        return new Rect(minX - inflate, minY - inflate, maxX - minX + inflate * 2, maxY - minY + inflate * 2);
     }
 
     /// <summary>Node spheres (2 units across; the Camera node 12).</summary>

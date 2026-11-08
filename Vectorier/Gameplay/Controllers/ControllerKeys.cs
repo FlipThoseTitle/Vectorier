@@ -1,121 +1,104 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Animation;
 using Vectorier.Gameplay.Animation.Events;
 using Vectorier.Gameplay.Models;
+using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Controllers
+namespace Vectorier.Gameplay.Controllers;
+
+public class ControllerKeys
 {
-    public class ControllerKeys
+    private readonly int _interval;
+
+    private int _onInterval;
+
+    private readonly ModelHuman _model;
+
+    public KeyVariables KeyVariables { get; private set; }
+
+    public bool Enable { get; set; }
+
+    public ControllerKeys(ModelHuman model)
     {
-        private readonly int _interval;
+        Enable = true;
+        _model = model;
+        _interval = 21;
+        _onInterval = 0;
+    }
 
-        private int _onInterval;
-
-        private readonly ModelHuman _model;
-
-        public KeyVariables KeyVariables
+    public void SetKeyVariable(KeyVariables value)
+    {
+        if (!Enable)
         {
-            get;
-            private set;
+            return;
+        }
+        KeyVariables = value;
+        _onInterval = 0;
+        if (TutorialAreaRunner.current != null && !TutorialAreaRunner.current.OnKeyClick(value))
+        {
+            return;
+
         }
 
-        public bool Enable
+        if (TrickAreaRunner.Current != null)
         {
-            get;
-            set;
-        }
-
-        public ControllerKeys(ModelHuman model)
-        {
-            Enable = true;
-            _model = model;
-            _interval = 21;
-            _onInterval = 0;
-        }
-
-        public void SetKeyVariable(KeyVariables p_value)
-        {
-            if (!Enable)
+            if (!TrickAreaRunner.Current.isActive)
             {
-                return;
-            }
-            KeyVariables = p_value;
-            _onInterval = 0;
-            if (TutorialAreaRunner.current != null && !TutorialAreaRunner.current.OnKeyClick(p_value))
-            {
-                return;
-
-            }
-
-            if (TrickAreaRunner.Current != null)
-            {
-                if (!TrickAreaRunner.Current.isActive)
+                if (_model.IsTrick)
                 {
-                    if (_model.IsTrick)
+                    if (value.IsEqual(KeyboardKey.Up))
                     {
-                        if (p_value.IsEqual(KeyboardKey.Up))
-                        {
-                            //LevelMainController.current.levelSceneController.TrickNotBuy(TrickAreaRunner.Current);
-                        }
                     }
                 }
             }
-            _model.ControllerTrigger.SetKeyEvent(p_value.ToString());
         }
+        _model.ControllerTrigger.SetKeyEvent(value.ToString());
+    }
 
-        public void SetKeyVariable_force(KeyVariables p_value)
-        {
-            _onInterval = 0;
-            KeyVariables = p_value;
-        }
+    public void SetKeyVariable_force(KeyVariables value)
+    {
+        _onInterval = 0;
+        KeyVariables = value;
+    }
 
-        public void ClearAnimation()
-        {
-            KeyVariables = null;
-        }
+    public void ClearAnimation()
+    {
+        KeyVariables = null;
+    }
 
-        public void Render()
+    public void Render()
+    {
+        if (KeyVariables != null)
         {
-            if (KeyVariables != null)
+            if (_onInterval >= _interval)
             {
-                if (_onInterval >= _interval)
-                {
-                    ClearAnimation();
-                }
-                else
-                {
-                    _onInterval++;
-                }
+                ClearAnimation();
+            }
+            else
+            {
+                _onInterval++;
             }
         }
+    }
 
-        public List<AnimationReaction> GetValidateReactions(KeyVariables p_value, AnimationEventKey p_anim_key, int p_sign)
+    public List<AnimationReaction> GetValidateReactions(KeyVariables value, AnimationEventKey anim_key, int sign)
+    {
+        if (value == null)
         {
-            if (p_value == null)
-            {
-                return null;
-            }
-            if (p_anim_key.IsKey(p_value, p_sign))
-            {
-                return p_anim_key.Reaction;
-            }
             return null;
         }
-
-        public void Reset()
+        if (anim_key.IsKey(value, sign))
         {
-            KeyVariables = null;
-            Enable = true;
+            return anim_key.Reaction;
         }
+        return null;
+    }
+
+    public void Reset()
+    {
+        KeyVariables = null;
+        Enable = true;
     }
 }

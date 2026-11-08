@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using Vectorier.Services.Localization;

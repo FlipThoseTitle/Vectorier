@@ -1,171 +1,124 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Grid
+namespace Vectorier.Gameplay.Grid;
+
+public class Grid
 {
-    public class Grid
+    public static int CellWidth = 200;
+
+    public static int CellHeight = 200;
+
+    private List<GridColumn> _columns = new List<GridColumn>();
+    private int _startXIndex;
+
+    public List<QuadRunner> Transformation { get; } = new List<QuadRunner>();
+
+    public void InitGrid(List<QuadRunner> quads)
     {
-        public static int CellWidth = 200;
-
-        public static int CellHeight = 200;
-
-        private List<GridColumn> _Columns = new List<GridColumn>();
-
-        private List<QuadRunner> _Transformation = new List<QuadRunner>();
-
-        private int _StartXIndex;
-
-        public List<QuadRunner> Transformation => _Transformation;
-
-        public void InitGrid(List<QuadRunner> p_quads)
+        for (int i = 0; i < quads.Count; i++)
         {
-            for (int i = 0; i < p_quads.Count; i++)
+            AddQuad(quads[i]);
+            quads[i].OnTransformationStart += OnTransformationStart;
+            quads[i].OnTransformationEnd += OnTransformationEnd;
+        }
+    }
+
+    public void AddQuad(QuadRunner quad)
+    {
+        Rectangle rectangle = quad.rectangle;
+        int num = rectangle.MinXInt < 0 ? rectangle.MinXInt / CellWidth - 1 : rectangle.MinXInt / CellWidth;
+        int num2 = rectangle.MaxXInt < 0 ? rectangle.MaxXInt / CellWidth - 1 : rectangle.MaxXInt / CellWidth;
+        if (_columns.Count == 0)
+        {
+            _startXIndex = num;
+        }
+        if (num < _startXIndex)
+        {
+            int num3 = _startXIndex - num;
+            _startXIndex = num;
+            for (int i = 0; i < num3; i++)
             {
-                AddQuad(p_quads[i]);
-                p_quads[i].OnTransformationStart += OnTransformationStart;
-                p_quads[i].OnTransformationEnd += OnTransformationEnd;
+                _columns.Insert(0, new GridColumn());
             }
         }
-
-        public void AddQuadByList(List<QuadRunner> p_quads)
+        int num4 = num - _startXIndex;
+        int num5 = num2 - _startXIndex;
+        if (num5 >= _columns.Count)
         {
-            for (int i = 0; i < p_quads.Count; i++)
+            int num6 = num5 - _columns.Count + 1;
+            for (int j = 0; j < num6; j++)
             {
-                AddQuad(p_quads[i]);
+                _columns.Add(new GridColumn());
             }
         }
-
-        public void AddQuad(QuadRunner p_quad)
+        for (int k = num4; k <= num5; k++)
         {
-            Rectangle rectangle = p_quad.rectangle;
-            int num = rectangle.MinXInt < 0 ? rectangle.MinXInt / CellWidth - 1 : rectangle.MinXInt / CellWidth;
-            int num2 = rectangle.MaxXInt < 0 ? rectangle.MaxXInt / CellWidth - 1 : rectangle.MaxXInt / CellWidth;
-            if (_Columns.Count == 0)
-            {
-                _StartXIndex = num;
-            }
-            if (num < _StartXIndex)
-            {
-                int num3 = _StartXIndex - num;
-                _StartXIndex = num;
-                for (int i = 0; i < num3; i++)
-                {
-                    _Columns.Insert(0, new GridColumn());
-                }
-            }
-            int num4 = num - _StartXIndex;
-            int num5 = num2 - _StartXIndex;
-            if (num5 >= _Columns.Count)
-            {
-                int num6 = num5 - _Columns.Count + 1;
-                for (int j = 0; j < num6; j++)
-                {
-                    _Columns.Add(new GridColumn());
-                }
-            }
-            for (int k = num4; k <= num5; k++)
-            {
-                _Columns[k].Add(p_quad);
-            }
+            _columns[k].Add(quad);
         }
+    }
 
-        public void RemoveQuad(QuadRunner p_quad)
+    public void RemoveQuad(QuadRunner quad)
+    {
+        Rectangle rectangle = quad.rectangle;
+        int num = rectangle.MinXInt < 0 ? rectangle.MinXInt / CellWidth - 1 : rectangle.MinXInt / CellWidth;
+        int num2 = rectangle.MaxXInt < 0 ? rectangle.MaxXInt / CellWidth - 1 : rectangle.MaxXInt / CellWidth;
+        int num3 = num - _startXIndex;
+        int num4 = num2 - _startXIndex;
+        for (int i = num3; i <= num4; i++)
         {
-            Rectangle rectangle = p_quad.rectangle;
-            int num = rectangle.MinXInt < 0 ? rectangle.MinXInt / CellWidth - 1 : rectangle.MinXInt / CellWidth;
-            int num2 = rectangle.MaxXInt < 0 ? rectangle.MaxXInt / CellWidth - 1 : rectangle.MaxXInt / CellWidth;
-            int num3 = num - _StartXIndex;
-            int num4 = num2 - _StartXIndex;
-            for (int i = num3; i <= num4; i++)
-            {
-                _Columns[i].Remove(p_quad);
-            }
+            _columns[i].Remove(quad);
         }
+    }
 
-        public void RemoveQuadByList(List<QuadRunner> p_quads)
-        {
-            for (int i = 0; i < p_quads.Count; i++)
-            {
-                RemoveQuad(p_quads[i]);
-            }
-        }
+    public void OnTransformationStart(QuadRunner quad)
+    {
+        RemoveQuad(quad);
+        Transformation.Add(quad);
+    }
 
-        public void RemoveQuadByObject(ObjectRunner p_object)
-        {
-            //RemoveQuadByList(p_object.Element.QuadsAll);
-            //List<ObjectRunner> childs = p_object.Childs;
-            //for (int i = 0; i < childs.Count; i++)
-            //{
-            //    RemoveQuadByObject(childs[i]);
-            //}
-        }
+    public void OnTransformationEnd(QuadRunner quad)
+    {
+        Transformation.Remove(quad);
+        AddQuad(quad);
+    }
 
-        public void AddQuadByObject(ObjectRunner p_object)
+    public void Collect(Rectangle rect, List<QuadRunner> quads)
+    {
+        quads.AddRange(Transformation);
+        int num = rect.MinXInt < 0 ? rect.MinXInt / CellWidth - 1 : rect.MinXInt / CellWidth;
+        int num2 = rect.MaxXInt < 0 ? rect.MaxXInt / CellWidth - 1 : rect.MaxXInt / CellWidth;
+        int num3 = num - _startXIndex;
+        int num4 = num2 - _startXIndex;
+        int num5 = _columns.Count - 1;
+        if (num3 < 0)
         {
-            //AddQuadByList(p_object.Element.QuadsAll);
-            //List<ObjectRunner> childs = p_object.Childs;
-            //for (int i = 0; i < childs.Count; i++)
-            //{
-            //    AddQuadByObject(childs[i]);
-            //}
+            num3 = 0;
         }
+        if (num3 > num5)
+        {
+        }
+        if (num4 < 0)
+        {
+            num4 = 0;
+        }
+        if (num4 > num5)
+        {
+            num4 = num5;
+        }
+        for (int i = num3; i <= num4; i++)
+        {
+            _columns[i].Collect(rect, quads);
+        }
+    }
 
-        public void OnTransformationStart(QuadRunner p_quad)
+    public void Reset()
+    {
+        foreach (var quad in Transformation)
         {
-            RemoveQuad(p_quad);
-            _Transformation.Add(p_quad);
+            AddQuad(quad);
         }
-
-        public void OnTransformationEnd(QuadRunner p_quad)
-        {
-            _Transformation.Remove(p_quad);
-            AddQuad(p_quad);
-        }
-
-        public void Collect(Rectangle p_rect, List<QuadRunner> p_quads)
-        {
-            p_quads.AddRange(_Transformation);
-            int num = p_rect.MinXInt < 0 ? p_rect.MinXInt / CellWidth - 1 : p_rect.MinXInt / CellWidth;
-            int num2 = p_rect.MaxXInt < 0 ? p_rect.MaxXInt / CellWidth - 1 : p_rect.MaxXInt / CellWidth;
-            int num3 = num - _StartXIndex;
-            int num4 = num2 - _StartXIndex;
-            int num5 = _Columns.Count - 1;
-            if (num3 < 0)
-            {
-                num3 = 0;
-            }
-            if (num3 > num5)
-            {
-            }
-            if (num4 < 0)
-            {
-                num4 = 0;
-            }
-            if (num4 > num5)
-            {
-                num4 = num5;
-            }
-            for (int i = num3; i <= num4; i++)
-            {
-                _Columns[i].Collect(p_rect, p_quads);
-            }
-        }
-
-        public void Reset()
-        {
-            foreach (var quad in Transformation)
-            {
-                AddQuad(quad);
-            }
-            _Transformation.Clear();
-        }
+        Transformation.Clear();
     }
 }

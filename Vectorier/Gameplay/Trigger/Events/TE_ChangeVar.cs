@@ -1,58 +1,49 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Trigger.Events
+namespace Vectorier.Gameplay.Trigger.Events;
+
+public class TE_ChangeVar : TriggerEvent
 {
-    public class TE_ChangeVar : TriggerEvent
+    private bool _isInit;
+
+    private Variable _var;
+
+    private int _oldValue;
+
+    /// <param name="trigger">
+    /// The trigger owning the loop. A watched value such as ?getModel[_$Model].animationName reads the trigger's
+    /// variables ($Model, $Node...), so it needs the trigger (without it TF_Model crashed in InitFuncVar).
+    /// </param>
+    public TE_ChangeVar(XmlNode node, TriggerRunner trigger)
     {
-        private bool _IsInit;
+        _Type = EventType.TET_VAR_CHANGE;
+        _var = Variable.createVariable(node.Attributes["Value"]?.Value ?? string.Empty, string.Empty, trigger);
+    }
 
-        private Variable _Var;
+    private void Init()
+    {
+        _isInit = true;
+        _oldValue = _var.ValueInt;
+    }
 
-        private int _OldValue;
+    public void Reset()
+    {
+        _isInit = false;
+    }
 
-        /// <param name="p_trigger">
-        /// The trigger owning the loop. A watched value such as ?getModel[_$Model].animationName reads the trigger's
-        /// variables ($Model, $Node...), so it needs the trigger (without it TF_Model crashed in InitFuncVar).
-        /// </param>
-        public TE_ChangeVar(XmlNode p_node, TriggerRunner p_trigger)
+    public bool IsChange()
+    {
+        if (!_isInit)
         {
-            _Type = EventType.TET_VAR_CHANGE;
-            _Var = Variable.createVariable(p_node.Attributes["Value"]?.Value ?? string.Empty, string.Empty, p_trigger);
-        }
-
-        private void Init()
-        {
-            _IsInit = true;
-            _OldValue = _Var.ValueInt;
-        }
-
-        public void Reset()
-        {
-            _IsInit = false;
-        }
-
-        public bool IsChange()
-        {
-            if (!_IsInit)
-            {
-                Init();
-                return false;
-            }
-            if (_Parent.ParentTrigger.IsActive)
-            {
-                return _OldValue != _Var.ValueInt;
-            }
+            Init();
             return false;
         }
+        if (_Parent.ParentTrigger.IsActive)
+        {
+            return _oldValue != _var.ValueInt;
+        }
+        return false;
     }
 }

@@ -1,10 +1,9 @@
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using Vectorier.ViewModels.ProjectManager;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.ProjectManager;
 
 namespace Vectorier.Views.ProjectManager;
 

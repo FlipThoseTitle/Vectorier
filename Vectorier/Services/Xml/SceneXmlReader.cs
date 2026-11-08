@@ -148,21 +148,6 @@ public sealed class SceneXmlReader
         }
     }
 
-    /// <summary>Reads an objects/buildings file as a scene (every definition becomes a top-level Object).</summary>
-    public List<SceneElement> ReadObjectsFile(XDocument doc)
-    {
-        var list = new List<SceneElement>();
-        var objects = doc.Root?.Element("Objects");
-        if (objects == null)
-            return list;
-        foreach (var obj in objects.Elements("Object"))
-        {
-            var element = ReadObject(obj, resolveReference: false);
-            list.Add(element);
-        }
-        return list;
-    }
-
     // ================= CONTENT ================= //
 
     public List<SceneElement> ReadContent(XElement content)

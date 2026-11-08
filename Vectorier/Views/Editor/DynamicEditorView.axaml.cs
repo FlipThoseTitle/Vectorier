@@ -1,10 +1,9 @@
-using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Vectorier.Services;
-using Vectorier.ViewModels.Editor;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Editor;
 
 namespace Vectorier.Views.Editor;
 

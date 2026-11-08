@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Vectorier.Models.Scene;
 using Vectorier.Services.IO;
 
@@ -34,8 +33,6 @@ public sealed class ObjectLibrary
         _fs = fileSystem;
         _xmlRoot = xmlRootDirectory;
     }
-
-    public string XmlRoot => _xmlRoot;
 
     /// <summary>Definitions of one file, in file order (used by the Project Window).</summary>
     public async Task<IReadOnlyList<ObjectDefinition>> GetFileDefinitionsAsync(string fileName)

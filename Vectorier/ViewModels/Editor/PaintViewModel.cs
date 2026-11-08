@@ -15,8 +15,8 @@ using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
-using Vectorier.ViewModels.Dialogs;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Dialogs;
 
 namespace Vectorier.ViewModels.Editor;
 

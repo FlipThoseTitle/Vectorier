@@ -10,12 +10,10 @@ using Vectorier.Services.Localization;
 namespace Vectorier.Services.Collab;
 
 /// <summary>
-/// Project files during a session. The project folder is watched; the shared level's own file and the .vectorier
-/// cache are left out (the level is shared live; the cache stays each computer's own).
-/// Host: its changes (imports, edited objects, deletions...) reach everyone automatically.
-/// Participant: its changes become a request; the files go to the host, who approves or declines. Approved: the host
-/// installs them and passes them on to everyone. Declined, or over the 100 MB limit: the participant's files go
-/// back to the host's version.
+/// Syncs project files during a session (the shared level and the .vectorier cache excluded: the level is synced
+/// live, the cache is per computer). The host's changes reach everyone. A participant's changes become a request
+/// the host approves (installed and passed on to everyone) or declines (reverted to the host's version, as are
+/// changes over 100 MB).
 /// </summary>
 public sealed class CollabFileSync : IDisposable
 {

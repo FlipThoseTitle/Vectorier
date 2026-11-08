@@ -10,9 +10,9 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Controls.Scene;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
+using Vectorier.Services.Localization;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
-using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 

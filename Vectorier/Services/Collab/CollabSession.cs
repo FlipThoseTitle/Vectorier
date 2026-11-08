@@ -10,7 +10,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -70,23 +69,15 @@ public sealed partial class CollabSession : ObservableObject
 
     internal void RaiseNotice(string text) => Notice?.Invoke(text);
 
-    private EditorViewModel? _editor;
-    private CollabLevelSync? _sync;
     private CollabFileSync? _files;
     private string _projectRoot = string.Empty;
     private string _levelPath = string.Empty;
     private DispatcherTimer? _presenceTimer;
     private PresenceMsg? _lastPresence;
 
-    public EditorViewModel? Editor => _editor;
+    public EditorViewModel? Editor { get; private set; }
 
-    public CollabLevelSync? LevelSync => _sync;
-
-    /// <summary>The project's folder on this computer (native path).</summary>
-    public string ProjectRoot => _projectRoot;
-
-    /// <summary>The shared level's file, relative to the project folder.</summary>
-    public string LevelPath => _levelPath;
+    public CollabLevelSync? LevelSync { get; private set; }
 
     internal static string SafeName(string name)
     {
@@ -119,10 +110,10 @@ public sealed partial class CollabSession : ObservableObject
 
     private void AttachEditor(EditorViewModel editor, string projectRoot, string levelPath)
     {
-        _editor = editor;
+        Editor = editor;
         _projectRoot = projectRoot;
         _levelPath = levelPath;
-        _sync = new CollabLevelSync(editor, MyId, OnLocalOps);
+        LevelSync = new CollabLevelSync(editor, MyId, OnLocalOps);
         editor.IsSelectionBlocked = IsBlockedByOthers;
         _presenceTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) => SendPresence());
         _presenceTimer.Start();
@@ -134,14 +125,14 @@ public sealed partial class CollabSession : ObservableObject
         _presenceTimer = null;
         _files?.Dispose();
         _files = null;
-        _sync?.Dispose();
-        _sync = null;
-        if (_editor != null)
+        LevelSync?.Dispose();
+        LevelSync = null;
+        if (Editor != null)
         {
-            _editor.IsSelectionBlocked = null;
-            _editor.SceneChangedByCollab();
+            Editor.IsSelectionBlocked = null;
+            Editor.SceneChangedByCollab();
         }
-        _editor = null;
+        Editor = null;
         _lastPresence = null;
         Presence.Clear();
         PresenceChanged?.Invoke();
@@ -163,11 +154,11 @@ public sealed partial class CollabSession : ObservableObject
 
     private void SendPresence()
     {
-        if (_editor == null || !IsActive)
+        if (Editor == null || !IsActive)
             return;
-        var center = _editor.ScenePointer ?? _editor.SceneViewCenter;
+        var center = Editor.ScenePointer ?? Editor.SceneViewCenter;
         var presence = new PresenceMsg(MyId, Math.Round(center.X, 1), Math.Round(center.Y, 1),
-            _editor.Selection.Select(e => e.SyncId).Where(id => id != 0).ToList(), _editor.DynamicEditorRoots());
+            Editor.Selection.Select(e => e.SyncId).Where(id => id != 0).ToList(), Editor.DynamicEditorRoots());
         if (_lastPresence is { } last && last.X == presence.X && last.Y == presence.Y
             && last.Selection.SequenceEqual(presence.Selection) && last.DynamicRoots.SequenceEqual(presence.DynamicRoots))
             return;
@@ -183,7 +174,7 @@ public sealed partial class CollabSession : ObservableObject
         Presence[presence.User] = presence;
         // Someone just started editing a hierarchy in their Dynamic Editor: it is let go here.
         if (presence.DynamicRoots.Count > 0)
-            _editor?.DropBlockedSelection();
+            Editor?.DropBlockedSelection();
         PresenceChanged?.Invoke();
     }
 
@@ -249,12 +240,11 @@ public sealed partial class CollabSession : ObservableObject
     private long _sequence;
     private string _projectKey = string.Empty;
     private ProjectInfo? _project;
-    private Dictionary<string, ManifestEntry> _manifest = new(StringComparer.Ordinal);
     private readonly Queue<Peer> _approvals = new();
     private bool _approving;
 
     /// <summary>The host's current list of project files (kept up to date while the session runs).</summary>
-    internal Dictionary<string, ManifestEntry> Manifest => _manifest;
+    internal Dictionary<string, ManifestEntry> Manifest { get; private set; } = new(StringComparer.Ordinal);
 
     public async Task StartAsync(EditorViewModel editor, string userName, string address, int port)
     {
@@ -271,7 +261,7 @@ public sealed partial class CollabSession : ObservableObject
         CollabProjectFiles.Recover(root);
         _project = editor.Project;
         _projectKey = CollabProjectLink.HostKey(root);
-        _manifest = await CollabProjectFiles.BuildManifestAsync(root);
+        Manifest = await CollabProjectFiles.BuildManifestAsync(root);
         _certificate = CollabCertificate.Create();
         _secret = RandomNumberGenerator.GetBytes(CollabCode.SecretLength);
 
@@ -300,8 +290,8 @@ public sealed partial class CollabSession : ObservableObject
         Code = new CollabCode(address, port, CollabCertificate.Fingerprint(_certificate), _secret).ToString();
         Role = CollabRole.Host;
         AttachEditor(editor, root, levelPath);
-        _sync!.AssignIds();
-        _sync.Flush();
+        LevelSync!.AssignIds();
+        LevelSync.Flush();
         _files = new CollabFileSync(this, root, levelPath, isHost: true);
 
         _ = AcceptLoopAsync(listener, _hostCts.Token);
@@ -378,8 +368,8 @@ public sealed partial class CollabSession : ObservableObject
                     ActivatePeer(peer);
                     break;
                 case (PeerState.Active, OpsMsg ops):
-                    _sync?.Flush();
-                    _sync?.ApplyRemote(ops.Ops);
+                    LevelSync?.Flush();
+                    LevelSync?.ApplyRemote(ops.Ops);
                     HostPublish(ops.Ops, peer.Id, ops.Batch, alreadyApplied: true);
                     break;
                 case (PeerState.Active, PresenceMsg presence):
@@ -471,9 +461,9 @@ public sealed partial class CollabSession : ObservableObject
                 }
                 peer.State = PeerState.Syncing;
                 peer.Color = RandomColor(peer.Id);
-                peer.Connection.Send(new AcceptedMsg(peer.Id, _project!.Name, _projectKey, _editor!.Document.LevelName, _levelPath));
+                peer.Connection.Send(new AcceptedMsg(peer.Id, _project!.Name, _projectKey, Editor!.Document.LevelName, _levelPath));
                 // The whole project's list: the participant downloads only what it lacks or has differently.
-                peer.Connection.Send(new ManifestMsg(_manifest.Values.ToList()));
+                peer.Connection.Send(new ManifestMsg(Manifest.Values.ToList()));
             }
         }
         finally
@@ -489,7 +479,7 @@ public sealed partial class CollabSession : ObservableObject
         foreach (var path in paths.Distinct())
         {
             // Only files of the shared project, as listed: nothing else on this computer can be asked for.
-            if (!_manifest.TryGetValue(path, out var entry) || !CollabProjectFiles.IsSafe(_projectRoot, path))
+            if (!Manifest.TryGetValue(path, out var entry) || !CollabProjectFiles.IsSafe(_projectRoot, path))
             {
                 _ = peer.Connection.CloseWithAsync(new ClosedMsg("invalid"));
                 return;
@@ -514,8 +504,8 @@ public sealed partial class CollabSession : ObservableObject
 
     private void ActivatePeer(Peer peer)
     {
-        _sync?.Flush();
-        var snapshot = _sync?.Snapshot() ?? new List<LevelOp>();
+        LevelSync?.Flush();
+        var snapshot = LevelSync?.Snapshot() ?? new List<LevelOp>();
         peer.Connection.Send(new LevelMsg(_sequence), Compress(snapshot));
         peer.State = PeerState.Active;
         Users.Add(new CollabUser(peer.Id, peer.Name, peer.Color, false));
@@ -632,11 +622,11 @@ public sealed partial class CollabSession : ObservableObject
                     _pending.RemoveAll(p => p.Batch <= ops.Batch); // the host has it, in its place
                     break;
                 case OpsMsg ops:
-                    _sync?.Flush();
-                    _sync?.ApplyRemote(ops.Ops);
+                    LevelSync?.Flush();
+                    LevelSync?.ApplyRemote(ops.Ops);
                     // Own edits the host has not confirmed yet stay on top until it does.
                     if (_pending.Count > 0)
-                        _sync?.Reapply(_pending.SelectMany(p => p.Ops));
+                        LevelSync?.Reapply(_pending.SelectMany(p => p.Ops));
                     break;
                 case PresenceMsg presence when double.IsNaN(presence.X):
                     Presence.Remove(presence.User);
@@ -688,7 +678,7 @@ public sealed partial class CollabSession : ObservableObject
         _ending = true;
         _connection?.Close(null);
         _connection = null;
-        var editor = _editor;
+        var editor = Editor;
         DetachEditor();
         Role = CollabRole.None;
         Code = null;
@@ -731,7 +721,7 @@ public sealed partial class CollabSession : ObservableObject
     /// <summary>The shared editor is closing (already confirmed): the session ends with it.</summary>
     public void EditorClosed(EditorViewModel editor)
     {
-        if (ReferenceEquals(editor, _editor))
+        if (ReferenceEquals(editor, Editor))
             _ = EndAsync();
     }
 }

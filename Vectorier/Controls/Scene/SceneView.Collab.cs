@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Vectorier.Models.Scene;
@@ -40,7 +38,7 @@ public sealed partial class SceneView
 
     private void RenderCollabSelections(DrawingContext context, SceneViewport viewport)
     {
-        if (_renderer == null || _editor == null || CollabSession.Current.LevelSync is not { } sync)
+        if (Renderer == null || _editor == null || CollabSession.Current.LevelSync is not { } sync)
             return;
         foreach (var (user, presence) in Others())
         {
@@ -53,7 +51,7 @@ public sealed partial class SceneView
                     elements.Add(element);
             }
             if (elements.Count > 0)
-                _renderer.RenderSelection(context, viewport, elements, PresencePaint(user.Color).Pen);
+                Renderer.RenderSelection(context, viewport, elements, PresencePaint(user.Color).Pen);
         }
     }
 

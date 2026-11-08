@@ -10,15 +10,11 @@ namespace Vectorier.Services.IO;
 /// <summary>System.IO implementation used by the desktop builds.</summary>
 public sealed class NativeFileSystem : IFileSystem
 {
-    private readonly string _root;
-
     public NativeFileSystem(string root)
     {
-        _root = Path.GetFullPath(root);
+        RootDisplayName = Path.GetFullPath(root);
     }
-
-    public string RootPath => _root;
-    public string RootDisplayName => _root;
+    public string RootDisplayName { get; }
     public bool SupportsNativePaths => true;
 
     private static readonly bool CaseSensitive = !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS();
@@ -26,7 +22,7 @@ public sealed class NativeFileSystem : IFileSystem
     private string Full(string path)
     {
         string normalized = VPath.Normalize(path);
-        string full = normalized.Length == 0 ? _root : Path.Combine(_root, normalized.Replace('/', Path.DirectorySeparatorChar));
+        string full = normalized.Length == 0 ? RootDisplayName : Path.Combine(RootDisplayName, normalized.Replace('/', Path.DirectorySeparatorChar));
         return CaseSensitive ? ResolveCase(full) : full;
     }
 
@@ -35,7 +31,7 @@ public sealed class NativeFileSystem : IFileSystem
     {
         string normalized = VPath.Normalize(path);
         string dir = Full(VPath.GetDirectory(normalized));
-        return normalized.Length == 0 ? _root : Path.Combine(dir, VPath.GetFileName(normalized));
+        return normalized.Length == 0 ? RootDisplayName : Path.Combine(dir, VPath.GetFileName(normalized));
     }
 
     /// <summary>
@@ -45,10 +41,10 @@ public sealed class NativeFileSystem : IFileSystem
     /// </summary>
     private string ResolveCase(string full)
     {
-        if (File.Exists(full) || Directory.Exists(full) || !full.StartsWith(_root, StringComparison.Ordinal))
+        if (File.Exists(full) || Directory.Exists(full) || !full.StartsWith(RootDisplayName, StringComparison.Ordinal))
             return full;
-        string current = _root;
-        var parts = full[_root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        string current = RootDisplayName;
+        var parts = full[RootDisplayName.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
         for (int i = 0; i < parts.Length; i++)
         {
             string exact = Path.Combine(current, parts[i]);
@@ -78,7 +74,7 @@ public sealed class NativeFileSystem : IFileSystem
         return current;
     }
 
-    private string Relative(string full) => VPath.Normalize(Path.GetRelativePath(_root, full));
+    private string Relative(string full) => VPath.Normalize(Path.GetRelativePath(RootDisplayName, full));
 
     public Task<bool> FileExistsAsync(string path) => Task.FromResult(File.Exists(Full(path)));
 
@@ -207,7 +203,7 @@ public sealed class NativeFileSystem : IFileSystem
     public string? TryGetRelativePath(string nativePath)
     {
         string full = Path.GetFullPath(nativePath);
-        string relative = Path.GetRelativePath(_root, full);
+        string relative = Path.GetRelativePath(RootDisplayName, full);
         if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
             return null;
         return VPath.Normalize(relative);

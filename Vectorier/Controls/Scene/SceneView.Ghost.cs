@@ -32,7 +32,7 @@ public sealed partial class SceneView
         var key = (type.Value, identity ?? (object?)source?.TextureName ?? source?.ModelName ?? (object?)source?.Definition ?? source?.Trigger ?? (object?)source?.Area ?? source?.ItemType);
         if (_ghost == null || !Equals(_ghostKey, key))
         {
-            _renderer?.ForgetGhost();
+            Renderer?.ForgetGhost();
             _ghost = _editor.BuildPlacementGhost(type.Value, level, source);
             _ghostKey = _ghost == null ? null : key;
             if (_ghost == null)
@@ -70,7 +70,7 @@ public sealed partial class SceneView
         {
             _ghostLoading = false;
         }
-        if (_pointerInside && _mode == InteractionMode.None && _editor.PlacementType is { } t)
+        if (IsPointerInside && _mode == InteractionMode.None && _editor.PlacementType is { } t)
             UpdateGhost(_lastPointer, t, _editor.ProjectWindow.CurrentSource, _editor.ProjectWindow.SelectedItem);
     }
 
@@ -81,7 +81,7 @@ public sealed partial class SceneView
         _ghost = null;
         _ghostKey = null;
         _ghostFromDrag = false;
-        _renderer?.ForgetGhost();
+        Renderer?.ForgetGhost();
         InvalidateVisual();
     }
 
@@ -96,13 +96,13 @@ public sealed partial class SceneView
 
     private void RenderPlacementGhost(DrawingContext context, SceneViewport viewport)
     {
-        if (_ghost == null || _renderer == null)
+        if (_ghost == null || Renderer == null)
             return;
         if (_mode == InteractionMode.PlaceDrag)
             return; // the dragged rectangle replaces it
         try
         {
-            _renderer.RenderGhost(context, viewport, _ghost, GhostOpacity, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, cached: true);
+            Renderer.RenderGhost(context, viewport, _ghost, GhostOpacity, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, cached: true);
         }
         catch (Exception ex)
         {

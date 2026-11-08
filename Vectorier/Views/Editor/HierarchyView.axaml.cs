@@ -8,8 +8,8 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Vectorier.Controls;
 using Vectorier.Models.Scene;
-using Vectorier.ViewModels.Editor;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Editor;
 
 namespace Vectorier.Views.Editor;
 

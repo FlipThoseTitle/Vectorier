@@ -1,77 +1,67 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Node;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Controllers
+namespace Vectorier.Gameplay.Controllers;
+
+public class ControllerAreas
 {
-    public class ControllerAreas
+    private ModelHuman _model;
+
+    private ModelNode _comNode;
+
+    public List<AreaRunner> ActiveAreas { get; } = new List<AreaRunner>();
+
+    public ControllerAreas(ModelHuman model)
     {
-        private ModelHuman _Model;
+        _model = model;
+        _comNode = model.GetNode("COM");
+    }
 
-        private ModelNode _ComNode;
+    private bool IsInside(AreaRunner value)
+    {
+        return value.Hit(_comNode.Start);
+    }
 
-        private List<AreaRunner> _ActiveAreas = new List<AreaRunner>();
+    private bool IsActive(AreaRunner value)
+    {
+        return ActiveAreas.Contains(value);
+    }
 
-        public List<AreaRunner> ActiveAreas => _ActiveAreas;
+    private void Activate(AreaRunner value)
+    {
+        ActiveAreas.Add(value);
+        value.Activate(_model);
+        _model.OnActiveArea(value);
+    }
 
-        public ControllerAreas(ModelHuman model)
+    private void Deactivate(AreaRunner value)
+    {
+        _model.CheckDelayAction(value);
+        value.Deactivate(_model);
+        ActiveAreas.Remove(value);
+    }
+
+    public void Check(AreaRunner value)
+    {
+        bool flag = IsInside(value);
+        if (IsActive(value))
         {
-            _Model = model;
-            _ComNode = model.GetNode("COM");
-        }
-
-        private bool IsInside(AreaRunner p_value)
-        {
-            return p_value.Hit(_ComNode.Start);
-        }
-
-        private bool IsActive(AreaRunner p_value)
-        {
-            return ActiveAreas.Contains(p_value);
-        }
-
-        private void Activate(AreaRunner p_value)
-        {
-            _ActiveAreas.Add(p_value);
-            p_value.Activate(_Model);
-            _Model.OnActiveArea(p_value);
-        }
-
-        private void Deactivate(AreaRunner p_value)
-        {
-            _Model.CheckDelayAction(p_value);
-            p_value.Deactivate(_Model);
-            _ActiveAreas.Remove(p_value);
-        }
-
-        public void Check(AreaRunner p_value)
-        {
-            bool flag = IsInside(p_value);
-            if (IsActive(p_value))
+            if (!flag)
             {
-                if (!flag)
-                {
-                    Deactivate(p_value);
-                }
-            }
-            else if (flag)
-            {
-                Activate(p_value);
+                Deactivate(value);
             }
         }
-
-        public void Reset()
+        else if (flag)
         {
-            _ActiveAreas.Clear();
+            Activate(value);
         }
+    }
+
+    public void Reset()
+    {
+        ActiveAreas.Clear();
     }
 }

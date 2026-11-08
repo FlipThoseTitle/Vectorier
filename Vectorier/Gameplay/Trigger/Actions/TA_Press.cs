@@ -1,57 +1,48 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Controllers;
 using Vectorier.Gameplay.Models;
 
-namespace Vectorier.Gameplay.Trigger.Actions
+namespace Vectorier.Gameplay.Trigger.Actions;
+
+public class TA_Press : TriggerAction
 {
-    public class TA_Press : TriggerAction
+    private Variable _modelNameVar;
+
+    private Variable _keyVar;
+
+    private TA_Press(TA_Press copyAction)
+        : base(copyAction._ParentLoop)
     {
-        private Variable _ModelNameVar;
+        _keyVar = copyAction._keyVar;
+        _modelNameVar = copyAction._modelNameVar;
+    }
 
-        private Variable _KeyVar;
+    public TA_Press(XmlNode node, TriggerLoop parent)
+        : base(parent)
+    {
+        InitActionVar(parent.ParentTrigger, ref _keyVar, node.Attributes["Key"].Value);
+        InitActionVar(parent.ParentTrigger, ref _modelNameVar, node.Attributes["Model"].Value);
+    }
 
-        private TA_Press(TA_Press p_copyAction)
-            : base(p_copyAction._ParentLoop)
+    public override void Activate(ref bool isRunNext)
+    {
+        isRunNext = true;
+        string valueString = _modelNameVar.ValueString;
+        ModelHuman model = GetModel(valueString);
+        if (model != null)
         {
-            _KeyVar = p_copyAction._KeyVar;
-            _ModelNameVar = p_copyAction._ModelNameVar;
+            model.ControllerKeys.SetKeyVariable_force(new KeyVariables(_keyVar.ValueString));
         }
+    }
 
-        public TA_Press(XmlNode p_node, TriggerLoop p_parent)
-            : base(p_parent)
-        {
-            InitActionVar(p_parent.ParentTrigger, ref _KeyVar, p_node.Attributes["Key"].Value);
-            InitActionVar(p_parent.ParentTrigger, ref _ModelNameVar, p_node.Attributes["Model"].Value);
-        }
+    public override TriggerAction Copy()
+    {
+        return new TA_Press(this);
+    }
 
-        public override void Activate(ref bool p_isRunNext)
-        {
-            p_isRunNext = true;
-            string valueString = _ModelNameVar.ValueString;
-            ModelHuman model = GetModel(valueString);
-            if (model != null)
-            {
-                model.ControllerKeys.SetKeyVariable_force(new KeyVariables(_KeyVar.ValueString));
-            }
-        }
-
-        public override TriggerAction Copy()
-        {
-            return new TA_Press(this);
-        }
-
-        public override string ToString()
-        {
-            return "Press Model=" + _ModelNameVar.DebugStringValue + " Key=" + _KeyVar.DebugStringValue;
-        }
+    public override string ToString()
+    {
+        return "Press Model=" + _modelNameVar.DebugStringValue + " Key=" + _keyVar.DebugStringValue;
     }
 }

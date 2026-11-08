@@ -1,65 +1,56 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Trigger.Actions
+namespace Vectorier.Gameplay.Trigger.Actions;
+
+public class TA_ForceAnimation : TriggerAction
 {
-    public class TA_ForceAnimation : TriggerAction
+    private Variable _framesVar;
+
+    private Variable _nameVar;
+
+    private Variable _modelNameVar;
+
+    private Variable _directionVar;
+
+    private TA_ForceAnimation(TA_ForceAnimation copyAction)
+        : base(copyAction._ParentLoop)
     {
-        private Variable _FramesVar;
+        _framesVar = copyAction._framesVar;
+        _nameVar = copyAction._nameVar;
+        _modelNameVar = copyAction._modelNameVar;
+        _directionVar = copyAction._directionVar;
+    }
 
-        private Variable _NameVar;
+    public TA_ForceAnimation(XmlNode node, TriggerLoop parent)
+        : base(parent)
+    {
+        InitActionVar(parent.ParentTrigger, ref _framesVar, node.Attributes["Frame"].ParseString("-1"));
+        InitActionVar(parent.ParentTrigger, ref _nameVar, node.Attributes["Name"].ParseString());
+        InitActionVar(parent.ParentTrigger, ref _modelNameVar, node.Attributes["Model"].ParseString());
+        InitActionVar(parent.ParentTrigger, ref _directionVar, node.Attributes["Reversed"].ParseString("0"));
+    }
 
-        private Variable _ModelNameVar;
-
-        private Variable _DirectionVar;
-
-        private TA_ForceAnimation(TA_ForceAnimation p_copyAction)
-            : base(p_copyAction._ParentLoop)
+    public override void Activate(ref bool isRunNext)
+    {
+        isRunNext = true;
+        string valueString = _modelNameVar.ValueString;
+        ModelHuman model = GetModel(valueString);
+        if (model != null)
         {
-            _FramesVar = p_copyAction._FramesVar;
-            _NameVar = p_copyAction._NameVar;
-            _ModelNameVar = p_copyAction._ModelNameVar;
-            _DirectionVar = p_copyAction._DirectionVar;
+            model.PlayAnimation(_nameVar.ValueString, _directionVar.ValueInt == 1, _framesVar.ValueInt);
         }
+    }
 
-        public TA_ForceAnimation(XmlNode p_node, TriggerLoop p_parent)
-            : base(p_parent)
-        {
-            InitActionVar(p_parent.ParentTrigger, ref _FramesVar, p_node.Attributes["Frame"].ParseString("-1"));
-            InitActionVar(p_parent.ParentTrigger, ref _NameVar, p_node.Attributes["Name"].ParseString());
-            InitActionVar(p_parent.ParentTrigger, ref _ModelNameVar, p_node.Attributes["Model"].ParseString());
-            InitActionVar(p_parent.ParentTrigger, ref _DirectionVar, p_node.Attributes["Reversed"].ParseString("0"));
-        }
+    public override TriggerAction Copy()
+    {
+        return new TA_ForceAnimation(this);
+    }
 
-        public override void Activate(ref bool p_isRunNext)
-        {
-            p_isRunNext = true;
-            string valueString = _ModelNameVar.ValueString;
-            ModelHuman model = GetModel(valueString);
-            if (model != null)
-            {
-                model.PlayAnimation(_NameVar.ValueString, _DirectionVar.ValueInt == 1, _FramesVar.ValueInt);
-            }
-        }
-
-        public override TriggerAction Copy()
-        {
-            return new TA_ForceAnimation(this);
-        }
-
-        public override string ToString()
-        {
-            return "ForceAnimation Model=" + _ModelNameVar.DebugStringValue + " Name=" + _NameVar.DebugStringValue + " Frame=" + _FramesVar.DebugStringValue + " Revers=" + _DirectionVar.DebugStringValue;
-        }
+    public override string ToString()
+    {
+        return "ForceAnimation Model=" + _modelNameVar.DebugStringValue + " Name=" + _nameVar.DebugStringValue + " Frame=" + _framesVar.DebugStringValue + " Revers=" + _directionVar.DebugStringValue;
     }
 }

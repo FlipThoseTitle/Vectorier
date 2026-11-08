@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -218,40 +217,40 @@ public sealed class ObjectPreview : Control
             switch (e)
             {
                 case ImageElement image:
-                {
-                    var m = image.GetBasis();
-                    var matrix = new Matrix(m.Item1, m.Item2, m.Item3, m.Item4, image.X + o.X, image.Y + o.Y) * fit;
-                    // On-screen width of the image decides the decode width of its texture.
-                    double px = Math.Sqrt(matrix.M11 * matrix.M11 + matrix.M12 * matrix.M12) * scaling;
-                    complete &= DrawTexture(context, library, image.ClassName, matrix, px, image.Color.A / 255.0);
-                    break;
-                }
-                case AnimationElement or ParticleElement:
-                {
-                    var matrix = new Matrix(e.Width, 0, 0, e.Height, e.X + o.X, e.Y + o.Y) * fit;
-                    complete &= DrawTexture(context, library, e.Name, matrix, matrix.M11 * scaling, 1);
-                    break;
-                }
-                default:
-                {
-                    IBrush fill = e switch
                     {
-                        TriggerElement => TriggerFill,
-                        AreaElement => AreaFill,
-                        PlatformElement or TrapezoidElement => CollisionFill,
-                        _ => OtherFill,
-                    };
-                    var corners = e.GetLocalCorners();
-                    var geometry = new StreamGeometry();
-                    using (var g = geometry.Open())
-                    {
-                        g.BeginFigure(new Point(corners[0].X + o.X, corners[0].Y + o.Y).Transform(fit), true);
-                        for (int i = 1; i < corners.Length; i++) g.LineTo(new Point(corners[i].X + o.X, corners[i].Y + o.Y).Transform(fit));
-                        g.EndFigure(true);
+                        var m = image.GetBasis();
+                        var matrix = new Matrix(m.Item1, m.Item2, m.Item3, m.Item4, image.X + o.X, image.Y + o.Y) * fit;
+                        // On-screen width of the image decides the decode width of its texture.
+                        double px = Math.Sqrt(matrix.M11 * matrix.M11 + matrix.M12 * matrix.M12) * scaling;
+                        complete &= DrawTexture(context, library, image.ClassName, matrix, px, image.Color.A / 255.0);
+                        break;
                     }
-                    context.DrawGeometry(fill, null, geometry);
-                    break;
-                }
+                case AnimationElement or ParticleElement:
+                    {
+                        var matrix = new Matrix(e.Width, 0, 0, e.Height, e.X + o.X, e.Y + o.Y) * fit;
+                        complete &= DrawTexture(context, library, e.Name, matrix, matrix.M11 * scaling, 1);
+                        break;
+                    }
+                default:
+                    {
+                        IBrush fill = e switch
+                        {
+                            TriggerElement => TriggerFill,
+                            AreaElement => AreaFill,
+                            PlatformElement or TrapezoidElement => CollisionFill,
+                            _ => OtherFill,
+                        };
+                        var corners = e.GetLocalCorners();
+                        var geometry = new StreamGeometry();
+                        using (var g = geometry.Open())
+                        {
+                            g.BeginFigure(new Point(corners[0].X + o.X, corners[0].Y + o.Y).Transform(fit), true);
+                            for (int i = 1; i < corners.Length; i++) g.LineTo(new Point(corners[i].X + o.X, corners[i].Y + o.Y).Transform(fit));
+                            g.EndFigure(true);
+                        }
+                        context.DrawGeometry(fill, null, geometry);
+                        break;
+                    }
             }
         }
         return complete;

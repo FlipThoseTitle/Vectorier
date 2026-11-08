@@ -7,9 +7,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
+using Vectorier.Services.Localization;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.ProjectManager;
-using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -19,12 +19,9 @@ namespace Vectorier.ViewModels.Editor;
 /// </summary>
 public sealed partial class InspectorViewModel : ObservableObject
 {
-    private readonly EditorViewModel _editor;
-    private SceneElement? _target;
-
     public InspectorViewModel(EditorViewModel editor)
     {
-        _editor = editor;
+        Editor = editor;
         editor.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(EditorViewModel.ActiveElement))
@@ -43,11 +40,11 @@ public sealed partial class InspectorViewModel : ObservableObject
         };
     }
 
-    public EditorViewModel Editor => _editor;
+    public EditorViewModel Editor { get; }
 
-    public SceneElement? Target => _target;
+    public SceneElement? Target { get; private set; }
 
-    public bool HasTarget => _target != null;
+    public bool HasTarget => Target != null;
 
     public static IReadOnlyList<string> LayerNames => Layers.Names;
     public static IReadOnlyList<ModeSelection> SelectionModes { get; } = Enum.GetValues<ModeSelection>();
@@ -66,14 +63,14 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     private void SetTarget(SceneElement? element)
     {
-        if (ReferenceEquals(element, _target))
+        if (ReferenceEquals(element, Target))
             return;
         TargetChanging?.Invoke();
-        if (_target != null)
-            _target.PropertyChanged -= OnTargetChanged;
-        _target = element;
-        if (_target != null)
-            _target.PropertyChanged += OnTargetChanged;
+        if (Target != null)
+            Target.PropertyChanged -= OnTargetChanged;
+        Target = element;
+        if (Target != null)
+            Target.PropertyChanged += OnTargetChanged;
         OnPropertyChanged(string.Empty);
         if (element is SpawnElement)
             _ = EnsureMovesAsync();
@@ -87,13 +84,13 @@ public sealed partial class InspectorViewModel : ObservableObject
     {
         get
         {
-            int count = _editor.Selection.Count(e => e is ImageElement);
+            int count = Editor.Selection.Count(e => e is ImageElement);
             return count > 1 ? Loc.F("Merge & Edit {0} Images", count) : Loc.T("Edit Image");
         }
     }
 
     [RelayCommand]
-    private System.Threading.Tasks.Task EditImage() => _editor.Paint.EditSelectionAsync();
+    private System.Threading.Tasks.Task EditImage() => Editor.Paint.EditSelectionAsync();
 
     // ================= SPAWN ================= //
 
@@ -105,7 +102,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     private async System.Threading.Tasks.Task EnsureMovesAsync()
     {
-        var project = _editor.Project;
+        var project = Editor.Project;
         if (_movesProject == project.Path)
             return;
         _movesProject = project.Path;
@@ -152,10 +149,10 @@ public sealed partial class InspectorViewModel : ObservableObject
             await AppServices.Dialogs.ShowMessageAsync(Loc.T("Spawn Animation"), Loc.F("'{0}' has no FileName in moves.xml.", move), MessageKind.Warning);
             return;
         }
-        var project = _editor.Project;
+        var project = Editor.Project;
         var result = await ViewModels.Preview.CharacterPreviewViewModel.ShowAsync(project, Loc.F("Preview - {0} ({1})", move, file),
             new[] { Services.Assets.CharacterModel.DefaultSkin }, ViewModels.Preview.CharacterPreviewViewModel.AnimationPath(project, file), spawn.StartFrame, showApply: true, applyText: Loc.T("Set Start Frame"));
-        if (result != null && ReferenceEquals(_target, spawn))
+        if (result != null && ReferenceEquals(Target, spawn))
             spawn.StartFrame = result.StartFrame;
     }
 
@@ -195,16 +192,16 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public static IReadOnlyList<Services.Assets.PlatformSurfaceType> SurfaceTypes { get; } = Enum.GetValues<Services.Assets.PlatformSurfaceType>();
 
-    public bool IsPlatform => _target is PlatformElement;
-    private Services.Assets.PlatformSurfaceSettings? Surface => (_target as PlatformElement)?.Surface;
+    public bool IsPlatform => Target is PlatformElement;
+    private Services.Assets.PlatformSurfaceSettings? Surface => (Target as PlatformElement)?.Surface;
     public bool HasSurface => Surface != null;
-    public bool CanAddSurface => _target is PlatformElement { Surface: null };
+    public bool CanAddSurface => Target is PlatformElement { Surface: null };
 
     /// <summary>Selected platforms that have a surface (edits apply to all of them, like Unity's multi-object editing).</summary>
     private List<PlatformElement> SurfaceTargets()
     {
-        var list = _editor.Selection.OfType<PlatformElement>().Where(p => p.Surface != null).ToList();
-        if (_target is PlatformElement { Surface: not null } t && !list.Contains(t))
+        var list = Editor.Selection.OfType<PlatformElement>().Where(p => p.Surface != null).ToList();
+        if (Target is PlatformElement { Surface: not null } t && !list.Contains(t))
             list.Add(t);
         return list;
     }
@@ -277,39 +274,39 @@ public sealed partial class InspectorViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async System.Threading.Tasks.Task RebuildSurface() => await _editor.RebuildSurfaceAsync(SurfaceTargets());
+    private async System.Threading.Tasks.Task RebuildSurface() => await Editor.RebuildSurfaceAsync(SurfaceTargets());
 
     [RelayCommand]
     private void RemoveSurface()
     {
         foreach (var platform in SurfaceTargets())
-            _editor.RemoveSurface(platform);
+            Editor.RemoveSurface(platform);
     }
 
     [RelayCommand]
     private async System.Threading.Tasks.Task AddSurface(Services.Assets.PlatformSurfaceType type)
     {
-        if (_target is PlatformElement { Surface: null } platform)
-            await _editor.AddSurfaceAsync(platform, type);
+        if (Target is PlatformElement { Surface: null } platform)
+            await Editor.AddSurfaceAsync(platform, type);
     }
 
     // ================= HEADER ================= //
 
-    public string Header => _target switch
+    public string Header => Target switch
     {
         null => string.Empty,
         BuildingMarkerElement marker => marker.IsIn ? Loc.T("Building In") : Loc.T("Building Out"),
-        { Type: ElementType.Unknown } => $"<{_target.Name}>",
-        _ => _target.Type.ToString(),
+        { Type: ElementType.Unknown } => $"<{Target.Name}>",
+        _ => Target.Type.ToString(),
     };
 
-    public StreamGeometry? Icon => _target == null ? null : ElementTypeInfo.GetIcon(_target.Type);
+    public StreamGeometry? Icon => Target == null ? null : ElementTypeInfo.GetIcon(Target.Type);
 
-    public string SelectionNote => _editor.Selection.Count > 1 ? Loc.F("{0} elements selected; showing the last one.", _editor.Selection.Count) : string.Empty;
+    public string SelectionNote => Editor.Selection.Count > 1 ? Loc.F("{0} elements selected; showing the last one.", Editor.Selection.Count) : string.Empty;
 
-    public bool NameEditable => _target?.NameEditable == true;
+    public bool NameEditable => Target?.NameEditable == true;
 
-    public string NameTip => _target switch
+    public string NameTip => Target switch
     {
         AreaElement { IsTrick: true } => Loc.T("Named after its trick (set automatically)"),
         _ => Loc.T("Rename it in the Project Window"),
@@ -317,95 +314,95 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public string Name
     {
-        get => _target?.Name ?? string.Empty;
+        get => Target?.Name ?? string.Empty;
         set
         {
-            if (_target == null || !_target.NameEditable || _target.Name == value)
+            if (Target == null || !Target.NameEditable || Target.Name == value)
                 return;
-            if (_target is ObjectElement { Children.Count: > 0 } && _editor.ResolveDefinitionName(value) != null)
+            if (Target is ObjectElement { Children.Count: > 0 } && Editor.ResolveDefinitionName(value) != null)
             {
                 // Objects with a definition cannot have children: a group keeps its name.
-                _editor.StatusText = Loc.F("'{0}' is an object definition; an Object with children cannot use its name.", value);
+                Editor.StatusText = Loc.F("'{0}' is an object definition; an Object with children cannot use its name.", value);
                 OnPropertyChanged();
                 return;
             }
-            _target.Name = value;
+            Target.Name = value;
         }
     }
 
     // ================= TRANSFORM ================= //
 
-    public bool IsInteger => _target?.IntegerTransform == true;
+    public bool IsInteger => Target?.IntegerTransform == true;
 
     private double Snap(double value) => IsInteger ? Math.Round(value) : value;
 
     public double PosX
     {
-        get => _target?.X ?? 0;
+        get => Target?.X ?? 0;
         set
         {
-            if (_target == null || double.IsNaN(value)) return;
-            _target.X = Snap(value);
+            if (Target == null || double.IsNaN(value)) return;
+            Target.X = Snap(value);
         }
     }
 
     /// <summary>Displayed with Y growing upward (Vector's Y grows downward).</summary>
     public double PosY
     {
-        get => -(_target?.Y ?? 0);
+        get => -(Target?.Y ?? 0);
         set
         {
-            if (_target == null || double.IsNaN(value)) return;
-            _target.Y = Snap(-value);
+            if (Target == null || double.IsNaN(value)) return;
+            Target.Y = Snap(-value);
         }
     }
 
-    public bool CanRotate => _target is ImageElement;
+    public bool CanRotate => Target is ImageElement;
 
     /// <summary>Counter-clockwise degrees (the XML matrix turns clockwise for positive angles).</summary>
     public double Rotation
     {
-        get => _target is ImageElement image ? -image.Rotation : 0;
+        get => Target is ImageElement image ? -image.Rotation : 0;
         set
         {
-            if (_target is ImageElement image && !double.IsNaN(value))
+            if (Target is ImageElement image && !double.IsNaN(value))
                 image.Rotation = -value;
         }
     }
 
-    public bool CanResize => _target != null && _target.HasSize && _target.CanResize;
+    public bool CanResize => Target != null && Target.HasSize && Target.CanResize;
 
     // ================= TRICK AREA NAME ================= //
 
-    public bool IsTrickArea => _target is AreaElement { IsTrick: true };
+    public bool IsTrickArea => Target is AreaElement { IsTrick: true };
 
     public double Width
     {
-        get => _target == null ? 0 : _target.HasSize ? _target.Width : _target.GetLocalBounds().Width;
+        get => Target == null ? 0 : Target.HasSize ? Target.Width : Target.GetLocalBounds().Width;
         set
         {
-            if (_target == null || !_target.HasSize || double.IsNaN(value)) return;
+            if (Target == null || !Target.HasSize || double.IsNaN(value)) return;
             value = Math.Max(IsInteger ? 1 : 0, Snap(value));
-            if (_target is TrapezoidElement trapezoid)
+            if (Target is TrapezoidElement trapezoid)
             {
                 trapezoid.Width = value;
                 trapezoid.ApplySlopeAngle();
             }
             else
             {
-                _target.Width = value;
+                Target.Width = value;
             }
         }
     }
 
     public double Height
     {
-        get => _target == null ? 0 : _target.HasSize ? _target.Height : _target.GetLocalBounds().Height;
+        get => Target == null ? 0 : Target.HasSize ? Target.Height : Target.GetLocalBounds().Height;
         set
         {
-            if (_target == null || !_target.HasSize || double.IsNaN(value)) return;
+            if (Target == null || !Target.HasSize || double.IsNaN(value)) return;
             value = Math.Max(IsInteger ? 1 : 0, Snap(value));
-            if (_target is TrapezoidElement trapezoid)
+            if (Target is TrapezoidElement trapezoid)
             {
                 // The slope keeps its angle: the height changes the rectangular base.
                 double slope = trapezoid.SlopeHeight;
@@ -414,7 +411,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             }
             else
             {
-                _target.Height = value;
+                Target.Height = value;
             }
         }
     }
@@ -422,49 +419,49 @@ public sealed partial class InspectorViewModel : ObservableObject
     // ================= LAYER ================= //
 
     /// <summary>Layer applies to top-level elements; children inherit it from their root.</summary>
-    public bool LayerEditable => _target != null && _target.LayerEditable && _target.Parent == null;
+    public bool LayerEditable => Target != null && Target.LayerEditable && Target.Parent == null;
 
-    public bool OrderEditable => _target != null && _target.LayerEditable;
+    public bool OrderEditable => Target != null && Target.LayerEditable;
 
     public string Layer
     {
-        get => _target == null ? Layers.Default : _target.LayerEditable ? _target.EffectiveLayer : Layers.Default;
+        get => Target == null ? Layers.Default : Target.LayerEditable ? Target.EffectiveLayer : Layers.Default;
         set
         {
-            if (_target == null || !LayerEditable || value == null || _target.Layer == value)
+            if (Target == null || !LayerEditable || value == null || Target.Layer == value)
                 return;
-            _target.Layer = value;
+            Target.Layer = value;
         }
     }
 
     public int Order
     {
-        get => _target?.Order ?? 0;
+        get => Target?.Order ?? 0;
         set
         {
-            if (_target == null || !OrderEditable) return;
-            _target.Order = value;
+            if (Target == null || !OrderEditable) return;
+            Target.Order = value;
         }
     }
 
     // ================= SELECTION (Common / Hunter mode) ================= //
 
-    public bool SupportsSelection => _target != null && _target.Type != ElementType.Comment && _target.Type != ElementType.Unknown;
+    public bool SupportsSelection => Target != null && Target.Type != ElementType.Comment && Target.Type != ElementType.Unknown;
 
     public ModeSelection Selection
     {
-        get => _target?.Selection ?? ModeSelection.All;
+        get => Target?.Selection ?? ModeSelection.All;
         set
         {
-            if (_target == null || _target.Selection == value)
+            if (Target == null || Target.Selection == value)
                 return;
-            if (_target is CameraElement camera && _editor.ValidateCameraSelection(camera, value) is { } error)
+            if (Target is CameraElement camera && Editor.ValidateCameraSelection(camera, value) is { } error)
             {
                 _ = AppServices.Dialogs.ShowMessageAsync(Loc.T("Camera"), error, MessageKind.Warning);
                 OnPropertyChanged();
                 return;
             }
-            _target.Selection = value;
+            Target.Selection = value;
         }
     }
 
@@ -472,15 +469,15 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public Color ImageColor
     {
-        get => _target is ImageElement image ? image.Color : Colors.White;
+        get => Target is ImageElement image ? image.Color : Colors.White;
         set
         {
-            if (_target is ImageElement image && image.Color != value)
+            if (Target is ImageElement image && image.Color != value)
                 image.Color = value;
         }
     }
 
-    public string ReferenceText => _target is ObjectElement obj
+    public string ReferenceText => Target is ObjectElement obj
         ? obj.Reference != null
             ? Loc.F("From {0}", obj.Reference.SourceFile)
             : string.IsNullOrEmpty(obj.Name) ? string.Empty : Loc.T("No definition with this name in the level's Sets")
@@ -488,9 +485,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public bool HasReferenceText => ReferenceText.Length > 0;
 
-    public int ChildCount => _target is ObjectElement obj ? obj.Children.Count : 0;
-
-    public bool IsDefinedObject => _target is ObjectElement { Reference: not null };
+    public int ChildCount => Target is ObjectElement obj ? obj.Children.Count : 0;
 
     /// <summary>Trick Areas directly inside the selected Object (its children, then its definition's content).</summary>
     public IReadOnlyList<TrickAreaEntry> TrickAreas
@@ -498,13 +493,13 @@ public sealed partial class InspectorViewModel : ObservableObject
         get
         {
             var list = new List<TrickAreaEntry>();
-            if (_target is not ObjectElement obj)
+            if (Target is not ObjectElement obj)
                 return list;
             foreach (var area in obj.Children.OfType<AreaElement>().Where(a => a.AreaType == "Trick"))
                 list.Add(new TrickAreaEntry(area.Name, area.ItemName, new MoveVisualizerViewModel.AreaTarget(area, area.ParentWorldPosition, obj, obj.Name)));
             if (obj.Reference is { } def)
             {
-                _editor.BuildDefinition(def);
+                Editor.BuildDefinition(def);
                 var w = obj.WorldPosition;
                 foreach (var area in def.Content.OfType<AreaElement>().Where(a => a.AreaType == "Trick"))
                     list.Add(new TrickAreaEntry(area.Name, area.ItemName, new MoveVisualizerViewModel.AreaTarget(area, w, obj, obj.Name)));
@@ -519,13 +514,13 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private async System.Threading.Tasks.Task SelectTrickAsync()
     {
-        if (_target is not AreaElement area)
+        if (Target is not AreaElement area)
             return;
-        var shop = new ShopService(AppServices.FileSystem, _editor.Project);
-        var localization = new LocalizationService(AppServices.FileSystem, _editor.Project);
+        var shop = new ShopService(AppServices.FileSystem, Editor.Project);
+        var localization = new LocalizationService(AppServices.FileSystem, Editor.Project);
         await shop.LoadAsync();
         await localization.LoadAsync();
-        var tricks = TrickInfo.Load(_editor.Project, shop, localization);
+        var tricks = TrickInfo.Load(Editor.Project, shop, localization);
         var dialog = new TrickPickerDialogViewModel(tricks, area.ItemName, name =>
         {
             area.ItemName = name ?? string.Empty;
@@ -541,11 +536,11 @@ public sealed partial class InspectorViewModel : ObservableObject
         var mode = await AskPreviewModeAsync();
         if (mode == null)
             return;
-        _editor.IsMoveVisualizerTab = true;
+        Editor.IsMoveVisualizerTab = true;
         if (mode == MoveSpawnMode.Gameplay)
-            await _editor.MoveVisualizer.PreviewAreaGameplayAsync(entry.Target);
+            await Editor.MoveVisualizer.PreviewAreaGameplayAsync(entry.Target);
         else
-            await _editor.MoveVisualizer.PreviewAreaAsync(entry.Target);
+            await Editor.MoveVisualizer.PreviewAreaAsync(entry.Target);
     }
 
     /// <summary>
@@ -575,7 +570,7 @@ public sealed partial class InspectorViewModel : ObservableObject
     private async System.Threading.Tasks.Task RefreshTriggerAnimationAsync()
     {
         int check = ++_triggerAnimationCheck;
-        if (_target is not TriggerElement trigger)
+        if (Target is not TriggerElement trigger)
         {
             CanPreviewTriggerAnimation = false;
             return;
@@ -583,7 +578,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         bool found;
         try
         {
-            found = (await _editor.MoveVisualizer.FindTriggerAnimationsAsync(trigger)).Count > 0;
+            found = (await Editor.MoveVisualizer.FindTriggerAnimationsAsync(trigger)).Count > 0;
         }
         catch
         {
@@ -597,33 +592,33 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private async System.Threading.Tasks.Task PreviewTriggerAnimation()
     {
-        if (_target is not TriggerElement trigger)
+        if (Target is not TriggerElement trigger)
             return;
-        _editor.IsMoveVisualizerTab = true;
-        await _editor.MoveVisualizer.PreviewTriggerAsync(trigger);
+        Editor.IsMoveVisualizerTab = true;
+        await Editor.MoveVisualizer.PreviewTriggerAsync(trigger);
     }
 
     [RelayCommand]
     private void OpenTriggerEditor()
     {
-        if (_target is TriggerElement trigger)
-            _editor.OpenTriggerEditor(trigger);
+        if (Target is TriggerElement trigger)
+            Editor.OpenTriggerEditor(trigger);
     }
 
     [RelayCommand]
     private void FrameSelected()
     {
-        if (_target != null)
-            _editor.RequestFrame(_target);
+        if (Target != null)
+            Editor.RequestFrame(Target);
     }
 
     /// <summary>Spawn / Trick Area "Preview Animation": plays the move in the Move Visualizer.</summary>
     [RelayCommand]
     private async System.Threading.Tasks.Task PreviewMove()
     {
-        if (_target is not (SpawnElement or AreaElement { AreaType: "Trick" }))
+        if (Target is not (SpawnElement or AreaElement { AreaType: "Trick" }))
             return;
-        var target = _target;
+        var target = Target;
         var mode = await AskPreviewModeAsync();
         if (mode == null)
             return;
@@ -631,18 +626,18 @@ public sealed partial class InspectorViewModel : ObservableObject
         switch (target)
         {
             case SpawnElement spawn:
-                _editor.IsMoveVisualizerTab = true;
+                Editor.IsMoveVisualizerTab = true;
                 if (gameplay)
-                    await _editor.MoveVisualizer.PreviewSpawnGameplayAsync(spawn);
+                    await Editor.MoveVisualizer.PreviewSpawnGameplayAsync(spawn);
                 else
-                    await _editor.MoveVisualizer.PreviewSpawnAsync(spawn);
+                    await Editor.MoveVisualizer.PreviewSpawnAsync(spawn);
                 break;
             case AreaElement area:
-                _editor.IsMoveVisualizerTab = true;
+                Editor.IsMoveVisualizerTab = true;
                 if (gameplay)
-                    await _editor.MoveVisualizer.PreviewAreaGameplayAsync(area);
+                    await Editor.MoveVisualizer.PreviewAreaGameplayAsync(area);
                 else
-                    await _editor.MoveVisualizer.PreviewAreaAsync(area);
+                    await Editor.MoveVisualizer.PreviewAreaAsync(area);
                 break;
         }
     }
@@ -650,14 +645,14 @@ public sealed partial class InspectorViewModel : ObservableObject
     // ================= DYNAMIC ================= //
 
     /// <summary>The target's &lt;Transformation&gt;s, each with a Preview button.</summary>
-    public IReadOnlyList<DynamicEntry> DynamicEntries => _target is { SupportsDynamics: true } t
+    public IReadOnlyList<DynamicEntry> DynamicEntries => Target is { SupportsDynamics: true } t
         ? t.Dynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name, Loc.F("{0} frames", d.TotalFrames)))
             .Concat(t.InheritedDynamics.Select(d => new DynamicEntry(string.IsNullOrEmpty(d.Name) ? "Transform" : d.Name,
                 Loc.F("{0} frames, from the object", d.TotalFrames)))).ToList()
         : Array.Empty<DynamicEntry>();
 
     /// <summary>The Dynamic section is only shown when the element has transformations.</summary>
-    public bool HasDynamics => _target is { SupportsDynamics: true } t && (t.Dynamics.Count > 0 || t.InheritedDynamics.Count > 0);
+    public bool HasDynamics => Target is { SupportsDynamics: true } t && (t.Dynamics.Count > 0 || t.InheritedDynamics.Count > 0);
 
     private void RaiseDynamics()
     {
@@ -669,12 +664,12 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private void PreviewDynamic(string? name)
     {
-        if (_target is not { SupportsDynamics: true } target || string.IsNullOrEmpty(name))
+        if (Target is not { SupportsDynamics: true } target || string.IsNullOrEmpty(name))
             return;
         if (!target.IsSelected)
-            _editor.Select(target);
-        _editor.IsDynamicEditorTab = true;
-        var dynamics = _editor.Dynamics;
+            Editor.Select(target);
+        Editor.IsDynamicEditorTab = true;
+        var dynamics = Editor.Dynamics;
         dynamics.BindSelection();
         var track = dynamics.Tracks.FirstOrDefault(t => ReferenceEquals(t.Element, target));
         if (track == null)
@@ -688,8 +683,8 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private void EditDynamics()
     {
-        if (_target != null && _target.SupportsDynamics)
-            _editor.IsDynamicEditorTab = true;
+        if (Target != null && Target.SupportsDynamics)
+            Editor.IsDynamicEditorTab = true;
     }
 }
 

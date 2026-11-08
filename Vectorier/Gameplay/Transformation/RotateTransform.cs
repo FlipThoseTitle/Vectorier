@@ -1,95 +1,87 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Transformation
+namespace Vectorier.Gameplay.Transformation;
+
+public class RotateTransform : TransformPrototype
 {
-    public class RotateTransform : TransformPrototype
+    private int _frames;
+
+    private int _currentFrame;
+
+    List<float> _angles = new List<float>();
+
+    public override int Frames => _frames;
+
+    public RotateTransform()
     {
-        private int _Frames;
+        _Type = Type.Rotate;
+    }
 
-        private int _CurrentFrame;
+    public static RotateTransform Create(XmlNode node)
+    {
+        if (node == null)
+            return null;
+        RotateTransform rotate = new RotateTransform();
+        rotate.Parse(node);
 
-        List<float> _Angles = new List<float>();
+        return rotate;
+    }
 
-        public override int Frames => _Frames;
+    public override void Parse(XmlNode node)
+    {
+        _frames = node.Attributes["Frames"].ParseInt();
+        float num = node.Attributes["Angle"].ParseFloat();
+        CalcLinear(num);
+    }
 
-        public RotateTransform()
+    private void CalcLinear(float angel)
+    {
+        float item = angel / _frames;
+        for (int i = 0; i < _frames; i++)
         {
-            _Type = Type.Rotate;
+            _angles.Add(item);
         }
+    }
 
-        public static RotateTransform Create(XmlNode node)
+    public override bool Iteration()
+    {
+
+        if (_Runner == null || _Pause)
         {
-            if (node == null)
-                return null;
-            RotateTransform rotate = new RotateTransform();
-            rotate.Parse(node);
-
-            return rotate;
+            return false;
         }
-
-        public override void Parse(XmlNode node)
+        _Runner.TransformRotate(_angles[_currentFrame]);
+        _currentFrame++;
+        if (_currentFrame >= _frames)
         {
-            _Frames = node.Attributes["Frames"].ParseInt();
-            float num = node.Attributes["Angle"].ParseFloat();
-            CalcLinear(num);
+            _Pause = true;
+            return false;
         }
+        return true;
+    }
 
-        private void CalcLinear(float p_angel)
+    public override void CalcDelta()
+    {
+    }
+
+    public override void Reset()
+    {
+        base.Reset();
+        _currentFrame = 0;
+    }
+
+    public override TransformPrototype Clone()
+    {
+        var rotate = new RotateTransform();
+        rotate._frames = _frames;
+        foreach (var angle in _angles)
         {
-            float item = p_angel / _Frames;
-            for (int i = 0; i < _Frames; i++)
-            {
-                _Angles.Add(item);
-            }
+            rotate._angles.Add(angle);
         }
-
-        public override bool Iteration()
-        {
-
-            if (_Runner == null || _Pause)
-            {
-                return false;
-            }
-            _Runner.TransformRotate(_Angles[_CurrentFrame]);
-            _CurrentFrame++;
-            if (_CurrentFrame >= _Frames)
-            {
-                _Pause = true;
-                return false;
-            }
-            return true;
-        }
-
-        public override void CalcDelta()
-        {
-        }
-
-        public override void Reset()
-        {
-            base.Reset();
-            _CurrentFrame = 0;
-        }
-
-        public override TransformPrototype Clone()
-        {
-            var rotate = new RotateTransform();
-            rotate._Frames = _Frames;
-            foreach (var angle in _Angles)
-            {
-                rotate._Angles.Add(angle);
-            }
-            return rotate;
-        }
+        return rotate;
     }
 }
 

@@ -95,6 +95,4 @@ public partial class App : Application
             : ThemeVariant.Light;
         AppServices.Shell?.RaiseThemeChanged();
     }
-
-    public static bool IsDarkTheme => Current?.ActualThemeVariant == ThemeVariant.Dark;
 }

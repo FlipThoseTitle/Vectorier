@@ -6,7 +6,6 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Collab;
-using Vectorier.Services.Localization;
 using Vectorier.Services.Xml;
 
 namespace Vectorier.ViewModels.Editor;
@@ -26,7 +25,7 @@ public sealed partial class EditorViewModel
     /// <summary>Where the pointer is over the Scene (level coordinates), null when it is elsewhere. Shown to the others.</summary>
     public Avalonia.Point? ScenePointer { get; set; }
 
-    internal SceneXmlReader CollabReader => _reader;
+    internal SceneXmlReader CollabReader { get; private set; } = new(null);
 
     /// <summary>The host's level replaced this one: its history starts here, and it is not saved yet.</summary>
     internal void ResetHistoryAfterCollabLoad()

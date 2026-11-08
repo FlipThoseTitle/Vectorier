@@ -1,169 +1,150 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Runners;
 using Vectorier.Gameplay.Trigger.Events;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Trigger
+namespace Vectorier.Gameplay.Trigger;
+
+public class TriggerLoop
 {
-    public class TriggerLoop
+    private List<TriggerCondition> _conditions = new List<TriggerCondition>();
+
+    public TriggerRunner ParentTrigger { get; }
+
+    public string Name { get; }
+
+    public List<TriggerAction> Actions { get; } = new List<TriggerAction>();
+
+    public List<TriggerEvent> Events { get; } = new List<TriggerEvent>();
+
+    private TriggerLoop(XmlNode node, TriggerRunner parent)
     {
-        private bool _IsRender;
+        Name = node.Attributes["Name"].ParseString(string.Empty);
+        ParentTrigger = parent;
+        ParseEvent(node["Events"]);
+        TriggerCondition.ParseConditions(node["Conditions"], this, _conditions);
+        TriggerAction.ParseActions(node["Actions"], this, Actions);
+    }
 
-        private string _Name;
+    public static TriggerLoop createLoop(XmlNode node, TriggerRunner parent)
+    {
+        return new TriggerLoop(node, parent);
+    }
 
-        private TriggerRunner _Parent;
-
-        private List<TriggerAction> _Actions = new List<TriggerAction>();
-
-        private List<TriggerEvent> _Events = new List<TriggerEvent>();
-
-        private List<TriggerCondition> _Conditions = new List<TriggerCondition>();
-
-        public TriggerRunner ParentTrigger => _Parent;
-
-        public string Name => _Name;
-
-        public List<TriggerAction> Actions => _Actions;
-
-        public List<TriggerEvent> Events => _Events;
-
-        private TriggerLoop(XmlNode p_node, TriggerRunner p_parent)
+    private void ParseEvent(XmlNode node)
+    {
+        if (node == null)
         {
-            _Name = p_node.Attributes["Name"].ParseString(string.Empty);
-            _IsRender = true;
-            _Parent = p_parent;
-            ParseEvent(p_node["Events"]);
-            TriggerCondition.ParseConditions(p_node["Conditions"], this, _Conditions);
-            TriggerAction.ParseActions(p_node["Actions"], this, _Actions);
+            return;
         }
-
-        public static TriggerLoop createLoop(XmlNode p_node, TriggerRunner p_parent)
+        XmlAttribute xmlAttribute = node.Attributes["Template"];
+        if (xmlAttribute != null)
         {
-            return new TriggerLoop(p_node, p_parent);
+            ParseEvent(TemplateModule.getTemplateEventsXml(xmlAttribute.Value));
+            return;
         }
-
-        private void ParseEvent(XmlNode p_node)
+        foreach (XmlNode childNode in node.ChildNodes)
         {
-            if (p_node == null)
+            if (childNode.LocalName.Equals("EventBlock"))
             {
-                return;
+                string value = childNode.Attributes["Template"].Value;
+                ParseEvent(TemplateModule.getTemplateEventsXml(value));
+                continue;
             }
-            XmlAttribute xmlAttribute = p_node.Attributes["Template"];
-            if (xmlAttribute != null)
+            TriggerEvent triggerRunnerEvent = TriggerEvent.Create(childNode, this);
+            if (triggerRunnerEvent != null)
             {
-                ParseEvent(TemplateModule.getTemplateEventsXml(xmlAttribute.Value));
-                return;
+                Events.Add(triggerRunnerEvent);
             }
-            foreach (XmlNode childNode in p_node.ChildNodes)
+        }
+    }
+
+    private bool CheckConditions()
+    {
+        for (int i = 0; i < _conditions.Count; i++)
+        {
+            if (!_conditions[i].Check())
             {
-                if (childNode.LocalName.Equals("EventBlock"))
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void ExtraActionsOnEvent(TriggerEvent @event)
+    {
+        ParentTrigger.SetModelVar();
+        switch (@event.Type)
+        {
+            case TriggerEvent.EventType.TET_KEY:
+                ParentTrigger.SetKeyVar((@event as TE_Key).Key);
+                break;
+            case TriggerEvent.EventType.TET_ACTIVATE:
+                ParentTrigger.GetVar("_$ActionID").setValue((@event as TE_Activate).ActionID);
+                break;
+        }
+    }
+
+    public void SetLine(string type, Variable value, int iD)
+    {
+        TriggerLine triggerLine = new TriggerLine(ParentTrigger, iD);
+        if (type[0] == '_')
+        {
+            type = ParentTrigger.GetVar(type).ValueString;
+        }
+        triggerLine.SetLine(type, value);
+        ParentTrigger.AddLine(triggerLine);
+    }
+
+    public void Reset()
+    {
+        foreach (var action in Actions)
+        {
+            action.Reset();
+        }
+    }
+
+    public bool CheckEvent(TriggerEvent @event)
+    {
+        for (int i = 0; i < Events.Count; i++)
+        {
+            if (Events[i].IsEqual(@event))
+            {
+                ExtraActionsOnEvent(@event);
+                if (CheckConditions())
                 {
-                    string value = childNode.Attributes["Template"].Value;
-                    ParseEvent(TemplateModule.getTemplateEventsXml(value));
-                    continue;
-                }
-                TriggerEvent triggerRunnerEvent = TriggerEvent.Create(childNode, this);
-                if (triggerRunnerEvent != null)
-                {
-                    _Events.Add(triggerRunnerEvent);
-                }
-            }
-        }
-
-        private bool CheckConditions()
-        {
-            for (int i = 0; i < _Conditions.Count; i++)
-            {
-                if (!_Conditions[i].Check())
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private void ExtraActionsOnEvent(TriggerEvent p_Event)
-        {
-            _Parent.SetModelVar();
-            switch (p_Event.Type)
-            {
-                case TriggerEvent.EventType.TET_KEY:
-                    _Parent.SetKeyVar((p_Event as TE_Key).Key);
-                    break;
-                case TriggerEvent.EventType.TET_ACTIVATE:
-                    _Parent.GetVar("_$ActionID").setValue((p_Event as TE_Activate).ActionID);
-                    break;
-            }
-        }
-
-        public void SetLine(string p_type, Variable p_value, int p_iD)
-        {
-            TriggerLine triggerLine = new TriggerLine(_Parent, p_iD);
-            if (p_type[0] == '_')
-            {
-                p_type = ParentTrigger.GetVar(p_type).ValueString;
-            }
-            triggerLine.SetLine(p_type, p_value);
-            _Parent.AddLine(triggerLine);
-        }
-
-        public void Reset()
-        {
-            foreach (var action in _Actions)
-            {
-                action.Reset();
-            }
-        }
-
-        public bool CheckEvent(TriggerEvent p_event)
-        {
-            for (int i = 0; i < _Events.Count; i++)
-            {
-                if (_Events[i].IsEqual(p_event))
-                {
-                    ExtraActionsOnEvent(p_event);
-                    if (CheckConditions())
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
-            return false;
         }
+        return false;
+    }
 
-        public Variable GetParentVar(string p_key)
-        {
-            return _Parent.GetVar(p_key);
-        }
+    public Variable GetParentVar(string key)
+    {
+        return ParentTrigger.GetVar(key);
+    }
 
-        public override string ToString()
+    public override string ToString()
+    {
+        string text = "Name:" + Name;
+        text += "\n Events:";
+        foreach (TriggerEvent @event in Events)
         {
-            string text = "Name:" + Name;
-            text += "\n Events:";
-            foreach (TriggerEvent @event in _Events)
-            {
-                text = text + "\n   " + @event;
-            }
-            text += "\n Conditions:";
-            foreach (TriggerCondition condition in _Conditions)
-            {
-                text = text + "\n   " + condition;
-            }
-            text += "\n Actions:";
-            foreach (TriggerAction action in _Actions)
-            {
-                text = text + "\n   " + action;
-            }
-            return text;
+            text = text + "\n   " + @event;
         }
+        text += "\n Conditions:";
+        foreach (TriggerCondition condition in _conditions)
+        {
+            text = text + "\n   " + condition;
+        }
+        text += "\n Actions:";
+        foreach (TriggerAction action in Actions)
+        {
+            text = text + "\n   " + action;
+        }
+        return text;
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
@@ -8,35 +7,6 @@ using Vectorier.Services.IO;
 using Vectorier.Services.Localization;
 
 namespace Vectorier.Services.Projects;
-
-/// <summary>A project folder inside Projects.</summary>
-public sealed class ProjectInfo
-{
-    public ProjectInfo(string name, string path, string displayPath)
-    {
-        Name = name;
-        Path = path;
-        DisplayPath = displayPath;
-    }
-
-    public string Name { get; }
-
-    /// <summary>Relative path ("Projects/Name").</summary>
-    public string Path { get; }
-
-    /// <summary>Directory shown in the project list.</summary>
-    public string DisplayPath { get; }
-
-    public string XmlRoot => VPath.Combine(Path, "xmlroot");
-    public string LevelsFolder => VPath.Combine(Path, "xmlroot", "levels");
-    public string TexturesFolder => VPath.Combine(Path, "textures");
-    public string AnimatedTexturesFolder => VPath.Combine(Path, "animatedtextures");
-    public string ModelsFolder => VPath.Combine(Path, "models");
-    public string AnimationsFolder => VPath.Combine(Path, "animations");
-    public string CacheFolder => VPath.Combine(Path, ".vectorier");
-
-    public override string ToString() => Name;
-}
 
 /// <summary>Creates, lists, renames and deletes projects, and edits their metadata files.</summary>
 public sealed class ProjectService
@@ -62,8 +32,6 @@ public sealed class ProjectService
     {
         _fs = fileSystem;
     }
-
-    public IFileSystem FileSystem => _fs;
 
     public ProjectInfo GetProject(string name)
     {
@@ -255,59 +223,5 @@ public sealed class ProjectService
         foreach (var ext in ThumbnailExtensions)
             await _fs.DeleteFileAsync(VPath.Combine(project.Path, "thumbnail" + ext));
         await _fs.WriteAllBytesAsync(VPath.Combine(project.Path, ThumbnailFile), png);
-    }
-}
-
-/// <summary>Copies picked files and folders (from pickers or drag and drop) into the Vectorier file system.</summary>
-public static class StorageImport
-{
-    public static async Task<byte[]> ReadAllBytesAsync(IStorageFile file)
-    {
-        await using var stream = await file.OpenReadAsync();
-        using var memory = new MemoryStream();
-        await stream.CopyToAsync(memory);
-        return memory.ToArray();
-    }
-
-    public static async Task CopyFileAsync(IFileSystem fs, IStorageFile file, string targetPath)
-    {
-        await fs.WriteAllBytesAsync(targetPath, await ReadAllBytesAsync(file));
-    }
-
-    public static async Task CopyFolderAsync(IFileSystem fs, IStorageFolder folder, string targetPath, IProgress<string>? progress = null)
-    {
-        // Desktop: both ends are local folders, so copy them natively (in parallel).
-        if (folder.TryGetLocalPath() is { } localSource && fs.GetNativePath(targetPath) is { } localTarget)
-        {
-            await Task.Run(() => FastCopy.CopyDirectory(localSource, localTarget, progress));
-            return;
-        }
-        await fs.CreateDirectoryAsync(targetPath);
-        await foreach (var item in folder.GetItemsAsync())
-        {
-            if (item is IStorageFile file)
-            {
-                progress?.Report(file.Name);
-                await CopyFileAsync(fs, file, VPath.Combine(targetPath, file.Name));
-            }
-            else if (item is IStorageFolder sub)
-            {
-                await CopyFolderAsync(fs, sub, VPath.Combine(targetPath, sub.Name), progress);
-            }
-        }
-    }
-
-    /// <summary>Lists every file of a folder recursively, with its path relative to the folder.</summary>
-    public static async Task<List<(IStorageFile File, string RelativeDirectory)>> ListFilesAsync(IStorageFolder folder, string relative = "")
-    {
-        var list = new List<(IStorageFile, string)>();
-        await foreach (var item in folder.GetItemsAsync())
-        {
-            if (item is IStorageFile file)
-                list.Add((file, relative));
-            else if (item is IStorageFolder sub)
-                list.AddRange(await ListFilesAsync(sub, VPath.Combine(relative, sub.Name)));
-        }
-        return list;
     }
 }

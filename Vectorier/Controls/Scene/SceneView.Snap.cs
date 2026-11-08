@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Vectorier.Models.Scene;
@@ -39,7 +38,7 @@ public sealed partial class SceneView
     /// <summary>V / C pressed with the pointer over the Scene. Returns true when snapping started.</summary>
     public bool BeginSnapKey(bool platforms)
     {
-        if (_editor == null || _renderer == null || _snapKind != SnapKind.None || !_pointerInside || IsModal || _mode != InteractionMode.None)
+        if (_editor == null || Renderer == null || _snapKind != SnapKind.None || !IsPointerInside || IsModal || _mode != InteractionMode.None)
             return false;
         if (!_editor.HasSelection || _editor.PlacementType != null)
             return false;
@@ -91,16 +90,16 @@ public sealed partial class SceneView
     private List<Point[]> SourceShapes()
     {
         var shapes = new List<Point[]>();
-        if (_editor == null || _renderer == null)
+        if (_editor == null || Renderer == null)
             return shapes;
         var targets = _editor.GetTopmostSelection();
         if (CanScaleSnap)
         {
-            shapes.Add(_renderer.ScreenCorners(Viewport, targets[0]));
+            shapes.Add(Renderer.ScreenCorners(Viewport, targets[0]));
             return shapes;
         }
         foreach (var t in targets)
-            _renderer.CollectOwnShapes(Viewport, t, _snapKind == SnapKind.Platform, shapes);
+            Renderer.CollectOwnShapes(Viewport, t, _snapKind == SnapKind.Platform, shapes);
         return shapes;
     }
 
@@ -140,7 +139,7 @@ public sealed partial class SceneView
 
     private bool TryStartSnapDrag(Point pos)
     {
-        if (_editor == null || _renderer == null || _snapKind == SnapKind.None)
+        if (_editor == null || Renderer == null || _snapKind == SnapKind.None)
             return false;
         PickSnapSource(pos);
         if (!_hasSnapSource)
@@ -156,7 +155,7 @@ public sealed partial class SceneView
 
         if (CanScaleSnap)
         {
-            var corners = _renderer.ScreenCorners(Viewport, _targets[0]);
+            var corners = Renderer.ScreenCorners(Viewport, _targets[0]);
             int index = 0;
             for (int i = 1; i < corners.Length; i++)
             {
@@ -233,14 +232,14 @@ public sealed partial class SceneView
     private Point FindSnap(Point pos, out bool corner)
     {
         corner = false;
-        if (_renderer == null || _editor == null)
+        if (Renderer == null || _editor == null)
             return pos;
-        double cornerRadius = Math.Max(MinSnapPixels, VertexSnapRadius * _zoom);
-        double edgeRadius = Math.Max(MinSnapPixels, BoundsSearchThreshold * _zoom);
+        double cornerRadius = Math.Max(MinSnapPixels, VertexSnapRadius * Zoom);
+        double edgeRadius = Math.Max(MinSnapPixels, BoundsSearchThreshold * Zoom);
         var targets = _mode is InteractionMode.SnapMove or InteractionMode.SnapScale ? _targets : _editor.GetTopmostSelection();
 
         var shapes = new List<Point[]>();
-        _renderer.CollectSnapShapes(Viewport, pos, edgeRadius, _snapKind == SnapKind.Platform, item => BelongsTo(item, targets), shapes);
+        Renderer.CollectSnapShapes(Viewport, pos, edgeRadius, _snapKind == SnapKind.Platform, item => BelongsTo(item, targets), shapes);
 
         double bestCorner = double.MaxValue, bestEdge = double.MaxValue;
         Point cornerPoint = pos, edgePoint = pos;

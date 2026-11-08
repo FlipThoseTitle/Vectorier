@@ -20,7 +20,6 @@ public sealed class CollabLevelSync : IDisposable
 {
     private sealed record Known(string Xml, long Parent, int Index, SceneElement Instance);
 
-    private readonly EditorViewModel _editor;
     private readonly Action<List<LevelOp>> _send;
     private readonly int _userId;
     private readonly Dictionary<long, Known> _known = new();
@@ -40,7 +39,7 @@ public sealed class CollabLevelSync : IDisposable
 
     public CollabLevelSync(EditorViewModel editor, int userId, Action<List<LevelOp>> send)
     {
-        _editor = editor;
+        Editor = editor;
         _userId = userId;
         _send = send;
         editor.ElementChanged += OnElementChanged;
@@ -52,15 +51,15 @@ public sealed class CollabLevelSync : IDisposable
         _timer.Start();
     }
 
-    public EditorViewModel Editor => _editor;
+    public EditorViewModel Editor { get; }
 
     public void Dispose()
     {
         _timer.Stop();
-        _editor.ElementChanged -= OnElementChanged;
-        _editor.StructureChanged -= OnStructureChanged;
-        _editor.RemoteEditCount = null;
-        _editor.ReapplyRemoteEditsSince = null;
+        Editor.ElementChanged -= OnElementChanged;
+        Editor.StructureChanged -= OnStructureChanged;
+        Editor.RemoteEditCount = null;
+        Editor.ReapplyRemoteEditsSince = null;
     }
 
     // ================= IDS ================= //
@@ -68,7 +67,7 @@ public sealed class CollabLevelSync : IDisposable
     /// <summary>Gives every element of the level a SyncId (the host does this for the whole level when it starts).</summary>
     public void AssignIds()
     {
-        foreach (var element in _editor.Document.AllElements())
+        foreach (var element in Editor.Document.AllElements())
         {
             if (element.SyncId == 0 && !IsTile(element))
                 element.SyncId = NewId();
@@ -84,7 +83,7 @@ public sealed class CollabLevelSync : IDisposable
     private void OnElementChanged(SceneElement element, string? property)
     {
         // Dynamic Editor playback / scrubbing poses stay on this computer (sending them flooded the connection).
-        if (_applying || _editor.Dynamics.IsPosing)
+        if (_applying || Editor.Dynamics.IsPosing)
             return;
         _dirty.Add(element);
         _anyDirty = true;
@@ -107,7 +106,7 @@ public sealed class CollabLevelSync : IDisposable
             return;
         List<LevelOp> ops;
         // Elements bound in the Dynamic Editor are shared at their rest pose, never at a previewed one.
-        using (NeedsRestPose() ? _editor.Dynamics.SuspendPreview() : null)
+        using (NeedsRestPose() ? Editor.Dynamics.SuspendPreview() : null)
             ops = Diff(settingsDue || _anyDirty);
         _anyDirty = false;
         _structureDirty = false;
@@ -119,7 +118,7 @@ public sealed class CollabLevelSync : IDisposable
     /// <summary>The next pass serializes an element the Dynamic Editor is previewing (a full pass looks at every element).</summary>
     private bool NeedsRestPose()
     {
-        var dynamics = _editor.Dynamics;
+        var dynamics = Editor.Dynamics;
         if (!dynamics.IsBound)
             return false;
         if (_structureDirty || _known.Count == 0)
@@ -134,7 +133,7 @@ public sealed class CollabLevelSync : IDisposable
     {
         var ops = new List<LevelOp>();
         var seen = new HashSet<long>();
-        var writer = _editor.CollabWriter();
+        var writer = Editor.CollabWriter();
 
         void Walk(IList<SceneElement> list, long parent)
         {
@@ -164,7 +163,7 @@ public sealed class CollabLevelSync : IDisposable
         // Only a structure change can add, remove or move elements; otherwise just the changed ones are looked at.
         if (_structureDirty || _known.Count == 0)
         {
-            Walk(_editor.Document.Roots, 0);
+            Walk(Editor.Document.Roots, 0);
             foreach (var removed in _known.Keys.Where(k => !seen.Contains(k)).ToList())
             {
                 _known.Remove(removed);
@@ -189,7 +188,7 @@ public sealed class CollabLevelSync : IDisposable
         if (checkSettings)
         {
             _lastSettingsCheck = DateTime.UtcNow;
-            string settings = SerializeSettings(writer, _editor.Document.Settings);
+            string settings = SerializeSettings(writer, Editor.Document.Settings);
             if (settings != _knownSettings)
             {
                 _knownSettings = settings;
@@ -261,7 +260,7 @@ public sealed class CollabLevelSync : IDisposable
             var wrapper = XElement.Parse("<Content>" + op.Xml + "</Content>");
             var sync = wrapper.Element(SyncTag);
             sync?.Remove();
-            var element = _editor.CollabReader.ReadContent(wrapper).FirstOrDefault();
+            var element = Editor.CollabReader.ReadContent(wrapper).FirstOrDefault();
             if (element == null)
                 return null;
             // No marker: the default layer and order (the reader already gave the element those).
@@ -292,9 +291,9 @@ public sealed class CollabLevelSync : IDisposable
     {
         Flush();
         // A joining participant gets the elements the Dynamic Editor is previewing at their rest pose.
-        using var rest = _editor.Dynamics.SuspendPreview();
-        var writer = _editor.CollabWriter();
-        var ops = new List<LevelOp> { new("settings", 0, 0, 0, SerializeSettings(writer, _editor.Document.Settings)) };
+        using var rest = Editor.Dynamics.SuspendPreview();
+        var writer = Editor.CollabWriter();
+        var ops = new List<LevelOp> { new("settings", 0, 0, 0, SerializeSettings(writer, Editor.Document.Settings)) };
         void Walk(IList<SceneElement> list, long parent)
         {
             int index = 0;
@@ -308,7 +307,7 @@ public sealed class CollabLevelSync : IDisposable
                 index++;
             }
         }
-        Walk(_editor.Document.Roots, 0);
+        Walk(Editor.Document.Roots, 0);
         return ops;
     }
 
@@ -318,10 +317,10 @@ public sealed class CollabLevelSync : IDisposable
         _applying = true;
         try
         {
-            using (_editor.SuppressTracking())
+            using (Editor.SuppressTracking())
             {
-                _editor.ClearSelection();
-                _editor.Document.Roots.Clear();
+                Editor.ClearSelection();
+                Editor.Document.Roots.Clear();
                 _known.Clear();
                 _index = null;
                 foreach (var op in ops)
@@ -332,8 +331,8 @@ public sealed class CollabLevelSync : IDisposable
         {
             _applying = false;
         }
-        _editor.RaiseStructureChanged();
-        _editor.ResetHistoryAfterCollabLoad();
+        Editor.RaiseStructureChanged();
+        Editor.ResetHistoryAfterCollabLoad();
         _dirty.Clear();
         _anyDirty = false;
         _structureDirty = false;
@@ -349,7 +348,7 @@ public sealed class CollabLevelSync : IDisposable
         _applying = true;
         try
         {
-            using (_editor.SuppressTracking())
+            using (Editor.SuppressTracking())
             {
                 foreach (var op in ops)
                     ApplyOne(op, remember: true);
@@ -368,7 +367,7 @@ public sealed class CollabLevelSync : IDisposable
         _applying = true;
         try
         {
-            using (_editor.SuppressTracking())
+            using (Editor.SuppressTracking())
             {
                 foreach (var op in ops)
                     ApplyOne(op, remember: false);
@@ -406,8 +405,8 @@ public sealed class CollabLevelSync : IDisposable
     private void AfterApply()
     {
         _index = null;
-        _editor.RaiseStructureChanged();
-        _editor.SceneChangedByCollab();
+        Editor.RaiseStructureChanged();
+        Editor.SceneChangedByCollab();
     }
 
     private SceneElement? Find(long id)
@@ -417,7 +416,7 @@ public sealed class CollabLevelSync : IDisposable
         if (_index == null)
         {
             _index = new Dictionary<long, SceneElement>();
-            foreach (var e in _editor.Document.AllElements())
+            foreach (var e in Editor.Document.AllElements())
                 if (e.SyncId != 0)
                     _index[e.SyncId] = e;
         }
@@ -438,69 +437,69 @@ public sealed class CollabLevelSync : IDisposable
                 ApplySettings(op.Xml);
                 break;
             case "remove":
-            {
-                var element = Find(op.Id);
-                if (element == null)
-                    return;
-                var siblings = element.Parent?.Children ?? _editor.Document.Roots;
-                if (element is PlatformElement platform)
                 {
-                    foreach (var tile in siblings.OfType<ImageElement>().Where(t => t.SurfaceOwner == platform.Id).ToList())
-                        Detach(tile);
-                }
-                Detach(element);
-                if (updateKnown)
-                    _known.Remove(op.Id);
-                _index = null;
-                break;
-            }
-            case "set":
-            {
-                var proto = Parse(op);
-                if (proto == null)
-                    return;
-                IList<SceneElement> siblings;
-                ObjectElement? parent = null;
-                if (op.Parent == 0)
-                {
-                    siblings = _editor.Document.Roots;
-                }
-                else if (Find(op.Parent) is ObjectElement p)
-                {
-                    parent = p;
-                    siblings = p.Children;
-                }
-                else
-                {
-                    return; // its parent is gone
-                }
-
-                var element = Find(op.Id);
-                if (element == null)
-                {
-                    element = proto;
-                    element.SyncId = op.Id;
-                    Insert(element, parent, siblings, op.Index);
-                    _index = null;
-                }
-                else
-                {
-                    bool expanded = element.IsExpanded;
-                    element.CopyPropertiesFrom(proto);
-                    element.IsExpanded = expanded;
-                    var current = element.Parent?.Children ?? _editor.Document.Roots;
-                    if (!ReferenceEquals(current, siblings) || SyncedIndex(current, element) != op.Index)
+                    var element = Find(op.Id);
+                    if (element == null)
+                        return;
+                    var siblings = element.Parent?.Children ?? Editor.Document.Roots;
+                    if (element is PlatformElement platform)
                     {
-                        Detach(element);
-                        Insert(element, parent, siblings, op.Index);
+                        foreach (var tile in siblings.OfType<ImageElement>().Where(t => t.SurfaceOwner == platform.Id).ToList())
+                            Detach(tile);
                     }
+                    Detach(element);
+                    if (updateKnown)
+                        _known.Remove(op.Id);
+                    _index = null;
+                    break;
                 }
-                if (element is PlatformElement { Surface: not null } surfaced)
-                    _editor.RequestSurfaceRebuild(surfaced);
-                if (updateKnown)
-                    _known[op.Id] = new Known(op.Xml ?? string.Empty, op.Parent, op.Index, element);
-                break;
-            }
+            case "set":
+                {
+                    var proto = Parse(op);
+                    if (proto == null)
+                        return;
+                    IList<SceneElement> siblings;
+                    ObjectElement? parent = null;
+                    if (op.Parent == 0)
+                    {
+                        siblings = Editor.Document.Roots;
+                    }
+                    else if (Find(op.Parent) is ObjectElement p)
+                    {
+                        parent = p;
+                        siblings = p.Children;
+                    }
+                    else
+                    {
+                        return; // its parent is gone
+                    }
+
+                    var element = Find(op.Id);
+                    if (element == null)
+                    {
+                        element = proto;
+                        element.SyncId = op.Id;
+                        Insert(element, parent, siblings, op.Index);
+                        _index = null;
+                    }
+                    else
+                    {
+                        bool expanded = element.IsExpanded;
+                        element.CopyPropertiesFrom(proto);
+                        element.IsExpanded = expanded;
+                        var current = element.Parent?.Children ?? Editor.Document.Roots;
+                        if (!ReferenceEquals(current, siblings) || SyncedIndex(current, element) != op.Index)
+                        {
+                            Detach(element);
+                            Insert(element, parent, siblings, op.Index);
+                        }
+                    }
+                    if (element is PlatformElement { Surface: not null } surfaced)
+                        Editor.RequestSurfaceRebuild(surfaced);
+                    if (updateKnown)
+                        _known[op.Id] = new Known(op.Xml ?? string.Empty, op.Parent, op.Index, element);
+                    break;
+                }
         }
     }
 
@@ -509,7 +508,7 @@ public sealed class CollabLevelSync : IDisposable
         if (element.Parent is { } parent)
             parent.RemoveChild(element);
         else
-            _editor.Document.Roots.Remove(element);
+            Editor.Document.Roots.Remove(element);
     }
 
     /// <summary>Position among the synced siblings (platform textures are not counted).</summary>
@@ -546,7 +545,7 @@ public sealed class CollabLevelSync : IDisposable
         else
         {
             element.Parent = null;
-            _editor.Document.Roots.Insert(Math.Min(real, _editor.Document.Roots.Count), element);
+            Editor.Document.Roots.Insert(Math.Min(real, Editor.Document.Roots.Count), element);
         }
     }
 
@@ -558,9 +557,9 @@ public sealed class CollabLevelSync : IDisposable
         {
             var root = XElement.Parse(xml);
             root.Add(new XElement("Track"));
-            var settings = _editor.CollabReader.ReadLevel(new XDocument(root), _editor.Document.LevelName).Settings;
+            var settings = Editor.CollabReader.ReadLevel(new XDocument(root), Editor.Document.LevelName).Settings;
             _knownSettings = xml;
-            _editor.ApplyCollabSettings(settings);
+            Editor.ApplyCollabSettings(settings);
         }
         catch
         {

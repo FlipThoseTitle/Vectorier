@@ -10,8 +10,8 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Vectorier.Controls;
 using Vectorier.Services.Assets;
-using Vectorier.ViewModels.Editor;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Editor;
 
 namespace Vectorier.Views.Editor;
 
@@ -496,25 +496,25 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
         switch (payload)
         {
             case PwItem or PwItemGroup when _vm.ShowsFolders && !_vm.IsObjectContext:
-            {
-                // Into a folder: the folder is highlighted.
-                var border = FolderBorderAt(position);
-                if (border == null || border.Tag is not PwFolder { IsFile: false })
-                    return false;
-                border.Classes.Add("drop");
-                _dropFolder = border;
-                return true;
-            }
+                {
+                    // Into a folder: the folder is highlighted.
+                    var border = FolderBorderAt(position);
+                    if (border == null || border.Tag is not PwFolder { IsFile: false })
+                        return false;
+                    border.Classes.Add("drop");
+                    _dropFolder = border;
+                    return true;
+                }
             case PwFolder folder when _vm.CanReorder(folder):
-            {
-                // Reordering: a line shows where the folders go (nothing is put inside another folder).
-                if (FolderInsertAt(position) is not { } insert)
-                    return false;
-                double y = Math.Clamp(insert.Y - 1, 0, Math.Max(0, FolderScroll.Bounds.Height - 2));
-                FolderDropLine.Margin = new Thickness(2, FolderScroll.Bounds.Y + y, 2, 0);
-                FolderDropLine.IsVisible = true;
-                return true;
-            }
+                {
+                    // Reordering: a line shows where the folders go (nothing is put inside another folder).
+                    if (FolderInsertAt(position) is not { } insert)
+                        return false;
+                    double y = Math.Clamp(insert.Y - 1, 0, Math.Max(0, FolderScroll.Bounds.Height - 2));
+                    FolderDropLine.Margin = new Thickness(2, FolderScroll.Bounds.Y + y, 2, 0);
+                    FolderDropLine.IsVisible = true;
+                    return true;
+                }
             case HierarchyDragPayload drag:
                 return OverContent(position) && _vm.CanAcceptElements(drag.Elements);
         }
@@ -544,11 +544,11 @@ public partial class ProjectWindowView : UserControl, IInternalDropTarget
                 await _vm.AssignItemsAsync(group.Items, folder);
                 break;
             case PwFolder source when FolderInsertAt(position) is { } insert:
-            {
-                var moving = _vm.SelectedFolders.Contains(source) ? _vm.SelectedFolders.ToList() : new List<PwFolder> { source };
-                await _vm.MoveFoldersAsync(moving, insert.Index);
-                break;
-            }
+                {
+                    var moving = _vm.SelectedFolders.Contains(source) ? _vm.SelectedFolders.ToList() : new List<PwFolder> { source };
+                    await _vm.MoveFoldersAsync(moving, insert.Index);
+                    break;
+                }
             case HierarchyDragPayload drag when OverContent(position):
                 await _vm.AcceptElementsAsync(drag.Elements);
                 break;

@@ -9,8 +9,8 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.IO;
-using Vectorier.Services.Xml;
 using Vectorier.Services.Localization;
+using Vectorier.Services.Xml;
 using Vectorier.ViewModels.Dialogs;
 
 namespace Vectorier.ViewModels.Editor;
@@ -95,10 +95,6 @@ public sealed partial class EditorViewModel
         }
         return await LeaveObjectEditAsync(save);
     }
-
-    // ================= UNGROUP ================= //
-
-    public bool CanUngroup => GetTopmostSelection().Any(e => e is ObjectElement);
 
     /// <summary>
     /// Ungroup: an Object without definition is replaced by its children; one with a definition is replaced by

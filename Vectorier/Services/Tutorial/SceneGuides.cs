@@ -14,18 +14,16 @@ public sealed record SceneGuide(Rect? Box = null, Point? Point = null);
 /// <summary>The guides the Scene draws over the level while the tutorial shows them.</summary>
 public static class SceneGuides
 {
-    private static IReadOnlyList<SceneGuide> _current = Array.Empty<SceneGuide>();
-
-    public static IReadOnlyList<SceneGuide> Current => _current;
+    public static IReadOnlyList<SceneGuide> Current { get; private set; } = Array.Empty<SceneGuide>();
 
     /// <summary>Raised when the guides change (the Scene redraws).</summary>
     public static event Action? Changed;
 
     public static void Set(IReadOnlyList<SceneGuide> guides)
     {
-        if (guides.SequenceEqual(_current))
+        if (guides.SequenceEqual(Current))
             return;
-        _current = guides.ToArray();
+        Current = guides.ToArray();
         Changed?.Invoke();
     }
 

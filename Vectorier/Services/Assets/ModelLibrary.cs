@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Media;
-using Vectorier.Models.Scene;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 

@@ -1,210 +1,180 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Vectorier.Gameplay.Detector;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Result;
 using Vectorier.Gameplay.Runners;
 
-namespace Vectorier.Gameplay.Controllers
+namespace Vectorier.Gameplay.Controllers;
+
+public class ControllerPlatforms
 {
-    public class ControllerPlatforms
+    private ModelHuman _model;
+
+    private DetectorLine _detectorH;
+
+    private DetectorLine _detectorV;
+    private List<QuadRunner> _vertical = new List<QuadRunner>();
+    private Affiliation cachedAffiliationResult = new Affiliation();
+
+    public List<Belong> Belongs { get; } = new List<Belong>();
+
+    public List<QuadRunner> Horizontal { get; } = new List<QuadRunner>();
+
+    public ControllerPlatforms(ModelHuman modelHuman)
     {
-        private ModelHuman _Model;
+        _model = modelHuman;
+        _detectorH = _model.ModelObject.DetectorHorizontalLine;
+        _detectorV = _model.ModelObject.DetectorVerticalLine;
+    }
 
-        private DetectorLine _DetectorH;
-
-        private DetectorLine _DetectorV;
-
-        private List<Belong> _Belongs = new List<Belong>();
-
-        private List<QuadRunner> _Vertical = new List<QuadRunner>();
-
-        private List<QuadRunner> _Horizontal = new List<QuadRunner>();
-
-        private Affiliation cachedAffiliationResult = new Affiliation();
-
-        public List<Belong> Belongs => _Belongs;
-
-        public List<QuadRunner> Vertical => _Vertical;
-
-        public List<QuadRunner> Horizontal => _Horizontal;
-
-        public ControllerPlatforms(ModelHuman modelHuman)
+    public void Clear(List<QuadRunner> quads)
+    {
+        foreach (var quad in quads)
         {
-            _Model = modelHuman;
-            _DetectorH = _Model.ModelObject.DetectorHorizontalLine;
-            _DetectorV = _Model.ModelObject.DetectorVerticalLine;
-        }
-
-        public void Clear(List<QuadRunner> quads)
-        {
-            foreach (var quad in quads)
+            var indexV = Index(quad, _detectorV.Type);
+            var indexH = Index(quad, _detectorH.Type);
+            if (indexV > -1)
             {
-                var indexV = Index(quad, _DetectorV.Type);
-                var indexH = Index(quad, _DetectorH.Type);
-                if (indexV > -1)
-                {
-                    Remove(indexV, _DetectorV.Type);
-                }
-                if (indexH > -1)
-                {
-                    Remove(indexH, _DetectorH.Type);
-                }
+                Remove(indexV, _detectorV.Type);
+            }
+            if (indexH > -1)
+            {
+                Remove(indexH, _detectorH.Type);
             }
         }
+    }
 
-        public void Render(QuadRunner platform)
-        {
-            platform.SetTempPoint(_Model.PlatformAnticipationFrames);
-            Render(platform, _DetectorH);
-            Render(platform, _DetectorV);
-        }
+    public void Render(QuadRunner platform)
+    {
+        platform.SetTempPoint(_model.PlatformAnticipationFrames);
+        Render(platform, _detectorH);
+        Render(platform, _detectorV);
+    }
 
-        public void Render(QuadRunner platform, DetectorLine detector)
+    public void Render(QuadRunner platform, DetectorLine detector)
+    {
+        platform.DetectorAffiliation(detector, cachedAffiliationResult);
+        int index = Index(platform, detector.Type);
+        if (cachedAffiliationResult.Type > 0 && index == -1)
         {
-            platform.DetectorAffiliation(detector, cachedAffiliationResult);
-            int index = Index(platform, detector.Type);
-            if (cachedAffiliationResult.Type > 0 && index == -1)
-            {
-                int p_side = platform.Side(detector, cachedAffiliationResult, _Model.Sign);
-                cachedAffiliationResult.Clear();
-                switch (detector.Type)
-                {
-                    case DetectorLine.DetectorType.Horizontal:
-                        _Horizontal.Add(platform);
-                        break;
-                    case DetectorLine.DetectorType.Vertical:
-                        _Vertical.Add(platform);
-                        break;
-                }
-                _Belongs.Add(new Belong(platform, detector));
-                Update(detector);
-                Input(platform, detector, p_side);
-                return;
-            }
-            if (index > -1 && cachedAffiliationResult.CrossList3.Count == 0 && !cachedAffiliationResult.Hits)
-            {
-                index = Remove(index, detector.Type);
-                for (int num = _Belongs.Count - 1; num >= 0; num--)
-                {
-                    if (_Belongs[num].Platform == platform && _Belongs[num].Detector == detector)
-                    {
-                        _Belongs.RemoveAt(num);
-                    }
-                }
-                Update(detector);
-                if (index == 0)
-                {
-                    Output(platform, detector);
-                }
-            }
-        }
-
-        public void Update(DetectorLine detector)
-        {
-            List<QuadRunner> list = null;
+            int p_side = platform.Side(detector, cachedAffiliationResult, _model.Sign);
+            cachedAffiliationResult.Clear();
             switch (detector.Type)
             {
-                default:
-                    return;
                 case DetectorLine.DetectorType.Horizontal:
-                    list = _Horizontal;
+                    Horizontal.Add(platform);
                     break;
                 case DetectorLine.DetectorType.Vertical:
-                    list = _Vertical;
+                    _vertical.Add(platform);
                     break;
             }
-            if (list.Count > 0)
+            Belongs.Add(new Belong(platform, detector));
+            Update(detector);
+            Input(platform, detector, p_side);
+            return;
+        }
+        if (index > -1 && cachedAffiliationResult.CrossList3.Count == 0 && !cachedAffiliationResult.Hits)
+        {
+            index = Remove(index, detector.Type);
+            for (int num = Belongs.Count - 1; num >= 0; num--)
             {
-                detector.Node.Data = list[list.Count - 1];
+                if (Belongs[num].Platform == platform && Belongs[num].Detector == detector)
+                {
+                    Belongs.RemoveAt(num);
+                }
+            }
+            Update(detector);
+            if (index == 0)
+            {
+                Output(platform, detector);
             }
         }
+    }
 
-        public void Input(QuadRunner platform, DetectorLine detector, int side)
+    public void Update(DetectorLine detector)
+    {
+        List<QuadRunner> list = null;
+        switch (detector.Type)
         {
-            _Model.ControllerAnimations.CheckDetectors(new DetectorEvent(detector, DetectorEvent.DetectorEventType.On, side));
+            default:
+                return;
+            case DetectorLine.DetectorType.Horizontal:
+                list = Horizontal;
+                break;
+            case DetectorLine.DetectorType.Vertical:
+                list = _vertical;
+                break;
         }
-
-        public void Output(QuadRunner platform, DetectorLine detector)
+        if (list.Count > 0)
         {
-            _Model.ControllerAnimations.CheckDetectors(new DetectorEvent(detector, DetectorEvent.DetectorEventType.Off, -1));
-            detector.Node.Data = null;
+            detector.Node.Data = list[list.Count - 1];
         }
+    }
 
-        public int Index(QuadRunner platform, DetectorLine.DetectorType type)
+    public void Input(QuadRunner platform, DetectorLine detector, int side)
+    {
+        _model.ControllerAnimations.CheckDetectors(new DetectorEvent(detector, DetectorEvent.DetectorEventType.On, side));
+    }
+
+    public void Output(QuadRunner platform, DetectorLine detector)
+    {
+        _model.ControllerAnimations.CheckDetectors(new DetectorEvent(detector, DetectorEvent.DetectorEventType.Off, -1));
+        detector.Node.Data = null;
+    }
+
+    public int Index(QuadRunner platform, DetectorLine.DetectorType type)
+    {
+        switch (type)
         {
-            switch (type)
-            {
-                case DetectorLine.DetectorType.Horizontal:
+            case DetectorLine.DetectorType.Horizontal:
+                {
+                    for (int j = 0; j < Horizontal.Count; j++)
                     {
-                        for (int j = 0; j < _Horizontal.Count; j++)
+                        if (platform == Horizontal[j])
                         {
-                            if (platform == _Horizontal[j])
-                            {
-                                return j;
-                            }
+                            return j;
                         }
-                        break;
                     }
-                case DetectorLine.DetectorType.Vertical:
+                    break;
+                }
+            case DetectorLine.DetectorType.Vertical:
+                {
+                    for (int i = 0; i < _vertical.Count; i++)
                     {
-                        for (int i = 0; i < _Vertical.Count; i++)
+                        if (platform == _vertical[i])
                         {
-                            if (platform == _Vertical[i])
-                            {
-                                return i;
-                            }
+                            return i;
                         }
-                        break;
                     }
-                default:
-                    return -1;
-            }
-            return -1;
+                    break;
+                }
+            default:
+                return -1;
         }
+        return -1;
+    }
 
-        public int Remove(int index, DetectorLine.DetectorType type)
+    public int Remove(int index, DetectorLine.DetectorType type)
+    {
+        switch (type)
         {
-            switch (type)
-            {
-                case DetectorLine.DetectorType.Vertical:
-                    _Vertical.RemoveAt(index);
-                    return _Vertical.Count;
-                case DetectorLine.DetectorType.Horizontal:
-                    _Horizontal.RemoveAt(index);
-                    return _Horizontal.Count;
-                default:
-                    return 0;
-            }
+            case DetectorLine.DetectorType.Vertical:
+                _vertical.RemoveAt(index);
+                return _vertical.Count;
+            case DetectorLine.DetectorType.Horizontal:
+                Horizontal.RemoveAt(index);
+                return Horizontal.Count;
+            default:
+                return 0;
         }
+    }
 
-        public List<QuadRunner> ActivePlatform(DetectorLine.DetectorType Type)
-        {
-            if (Type == DetectorLine.DetectorType.Horizontal)
-            {
-                return _Horizontal;
-            }
-
-            if (Type == DetectorLine.DetectorType.Vertical)
-            {
-                return _Vertical;
-            }
-            return new List<QuadRunner>();
-        }
-
-        public void Reset()
-        {
-            _Horizontal.Clear();
-            _Vertical.Clear();
-            _DetectorH.Node.Data = null;
-            _DetectorV.Node.Data = null;
-        }
+    public void Reset()
+    {
+        Horizontal.Clear();
+        _vertical.Clear();
+        _detectorH.Node.Data = null;
+        _detectorV.Node.Data = null;
     }
 }

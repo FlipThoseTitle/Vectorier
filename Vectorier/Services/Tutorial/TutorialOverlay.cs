@@ -111,20 +111,6 @@ public sealed class TutorialOverlay : Canvas, ICustomHitTest
             _dim.InvalidateVisual();
     }
 
-    /// <summary>The whole window greyed out with a message (e.g. while the game runs).</summary>
-    public void ShowBusy(string message)
-    {
-        if (_busyMode && _busyText.Text == message)
-            return;
-        _busyMode = true;
-        _card.IsVisible = false;
-        _busy.IsVisible = true;
-        _busyText.Text = message;
-        _holes = new List<Rect>();
-        InvalidateArrange();
-        _dim.InvalidateVisual();
-    }
-
     protected override Size ArrangeOverride(Size finalSize)
     {
         var size = base.ArrangeOverride(finalSize);

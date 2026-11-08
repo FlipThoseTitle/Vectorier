@@ -1,0 +1,628 @@
+// Ported from the Unity Vectorier Editor (Scripts/Trigger/TriggerModel.cs).
+#nullable disable
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Xml;
+
+namespace Vectorier.Services.Triggers;
+
+// ================= Whole trigger =================
+
+public class TriggerData
+{
+    public List<TVar> vars = new List<TVar>();
+    public List<TLoop> loops = new List<TLoop>();
+
+    public static readonly string[] LockedNames = { "$Active", "$AI", "$Node", "Flag1" };
+
+    // Library templates (TriggerTemplates.xml, Library="1") have no <Init>: it is neither shown nor written.
+    public bool omitInit;
+
+    public static bool IsLocked(string n) { return Array.IndexOf(LockedNames, n) >= 0; }
+
+    public static VType LockedType(string n)
+    {
+        switch (n)
+        {
+            case "$Active": return VType.Bool;
+            case "$AI": return VType.AI;
+            case "Flag1": return VType.Int;
+            default: return VType.String;
+        }
+    }
+
+    // make sure the 4 standard vars exist and stay at the top, in this order
+    public void EnsureLockedVars()
+    {
+        for (int i = LockedNames.Length - 1; i >= 0; i--)
+        {
+            string n = LockedNames[i];
+            int at = vars.FindIndex(v => v.name == n);
+            if (at < 0)
+            {
+                string def = n == "$Active" ? "1" : n == "$AI" ? "-1" : n == "$Node" ? "COM" : "0";
+                vars.Insert(0, new TVar(n, def, true) { type = LockedType(n) });
+            }
+            else
+            {
+                vars[at].locked = true;
+                vars[at].type = LockedType(n);
+                var v = vars[at];
+                vars.RemoveAt(at);
+                vars.Insert(0, v);
+            }
+        }
+    }
+
+    public List<string> VarNames()
+    {
+        var list = new List<string>();
+        for (int i = 0; i < vars.Count; i++)
+            if (!string.IsNullOrEmpty(vars[i].name) && !(omitInit && vars[i].locked)) list.Add(vars[i].name);
+        // template loops declare their variables in <Using>
+        foreach (var L in loops)
+            foreach (var u in L.usings)
+                if (!string.IsNullOrEmpty(u.name) && !list.Contains(u.name)) list.Add(u.name);
+        for (int i = 0; i < TriggerCatalog.BuiltInVars.Length; i++)
+            if (!list.Contains(TriggerCatalog.BuiltInVars[i])) list.Add(TriggerCatalog.BuiltInVars[i]);
+        return list;
+    }
+
+    public VType TypeOf(string name)
+    {
+        var v = vars.Find(x => x.name == name);
+        if (v != null) return v.type;
+        foreach (var L in loops)
+            foreach (var u in L.usings)
+                if (u.name == name) return u.VType;
+        if (name == "$Model") return VType.Model;
+        if (name == "$Key") return VType.Key;
+        return VType.String;
+    }
+
+    // ---------------- Write ----------------
+
+    public string ToXml()
+    {
+        var doc = new XmlDocument();
+        var root = doc.CreateElement("Content");
+        doc.AppendChild(root);
+
+        var init = doc.CreateElement("Init");
+        if (!omitInit) root.AppendChild(init);
+        for (int i = 0; i < vars.Count && !omitInit; i++)
+        {
+            if (string.IsNullOrEmpty(vars[i].name)) continue;
+            var sv = doc.CreateElement("SetVariable");
+            sv.SetAttribute("Name", vars[i].name);
+            sv.SetAttribute("Value", vars[i].value ?? "");
+            init.AppendChild(sv);
+        }
+
+        for (int i = 0; i < loops.Count; i++) WriteLoop(doc, root, loops[i]);
+
+        return Pretty(root);
+    }
+
+    static void WriteLoop(XmlDocument doc, XmlElement root, TLoop L)
+    {
+        if (L.kind == LoopKind.Raw)
+        {
+            AppendRaw(doc, root, L.raw);
+            return;
+        }
+
+        if (L.kind == LoopKind.FullTemplate)
+        {
+            if (string.IsNullOrEmpty(L.template)) return;
+            var te = doc.CreateElement("Template");
+            te.SetAttribute("Name", L.template);
+            root.AppendChild(te);
+            return;
+        }
+
+        var le = doc.CreateElement("Loop");
+        root.AppendChild(le);
+
+        if (L.kind == LoopKind.TemplateLoop)
+        {
+            le.SetAttribute("Template", L.template ?? "");
+            if (L.HasName) le.SetAttribute("Name", L.name);
+            return;
+        }
+
+        if (L.HasName) le.SetAttribute("Name", L.name);
+
+        if (L.usings.Count > 0)
+        {
+            var ue = doc.CreateElement("Using");
+            le.AppendChild(ue);
+            foreach (var u in L.usings)
+            {
+                if (string.IsNullOrEmpty(u.name)) continue;
+                var ve = doc.CreateElement("Variable");
+                ve.SetAttribute("Name", u.name);
+                ve.SetAttribute("DefaultValue", u.def ?? "");
+                if (u.complexName) ve.SetAttribute("ComplexName", "1");
+                if (!string.IsNullOrEmpty(u.type)) ve.SetAttribute("Type", u.type);
+                foreach (var kv in u.extra) ve.SetAttribute(kv.Key, kv.Value);
+                ue.AppendChild(ve);
+            }
+        }
+
+        if (L.events.Count > 0)
+        {
+            var ee = doc.CreateElement("Events");
+            le.AppendChild(ee);
+
+            if (L.evTagForm && L.events.Count == 1 && L.events[0].kind == EvKind.Block && string.IsNullOrEmpty(L.events[0].prefix))
+                ee.SetAttribute("Template", L.events[0].template ?? "");
+            else
+                for (int i = 0; i < L.events.Count; i++) WriteEvent(doc, ee, L.events[i]);
+        }
+
+        if (L.conds.Count > 0)
+        {
+            var ce = doc.CreateElement("Conditions");
+            le.AppendChild(ce);
+
+            if (L.condTagForm && L.conds.Count == 1 && L.conds[0].kind == CondKind.Block && string.IsNullOrEmpty(L.conds[0].prefix))
+            {
+                ce.SetAttribute("Template", L.conds[0].template ?? "");
+            }
+            else
+            {
+                // a single condition doesn't need the <Operator> wrapper
+                XmlElement parent = ce;
+                bool wrap = L.conds.Count > 1;
+
+                if (wrap)
+                {
+                    var op = doc.CreateElement("Operator");
+                    op.SetAttribute("Type", L.rootOp == "Or" ? "Or" : "And");
+                    ce.AppendChild(op);
+                    parent = op;
+                }
+                for (int i = 0; i < L.conds.Count; i++) WriteCond(doc, parent, L.conds[i]);
+            }
+        }
+
+        if (L.acts.Count > 0)
+        {
+            var ae = doc.CreateElement("Actions");
+            le.AppendChild(ae);
+
+            if (L.actTagForm && L.acts.Count == 1 && L.acts[0].kind == ActKind.Block && string.IsNullOrEmpty(L.acts[0].prefix))
+                ae.SetAttribute("Template", L.acts[0].template ?? "");
+            else
+                for (int i = 0; i < L.acts.Count; i++) WriteAct(doc, ae, L.acts[i]);
+        }
+    }
+
+    static void WriteEvent(XmlDocument doc, XmlElement parent, TEvent E)
+    {
+        if (E.kind == EvKind.Raw) { AppendRaw(doc, parent, E.raw); return; }
+
+        if (E.kind == EvKind.Block)
+        {
+            var b = doc.CreateElement("EventBlock");
+            b.SetAttribute("Template", E.template ?? "");
+            if (!string.IsNullOrEmpty(E.prefix)) b.SetAttribute("Prefix", E.prefix);
+            parent.AppendChild(b);
+            return;
+        }
+
+        var def = TriggerCatalog.FindEvent(E.id);
+        var el = doc.CreateElement(def != null ? def.tag : E.id);
+        WriteParams(el, def, E.ps);
+        parent.AppendChild(el);
+    }
+
+    static void WriteCond(XmlDocument doc, XmlElement parent, TCond C)
+    {
+        switch (C.kind)
+        {
+            case CondKind.Raw:
+                AppendRaw(doc, parent, C.raw);
+                return;
+
+            case CondKind.Block:
+                {
+                    var b = doc.CreateElement("ConditionBlock");
+                    b.SetAttribute("Template", C.template ?? "");
+                    if (!string.IsNullOrEmpty(C.prefix)) b.SetAttribute("Prefix", C.prefix);
+                    parent.AppendChild(b);
+                    return;
+                }
+
+            case CondKind.Group:
+                {
+                    var g = doc.CreateElement("Operator");
+                    g.SetAttribute("Type", C.op == "Or" ? "Or" : "And");
+                    parent.AppendChild(g);
+                    for (int i = 0; i < C.children.Count; i++) WriteCond(doc, g, C.children[i]);
+                    return;
+                }
+
+            case CondKind.Select:
+                {
+                    var s = doc.CreateElement("Select");
+                    s.SetAttribute("Object", C.selObject.ToXml());
+                    s.SetAttribute("From", C.selFrom.ToXml());
+                    if (C.not) s.SetAttribute("Not", "1");
+                    parent.AppendChild(s);
+                    for (int i = 0; i < C.children.Count; i++) WriteCond(doc, s, C.children[i]);
+                    return;
+                }
+
+            default:
+                {
+                    var e = doc.CreateElement(C.cmp.ToString());
+                    if (C.cmp == Cmp.Equal || C.altPair)
+                    {
+                        e.SetAttribute("Value1", C.a.ToXml());
+                        e.SetAttribute("Value2", C.b.ToXml());
+                    }
+                    else
+                    {
+                        e.SetAttribute("Value", C.a.ToXml());
+                        e.SetAttribute("Than", C.b.ToXml());
+                    }
+                    if (!string.IsNullOrEmpty(C.type)) e.SetAttribute("Type", C.type);
+                    if (C.not) e.SetAttribute("Not", "1");
+                    parent.AppendChild(e);
+                    return;
+                }
+        }
+    }
+
+    static void WriteAct(XmlDocument doc, XmlElement parent, TAct A)
+    {
+        switch (A.kind)
+        {
+            case ActKind.Raw:
+                AppendRaw(doc, parent, A.raw);
+                return;
+
+            case ActKind.Block:
+                {
+                    var b = doc.CreateElement("ActionBlock");
+                    b.SetAttribute("Template", A.template ?? "");
+                    if (!string.IsNullOrEmpty(A.prefix)) b.SetAttribute("Prefix", A.prefix);
+                    parent.AppendChild(b);
+                    return;
+                }
+
+            case ActKind.Choose:
+                {
+                    var c = doc.CreateElement("Choose");
+                    c.SetAttribute("Order", A.order);
+                    if (A.order == "Random") c.SetAttribute("Set", Math.Max(1, A.set).ToString());
+                    parent.AppendChild(c);
+                    for (int i = 0; i < A.children.Count; i++) WriteAct(doc, c, A.children[i]);
+                    return;
+                }
+
+            default:
+                {
+                    var def = TriggerCatalog.FindAction(A.id);
+                    var el = doc.CreateElement(def != null ? def.tag : A.id);
+                    WriteParams(el, def, A.ps);
+                    parent.AppendChild(el);
+                    return;
+                }
+        }
+    }
+
+    static void WriteParams(XmlElement el, EntryDef def, List<TParam> ps)
+    {
+        if (def == null)
+        {
+            for (int i = 0; i < ps.Count; i++) el.SetAttribute(ps[i].attr, ps[i].v.ToXml());
+            return;
+        }
+
+        // catalog order, so the output doesn't shuffle around between saves
+        for (int i = 0; i < def.ps.Length; i++)
+        {
+            var pd = def.ps[i];
+            string v = null;
+            for (int j = 0; j < ps.Count; j++) if (ps[j].attr == pd.attr) { v = ps[j].v.ToXml(); break; }
+            // an optional attribute the entry doesn't have stays out (no Reversed="0" added on save)
+            if (v == null && pd.optional) continue;
+            if (v == null) v = pd.def;
+            if (pd.optional && string.IsNullOrEmpty(v)) continue;
+            el.SetAttribute(pd.attr, v ?? "");
+        }
+
+        // don't drop attributes we don't know about
+        for (int i = 0; i < ps.Count; i++)
+        {
+            bool known = false;
+            for (int j = 0; j < def.ps.Length; j++) if (def.ps[j].attr == ps[i].attr) { known = true; break; }
+            if (!known) el.SetAttribute(ps[i].attr, ps[i].v.ToXml());
+        }
+    }
+
+    static void AppendRaw(XmlDocument doc, XmlElement parent, string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return;
+        try
+        {
+            var frag = doc.CreateDocumentFragment();
+            frag.InnerXml = raw;
+            parent.AppendChild(frag);
+        }
+        catch { }
+    }
+
+    static string Pretty(XmlElement root)
+    {
+        var sb = new StringBuilder();
+        var set = new XmlWriterSettings
+        {
+            Indent = true,
+            IndentChars = "  ",
+            NewLineChars = "\n",
+            OmitXmlDeclaration = true,
+            ConformanceLevel = ConformanceLevel.Fragment
+        };
+        using (var w = XmlWriter.Create(sb, set)) root.WriteContentTo(w);
+        return sb.ToString().Trim();
+    }
+
+    // ---------------- Read ----------------
+
+    public static TriggerData Parse(string contentInnerXml) => Parse(contentInnerXml, library: false);
+
+    /// <param name="library">A library template: no &lt;Init&gt; (none is read, added or written).</param>
+    public static TriggerData Parse(string contentInnerXml, bool library)
+    {
+        var d = new TriggerData { omitInit = library };
+
+        var doc = new XmlDocument();
+        try { doc.LoadXml("<Content>" + (contentInnerXml ?? "") + "</Content>"); }
+        catch { if (!library) d.EnsureLockedVars(); return d; }
+
+        var root = doc.DocumentElement;
+        if (root == null) { if (!library) d.EnsureLockedVars(); return d; }
+
+        foreach (XmlNode n in root.ChildNodes)
+        {
+            var e = n as XmlElement;
+            if (e == null) continue;
+
+            if (e.Name == "Init")
+            {
+                foreach (XmlNode vn in e.ChildNodes)
+                {
+                    var ve = vn as XmlElement;
+                    if (ve == null || ve.Name != "SetVariable") continue;
+                    d.vars.Add(new TVar(ve.GetAttribute("Name"), ve.GetAttribute("Value")));
+                }
+            }
+            else if (e.Name == "Template")
+            {
+                d.loops.Add(new TLoop { kind = LoopKind.FullTemplate, template = e.GetAttribute("Name") });
+            }
+            else if (e.Name == "Loop")
+            {
+                d.loops.Add(ReadLoop(e));
+            }
+            else
+            {
+                d.loops.Add(new TLoop { kind = LoopKind.Raw, raw = e.OuterXml });
+            }
+        }
+
+        if (!library) d.EnsureLockedVars();
+        return d;
+    }
+
+    static TLoop ReadLoop(XmlElement le)
+    {
+        var L = new TLoop();
+        L.name = le.GetAttribute("Name");
+        if (string.IsNullOrEmpty(L.name)) L.name = TLoop.NoName;
+
+        string lt = le.GetAttribute("Template");
+        if (!string.IsNullOrEmpty(lt))
+        {
+            L.kind = LoopKind.TemplateLoop;
+            L.template = lt;
+            return L;
+        }
+
+        if (le.SelectSingleNode("Using") is XmlElement us)
+        {
+            foreach (var ve in Elements(us))
+            {
+                if (ve.Name != "Variable") continue;
+                var u = new TUsing
+                {
+                    name = ve.GetAttribute("Name"),
+                    def = ve.GetAttribute("DefaultValue"),
+                    type = ve.GetAttribute("Type"),
+                    complexName = ve.GetAttribute("ComplexName") == "1",
+                };
+                foreach (XmlAttribute a in ve.Attributes)
+                    if (a.Name is not ("Name" or "DefaultValue" or "Type" or "ComplexName"))
+                        u.extra.Add(new KeyValuePair<string, string>(a.Name, a.Value));
+                L.usings.Add(u);
+            }
+        }
+
+        var ev = le.SelectSingleNode("Events") as XmlElement;
+        if (ev != null)
+        {
+            string t = ev.GetAttribute("Template");
+            if (!string.IsNullOrEmpty(t))
+            {
+                L.evTagForm = true;
+                L.events.Add(new TEvent { kind = EvKind.Block, template = t, prefix = ev.GetAttribute("Prefix") });
+            }
+
+            foreach (XmlNode n in ev.ChildNodes)
+            {
+                var e = n as XmlElement;
+                if (e == null) continue;
+                L.events.Add(ReadEvent(e));
+            }
+        }
+
+        var cond = le.SelectSingleNode("Conditions") as XmlElement;
+        if (cond != null)
+        {
+            string t = cond.GetAttribute("Template");
+            if (!string.IsNullOrEmpty(t))
+            {
+                L.condTagForm = true;
+                L.conds.Add(new TCond { kind = CondKind.Block, template = t, prefix = cond.GetAttribute("Prefix") });
+            }
+
+            var kids = Elements(cond);
+
+            // a lone top-level <Operator> is just the root And/Or, not a nested group
+            if (L.conds.Count == 0 && kids.Count == 1 && kids[0].Name == "Operator")
+            {
+                L.rootOp = kids[0].GetAttribute("Type") == "Or" ? "Or" : "And";
+                foreach (var c in Elements(kids[0])) L.conds.Add(ReadCond(c));
+            }
+            else
+            {
+                for (int i = 0; i < kids.Count; i++) L.conds.Add(ReadCond(kids[i]));
+            }
+        }
+
+        var act = le.SelectSingleNode("Actions") as XmlElement;
+        if (act != null)
+        {
+            string t = act.GetAttribute("Template");
+            if (!string.IsNullOrEmpty(t))
+            {
+                L.actTagForm = true;
+                L.acts.Add(new TAct { kind = ActKind.Block, template = t, prefix = act.GetAttribute("Prefix") });
+            }
+
+            foreach (var a in Elements(act)) L.acts.Add(ReadAct(a));
+        }
+
+        // some templates put actions straight under <Loop>, e.g. <Sound Name="_Sound"/>
+        foreach (XmlNode n in le.ChildNodes)
+        {
+            var e = n as XmlElement;
+            if (e == null) continue;
+            if (e.Name == "Events" || e.Name == "Conditions" || e.Name == "Actions" || e.Name == "Using") continue;
+            L.acts.Add(ReadAct(e));
+        }
+
+        return L;
+    }
+
+    static List<XmlElement> Elements(XmlElement parent)
+    {
+        var list = new List<XmlElement>();
+        foreach (XmlNode n in parent.ChildNodes)
+        {
+            var e = n as XmlElement;
+            if (e != null) list.Add(e);
+        }
+        return list;
+    }
+
+    static TEvent ReadEvent(XmlElement e)
+    {
+        if (e.Name == "EventBlock")
+            return new TEvent { kind = EvKind.Block, template = e.GetAttribute("Template"), prefix = e.GetAttribute("Prefix") };
+
+        var def = TriggerCatalog.FindEvent(e.Name);
+        if (def == null) return new TEvent { kind = EvKind.Raw, raw = e.OuterXml };
+
+        var E = new TEvent { kind = EvKind.Event, id = def.id };
+        ReadParams(e, E.ps);
+        return E;
+    }
+
+    static TCond ReadCond(XmlElement e)
+    {
+        if (e.Name == "ConditionBlock")
+            return new TCond { kind = CondKind.Block, template = e.GetAttribute("Template"), prefix = e.GetAttribute("Prefix") };
+
+        if (e.Name == "Operator")
+        {
+            var g = new TCond { kind = CondKind.Group, op = e.GetAttribute("Type") == "Or" ? "Or" : "And" };
+            foreach (var c in Elements(e)) g.children.Add(ReadCond(c));
+            return g;
+        }
+
+        if (e.Name == "Select")
+        {
+            var s = new TCond
+            {
+                kind = CondKind.Select,
+                selObject = TValue.Parse(e.GetAttribute("Object")),
+                selFrom = TValue.Parse(e.GetAttribute("From")),
+                not = e.GetAttribute("Not") == "1"
+            };
+            foreach (var c in Elements(e)) s.children.Add(ReadCond(c));
+            return s;
+        }
+
+        if (e.Name == "Equal" || e.Name == "Greater" || e.Name == "Less")
+        {
+            var C = new TCond { kind = CondKind.Compare };
+            C.cmp = e.Name == "Greater" ? Cmp.Greater : e.Name == "Less" ? Cmp.Less : Cmp.Equal;
+            C.not = e.GetAttribute("Not") == "1";
+            C.type = e.GetAttribute("Type");
+
+            if (e.HasAttribute("Value1") || e.HasAttribute("Value2"))
+            {
+                C.altPair = C.cmp != Cmp.Equal;
+                C.a = TValue.Parse(e.GetAttribute("Value1"));
+                C.b = TValue.Parse(e.GetAttribute("Value2"));
+            }
+            else
+            {
+                C.a = TValue.Parse(e.GetAttribute("Value"));
+                C.b = TValue.Parse(e.GetAttribute("Than"));
+            }
+            return C;
+        }
+
+        return new TCond { kind = CondKind.Raw, raw = e.OuterXml };
+    }
+
+    static TAct ReadAct(XmlElement e)
+    {
+        if (e.Name == "ActionBlock")
+            return new TAct { kind = ActKind.Block, template = e.GetAttribute("Template"), prefix = e.GetAttribute("Prefix") };
+
+        if (e.Name == "Choose")
+        {
+            var c = new TAct { kind = ActKind.Choose, order = e.GetAttribute("Order") };
+            if (string.IsNullOrEmpty(c.order)) c.order = "Straight";
+            int.TryParse(e.GetAttribute("Set"), out c.set);
+            if (c.set < 1) c.set = 1;
+            foreach (var k in Elements(e)) c.children.Add(ReadAct(k));
+            return c;
+        }
+
+        var names = new List<string>();
+        if (e.HasAttributes) foreach (XmlAttribute a in e.Attributes) names.Add(a.Name);
+
+        var def = TriggerCatalog.MatchAction(e.Name, names);
+        if (def == null) return new TAct { kind = ActKind.Raw, raw = e.OuterXml };
+
+        var A = new TAct { kind = ActKind.Action, id = def.id };
+        ReadParams(e, A.ps);
+        return A;
+    }
+
+    static void ReadParams(XmlElement e, List<TParam> ps)
+    {
+        if (!e.HasAttributes) return;
+        foreach (XmlAttribute a in e.Attributes)
+            ps.Add(new TParam(a.Name, TValue.Parse(a.Value)));
+    }
+}

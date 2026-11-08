@@ -7,7 +7,6 @@ using System.Xml.Linq;
 using Avalonia.Media;
 using Vectorier.Gameplay;
 using Vectorier.Gameplay.Rl;
-using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
 
@@ -23,7 +22,6 @@ public sealed class GameHost
 {
     public static GameHost Current { get; } = new();
 
-    private VectorGame? _game;
     private string? _projectPath;
     private readonly Dictionary<string, DateTimeOffset?> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private string? _movesSignature;
@@ -34,7 +32,7 @@ public sealed class GameHost
     public bool IsRunning { get; private set; }
 
     /// <summary>The game (for the Move Visualizer, which runs it without its view).</summary>
-    public VectorGame? Game => _game;
+    public VectorGame? Game { get; private set; }
 
     /// <summary>The level played (and the mode), for the status bar.</summary>
     public string? LevelName { get; private set; }
@@ -103,10 +101,10 @@ public sealed class GameHost
             {
                 GameState.ResetForNewGame(projectChanged);
                 lock (_missingTextures) _missingTextures.Clear();
-                _game ??= new VectorGame();
-                VectorGame.Instance = _game;
+                Game ??= new VectorGame();
+                VectorGame.Instance = Game;
                 ResourceManager.LoadResources();
-                _game.Start(levelName, hunterMode, false);
+                Game.Start(levelName, hunterMode, false);
             }
 
             // Textures the level uses that the editor had not loaded yet: loaded, then the level starts again with them.
@@ -124,7 +122,7 @@ public sealed class GameHost
                 {
                     GameState.ResetForNewGame(false);
                     ResourceManager.LoadResources();
-                    _game.Start(levelName, hunterMode, false);
+                    Game.Start(levelName, hunterMode, false);
                 }
             }
 
@@ -163,7 +161,7 @@ public sealed class GameHost
     {
         using (Invariant())
         {
-            _game?.Close();
+            Game?.Close();
             GameState.ResetForNewGame(false);
         }
     }
@@ -266,7 +264,7 @@ public sealed class GameHost
     /// <summary>One frame of the game into the Game View (called from its Render, once per display frame).</summary>
     public void Frame(DrawingContext context, int width, int height)
     {
-        if (!IsRunning || _game == null || _faulted)
+        if (!IsRunning || Game == null || _faulted)
             return;
         double now = _clock.Elapsed.TotalSeconds;
         double dt = _lastFrame == 0 ? 1.0 / 60 : now - _lastFrame;
@@ -282,7 +280,7 @@ public sealed class GameHost
         try
         {
             using (Invariant())
-                _game.Frame(context, width, height);
+                Game.Frame(context, width, height);
         }
         catch (Exception ex)
         {

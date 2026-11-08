@@ -1,164 +1,137 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Vectorier.Gameplay.Rl;
 using System.Numerics;
 using Vectorier.Gameplay.Models;
+using Vectorier.Gameplay.Rl;
 
-namespace Vectorier.Gameplay.Runners
+namespace Vectorier.Gameplay.Runners;
+
+public class PrimitiveRunner : Runner
 {
-    public class PrimitiveRunner : Runner
+    private Vector3 _position = new Vector3();
+
+    private Vector3 _deltaPosition = new Vector3();
+
+    private Color _color;
+    private bool _isUpdate;
+
+    private List<string> _sounds;
+    private float _impulse;
+
+    protected int _type;
+
+    public Vector3 Position
     {
-        private Vector3 _position = new Vector3();
+        get => _position;
+        set => _position = DeltaPosition + value;
+    }
 
-        private Vector3 _DeltaPosition = new Vector3();
+    public Vector3 DeltaPosition => _deltaPosition;
 
-        private Color _Color;
+    public Color Color
+    {
+        get => _color;
+        set => _color = value;
+    }
 
-        private ModelType _Type = ModelType.Primitive;
+    public ModelType Type { get; set; } = ModelType.Primitive;
 
-        private bool _IsUpdate;
+    public ModelPrimitive Model { get; private set; }
 
-        private bool _IsLoaded;
+    public virtual bool IsStrike
+    {
+        get => Model.IsStrike;
+        set => Model.IsStrike = value;
+    }
+    public Rectangle Rectangle => Model.Rectangle;
 
-        private List<string> _Sounds;
+    public PrimitiveRunner(int type, string name, Color color, Vector3 deltaPosition, float impulse, List<string> sounds)
+        : base(0f, 0f)
+    {
+        _color = color;
+        _deltaPosition = deltaPosition;
+        Name = name;
+        _sounds = sounds;
+        _impulse = impulse;
+        TypeClass = RunnerType.Primitive;
+        _type = type;
+    }
 
-        private ModelPrimitive _Model;
+    public override void InitRunner(Vector2 point)
+    {
+        base.InitRunner(point);
+        DefaultPosition = DefaultPosition.Set(new Vector2(_position.X, _position.Y));
+    }
 
-        private float _Impulse;
+    public virtual void Load()
+    {
+        List<string> skins = new List<string> { Name + ".xml" };
+        Model = new ModelPrimitive(this, skins, _sounds);
+        Model.Type = Type;
+        Model.Color = _color;
+        Model.Name = Name;
+        Model.IsEnabled = true;
+        Model.IsVisible = true;
+        Model.Impulse = _impulse;
+        Model.Position(new Vector3(Position.X, Position.Y, 0));
 
-        protected int _type;
+    }
 
-        public Vector3 Position
+    public virtual void Render(List<QuadRunner> Platforms)
+    {
+        if (!IsEnabled || !Model.IsStrike)
         {
-            get => _position;
-            set => _position = DeltaPosition + value;
+            return;
         }
-
-        public Vector3 DeltaPosition => _DeltaPosition == null ? new Vector3() : _DeltaPosition;
-
-        public Color Color
+        CollisitionPlatform(Platforms);
+        Update();
+        Model.ModelObject.RenderMacroNode();
+        Model.ControllerPhysics.Render();
+        if (Model.IsStrike)
         {
-            get => _Color;
-            set => _Color = value;
-        }
-
-        public ModelType Type
-        {
-            get => _Type;
-            set => _Type = value;
-        }
-
-        public bool IsUpdate => _IsUpdate;
-
-        public ModelPrimitive Model => _Model;
-
-        public virtual bool IsStrike
-        {
-            get => _Model.IsStrike;
-            set => _Model.IsStrike = value;
-        }
-        public Rectangle Rectangle => _Model.Rectangle;
-
-        public PrimitiveRunner(int type, string name, Color color, Vector3 deltaPosition, float impulse, List<string> sounds)
-            : base(0f, 0f)
-        {
-            _Color = color;
-            _DeltaPosition = deltaPosition;
-            Name = name;
-            _Sounds = sounds;
-            _Impulse = impulse;
-            TypeClass = RunnerType.Primitive;
-            _type = type;
-        }
-
-        public override void InitRunner(Vector2 point)
-        {
-            base.InitRunner(point);
-            DefaultPosition = DefaultPosition.Set(new Vector2(_position.X, _position.Y));
-        }
-
-        public virtual void Load()
-        {
-            List<string> skins = new List<string> { Name + ".xml" };
-            _Model = new ModelPrimitive(this, skins, _Sounds);
-            _Model.Type = _Type;
-            _Model.Color = _Color;
-            _Model.Name = Name;
-            _Model.IsEnabled = true;
-            _Model.IsVisible = true;
-            _Model.Impulse = _Impulse;
-            _IsLoaded = true;
-            _Model.Position(new Vector3(Position.X, Position.Y, 0));
-
-        }
-
-        public virtual void Render(List<QuadRunner> Platforms)
-        {
-            if (!IsEnabled || !_Model.IsStrike)
+            if (Model.RenderTime > 0)
             {
+                Model.RenderTime--;
                 return;
             }
-            CollisitionPlatform(Platforms);
-            Update();
-            _Model.ModelObject.RenderMacroNode();
-            _Model.ControllerPhysics.Render();
-            if (_Model.IsStrike)
-            {
-                if (_Model.RenderTime > 0)
-                {
-                    _Model.RenderTime--;
-                    return;
-                }
-                _Model.IsVisible = false;
-                _Model.ControllerPhysics.Stop();
-            }
+            Model.IsVisible = false;
+            Model.ControllerPhysics.Stop();
         }
+    }
 
-        public override void Move(Vector2 point)
-        {
-            if (point == null)
-            {
-                return;
-            }
-            Position = new Vector3(point, 0);
-            if (_Model != null)
-                _Model.Position(new Vector3(Position.X, Position.Y, 0));
-        }
+    public override void Move(Vector2 point)
+    {
+        Position = new Vector3(point, 0);
+        if (Model != null)
+            Model.Position(new Vector3(Position.X, Position.Y, 0));
+    }
 
-        public void CollisitionPlatform(List<QuadRunner> quads)
+    public void CollisitionPlatform(List<QuadRunner> quads)
+    {
+        foreach (var quad in quads)
         {
-            foreach (var quad in quads)
-            {
-                _Model.ControllerCollisions.UpdatePlatform(quad);
-            }
+            Model.ControllerCollisions.UpdatePlatform(quad);
         }
+    }
 
-        public void Update()
+    public void Update()
+    {
+        if (Model.IsEnabled && _isUpdate)
         {
-            if (_Model.IsEnabled && _IsUpdate)
-            {
-                Position += _DeltaPosition;
-            }
+            Position += _deltaPosition;
         }
+    }
 
-        public override void Reset()
-        {
-            _IsUpdate = false;
-            _Model.IsStrike = false;
-            _Model.IsEnabled = true;
-            _Model.ControllerPhysics.Stop();
-            _Model.Reset();
-            Move(new Vector2(Position.X - _DeltaPosition.X, Position.Y - _DeltaPosition.Y));
-            _Model.IsVisible = true;
-            _Model.ModelObject.RenderMacroNode();
-            _Model.ControllerPhysics.Render();
-        }
+    public override void Reset()
+    {
+        _isUpdate = false;
+        Model.IsStrike = false;
+        Model.IsEnabled = true;
+        Model.ControllerPhysics.Stop();
+        Model.Reset();
+        Move(new Vector2(Position.X - _deltaPosition.X, Position.Y - _deltaPosition.Y));
+        Model.IsVisible = true;
+        Model.ModelObject.RenderMacroNode();
+        Model.ControllerPhysics.Render();
     }
 }

@@ -1,253 +1,115 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Animation;
+using Vectorier.Gameplay.Rl;
 
-namespace Vectorier.Gameplay.User
+namespace Vectorier.Gameplay.User;
+
+public class UserData
 {
-    public class UserData
+    private string _userId;
+
+    private Color _color;
+    private List<AnimationInfo> _availableAnimation = new List<AnimationInfo>();
+
+    public Color Color
     {
-        private string _UserId;
+        get => _color;
+        set => _color = value;
+    }
 
-        private Color _Color;
+    public string Name { get; set; }
 
-        private int _Gender;
+    public List<string> Skins { get; set; } = new List<string>();
 
-        private List<AnimationInfo> _AvailableAnimation = new List<AnimationInfo>();
+    public List<string> Stocks { get; set; } = new List<string>();
 
-        private string _Name;
+    public bool IsSelf { get; set; }
 
-        private List<string> _Skins = new List<string>();
+    public bool IsBot => !IsSelf;
 
-        private List<string> _Stocks = new List<string>();
+    public List<string> Arrests { get; set; } = new List<string>();
 
-        private bool _IsSelf;
+    public List<string> Murders { get; set; } = new List<string>();
 
-        private List<string> _Arrests = new List<string>();
+    public List<string> Respawns { get; set; } = new List<string>();
 
-        private List<string> _Murders = new List<string>();
+    public List<string> Births { get; set; } = new List<string>();
 
-        private List<string> _Respawns = new List<string>();
+    public string BirthSpawn { get; set; }
 
-        private List<string> _Births = new List<string>();
+    public int AI { get; set; }
 
-        private string _BirthSpawn;
+    public bool IsTrick { get; set; }
 
-        private int _AI;
+    public bool IsItem { get; set; }
 
-        private bool _IsTrick;
+    public bool IsVictory { get; set; }
 
-        private bool _IsItem;
+    public bool IsLost { get; set; }
 
-        private bool _IsVictory;
+    public float StartTime { get; set; }
 
-        private bool _IsLost;
+    public float LiveTime { get; set => field = value * 60; }
 
-        private float _StartTime;
+    public bool isIcon { get; set; }
 
-        private float _LiveTime;
+    public UserData(string userID)
+    {
+        _userId = userID;
+    }
 
-        private bool _isIcon;
+    public void Init()
+    {
+        SetModeles();
+        SetAnimation();
+    }
 
-        public string UserId => _UserId;
+    private void SetModeles()
+    {
+        var list = new List<string>();
+        list.Add("0.xml");
 
-        public Color Color
+        foreach (var stock in Stocks)
         {
-            get => _Color;
-            set => _Color = value;
+            list.Add(stock + ".xml");
         }
 
-        public string Name
+        foreach (var skin in Skins)
         {
-            get => _Name;
-            set => _Name = value;
+            list.Add(skin + ".xml");
         }
 
-        public List<string> Skins
+        if (IsSelf)
         {
-            get => _Skins;
-            set => _Skins = value;
         }
 
-        public List<string> Stocks
+        Skins = list;
+    }
+
+    public void SetAnimation()
+    {
+        _availableAnimation.Clear();
+        foreach (var anim in Animations.ToList())
         {
-            get => _Stocks;
-            set => _Stocks = value;
+            _availableAnimation.Add(anim);
         }
+    }
 
-        public bool IsSelf
+    public AnimationInfo Animation(string name)
+    {
+        for (int i = 0; i < _availableAnimation.Count; i++)
         {
-            get => _IsSelf;
-            set => _IsSelf = value;
-        }
-
-        public bool IsBot => !_IsSelf;
-
-        public List<string> Arrests
-        {
-            get => _Arrests;
-            set => _Arrests = value;
-        }
-
-        public List<string> Murders
-        {
-            get => _Murders;
-            set => _Murders = value;
-        }
-
-        public List<string> Respawns
-        {
-            get => _Respawns;
-            set => _Respawns = value;
-        }
-
-        public List<string> Births
-        {
-            get => _Births;
-            set => _Births = value;
-        }
-
-        public string BirthSpawn
-        {
-            get => _BirthSpawn;
-            set => _BirthSpawn = value;
-        }
-
-        public int AI
-        {
-            get => _AI;
-            set => _AI = value;
-        }
-
-        public bool IsTrick
-        {
-            get => _IsTrick;
-            set => _IsTrick = value;
-        }
-
-        public bool IsItem
-        {
-            get => _IsItem;
-            set => _IsItem = value;
-        }
-
-        public bool IsVictory
-        {
-            get => _IsVictory;
-            set => _IsVictory = value;
-        }
-
-        public bool IsLost
-        {
-            get => _IsLost;
-            set => _IsLost = value;
-        }
-
-        public float StartTime
-        {
-            get => _StartTime;
-            set => _StartTime = value;
-        }
-
-        public float LiveTime
-        {
-            get => _LiveTime;
-            set => _LiveTime = value * 60;
-        }
-
-        public bool isIcon
-        {
-            get => _isIcon;
-            set => _isIcon = value;
-        }
-
-        public UserData(string userID)
-        {
-            _UserId = userID;
-        }
-
-        public void Init()
-        {
-            SetModeles();
-            SetAnimation();
-        }
-
-        private void SetModeles()
-        {
-            var list = new List<string>();
-            list.Add("0.xml");
-
-            foreach (var stock in _Stocks)
+            if (_availableAnimation[i].Name == name)
             {
-                list.Add(stock + ".xml");
-            }
-
-            foreach (var skin in _Skins)
-            {
-                list.Add(skin + ".xml");
-            }
-
-            if (IsSelf)
-            {
-                //foreach (var item in AbstractManager<StoreManager>.Instance.GetItems(StoreItemType.Gear))
-                //{
-                //    if (Game.IsItemEquipped(item.Id))
-                //    {
-                //        list.Add(item.Id + ".xml");
-                //    }
-                //}
-            }
-
-            _Skins = list;
-        }
-
-        public void SetAnimation()
-        {
-            _AvailableAnimation.Clear();
-            foreach (var anim in Animations.ToList())
-            {
-                _AvailableAnimation.Add(anim);
+                return _availableAnimation[i];
             }
         }
+        return null;
+    }
 
-        public void AddTrick(int id)
-        {
-            var animation = Animation(id);
-            if (animation != null)
-            {
-                var list = Animations.ToList();
-                for (int i = 0; i < list.Count; i++)
-                {
-                    if (animation.Id == list[i].Id)
-                    {
-                        _AvailableAnimation.Add(list[i]);
-                    }
-                }
-            }
-        }
-
-        public AnimationInfo Animation(string name)
-        {
-            for (int i = 0; i < _AvailableAnimation.Count; i++)
-            {
-                if (_AvailableAnimation[i].Name == name)
-                {
-                    return _AvailableAnimation[i];
-                }
-            }
-            return null;
-        }
-
-        public AnimationInfo Animation(int id)
-        {
-            return null;
-        }
+    public AnimationInfo Animation(int id)
+    {
+        return null;
     }
 }

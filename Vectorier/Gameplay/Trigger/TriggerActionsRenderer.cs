@@ -1,56 +1,47 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 namespace Vectorier.Gameplay.Trigger;
 
 public class TriggerActionsRenderer
 {
-    private static TriggerActionsRenderer _Current;
+    private readonly Queue<List<TriggerAction>> _pendingActions = new Queue<List<TriggerAction>>();
+    private readonly List<List<TriggerAction>> _delayActions = new List<List<TriggerAction>>();
 
-    private readonly Queue<List<TriggerAction>> _PendingActions = new Queue<List<TriggerAction>>();
-    private readonly List<List<TriggerAction>> _DelayActions = new List<List<TriggerAction>>();
-
-    private bool _IsProcessing;
-    private int _ActionsThisFrame;
+    private bool _isProcessing;
+    private int _actionsThisFrame;
     private const int MaxActionsPerFrame = 1000;
 
     public static TriggerActionsRenderer Current
     {
         get
         {
-            if (_Current == null)
+            if (field == null)
             {
-                _Current = new TriggerActionsRenderer();
+                field = new TriggerActionsRenderer();
             }
 
-            return _Current;
+            return field;
         }
     }
 
     public static void Reset()
     {
-        Current._PendingActions.Clear();
-        Current._DelayActions.Clear();
-        Current._IsProcessing = false;
-        Current._ActionsThisFrame = 0;
+        Current._pendingActions.Clear();
+        Current._delayActions.Clear();
+        Current._isProcessing = false;
+        Current._actionsThisFrame = 0;
     }
 
-    public void AddActions(List<TriggerAction> p_actions)
+    public void AddActions(List<TriggerAction> actions)
     {
-        if (p_actions == null || p_actions.Count == 0)
+        if (actions == null || actions.Count == 0)
         {
             return;
         }
 
-        _PendingActions.Enqueue(p_actions);
+        _pendingActions.Enqueue(actions);
 
-        if (!_IsProcessing)
+        if (!_isProcessing)
         {
             ProcessPendingActions();
         }
@@ -58,59 +49,59 @@ public class TriggerActionsRenderer
 
     private void ProcessPendingActions()
     {
-        _IsProcessing = true;
+        _isProcessing = true;
 
         try
         {
-            while (_PendingActions.Count > 0)
+            while (_pendingActions.Count > 0)
             {
-                if (_ActionsThisFrame++ > MaxActionsPerFrame)
+                if (_actionsThisFrame++ > MaxActionsPerFrame)
                 {
                     break;
                 }
 
-                List<TriggerAction> actions = _PendingActions.Dequeue();
+                List<TriggerAction> actions = _pendingActions.Dequeue();
                 RunActions(actions);
             }
         }
         finally
         {
-            _IsProcessing = false;
+            _isProcessing = false;
         }
     }
 
-    private void RunActions(List<TriggerAction> p_actions)
+    private void RunActions(List<TriggerAction> actions)
     {
-        int count = p_actions.Count;
+        int count = actions.Count;
 
         for (int i = 0; i < count; i++)
         {
             bool isRunNext = true;
-            p_actions[i].Activate(ref isRunNext);
+            actions[i].Activate(ref isRunNext);
 
             if (!isRunNext)
             {
-                CopyActionToDelay(p_actions, i, count);
+                CopyActionToDelay(actions, i, count);
                 break;
             }
         }
     }
 
-    public void CopyActionToDelay(List<TriggerAction> p_actions, int p_from, int size)
+    public void CopyActionToDelay(List<TriggerAction> actions, int from, int size)
     {
-        List<TriggerAction> list = new List<TriggerAction>(size - p_from);
+        List<TriggerAction> list = new List<TriggerAction>(size - from);
 
-        for (int num = size - 1; num >= p_from; num--)
+        for (int num = size - 1; num >= from; num--)
         {
-            list.Add(p_actions[num]);
+            list.Add(actions[num]);
         }
 
-        _DelayActions.Add(list);
+        _delayActions.Add(list);
     }
 
     public void Render()
     {
-        _ActionsThisFrame = 0;
+        _actionsThisFrame = 0;
 
         ProcessDelayActions();
         ProcessPendingActions();
@@ -118,19 +109,19 @@ public class TriggerActionsRenderer
 
     private void ProcessDelayActions()
     {
-        if (_DelayActions.Count == 0)
+        if (_delayActions.Count == 0)
         {
             return;
         }
 
-        for (int i = 0; i < _DelayActions.Count; i++)
+        for (int i = 0; i < _delayActions.Count; i++)
         {
-            List<TriggerAction> list = _DelayActions[i];
+            List<TriggerAction> list = _delayActions[i];
             bool isRunNext = false;
 
             while (list.Count != 0)
             {
-                if (_ActionsThisFrame++ > MaxActionsPerFrame)
+                if (_actionsThisFrame++ > MaxActionsPerFrame)
                 {
                     return;
                 }
@@ -148,11 +139,11 @@ public class TriggerActionsRenderer
             }
         }
 
-        for (int i = _DelayActions.Count - 1; i >= 0; i--)
+        for (int i = _delayActions.Count - 1; i >= 0; i--)
         {
-            if (_DelayActions[i].Count == 0)
+            if (_delayActions[i].Count == 0)
             {
-                _DelayActions.RemoveAt(i);
+                _delayActions.RemoveAt(i);
             }
         }
     }

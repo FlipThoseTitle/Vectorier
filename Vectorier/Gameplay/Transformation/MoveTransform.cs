@@ -1,137 +1,110 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Numerics;
 using System.Xml;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Transformation
+namespace Vectorier.Gameplay.Transformation;
+
+public class MoveTransform : TransformPrototype
 {
-    public class MoveTransform : TransformPrototype
+    private int _frames;
+
+    private int _loop;
+
+    private int _loopFromInterval;
+
+    private int _currentInterval;
+
+    private List<MoveInterval> _intervals = new List<MoveInterval>();
+
+    public override int Frames => _frames;
+
+    public MoveTransform()
     {
-        private int _Frames;
+        _Type = Type.Move;
+    }
 
-        private int _Loop;
+    public static MoveTransform Create(XmlNode node)
+    {
+        if (node == null) return null;
+        var move = new MoveTransform();
+        move.Parse(node);
+        return move;
+    }
 
-        private int _LoopFromInterval;
-
-        private int _CurrentInterval;
-
-        private List<MoveInterval> _Intervals = new List<MoveInterval>();
-
-        public override int Frames => _Frames;
-
-        public MoveTransform()
+    public override void Parse(XmlNode node)
+    {
+        _loop = node.Attributes["Cycle"].ParseInt();
+        _loopFromInterval = node.Attributes["CycleFromInterval"].ParseInt();
+        foreach (XmlNode child in node.ChildNodes)
         {
-            _Type = Type.Move;
-        }
-
-        public static MoveTransform Create(XmlNode p_node)
-        {
-            if (p_node == null) return null;
-            var move = new MoveTransform();
-            move.Parse(p_node);
-            return move;
-        }
-
-        public override void Parse(XmlNode p_node)
-        {
-            _Loop = p_node.Attributes["Cycle"].ParseInt();
-            _LoopFromInterval = p_node.Attributes["CycleFromInterval"].ParseInt();
-            foreach (XmlNode node in p_node.ChildNodes)
+            if (child.Name == "MoveInterval")
             {
-                if (node.Name == "MoveInterval")
+                var interval = MoveInterval.Create(child);
+                _frames += interval.Frames;
+                _intervals.Add(interval);
+            }
+        }
+    }
+
+    public override bool Iteration()
+    {
+
+        if (_Runner == null || _Pause)
+        {
+            return false;
+        }
+
+        if (_intervals.Count <= _currentInterval)
+        {
+            if (_loop == 0)
+            {
+                if (_loop != -1)
                 {
-                    var interval = MoveInterval.Create(node);
-                    _Frames += interval.Frames;
-                    _Intervals.Add(interval);
+                    _Runner.TweenPosition = _Runner.TweenPosition.Reset();
+                    _Pause = true;
+                    return false;
                 }
             }
+            else
+            {
+                _loop--;
+            }
+            _currentInterval = _loopFromInterval;
         }
 
-        public override bool Iteration()
+        if (!_intervals[_currentInterval].Iteration(_Runner))
         {
-
-            if (_Runner == null || _Pause)
-            {
-                return false;
-            }
-
-            if (_Intervals.Count <= _CurrentInterval)
-            {
-                if (_Loop == 0)
-                {
-                    if (_Loop != -1)
-                    {
-                        _Runner.TweenPosition = _Runner.TweenPosition.Reset();
-                        _Pause = true;
-                        return false;
-                    }
-                }
-                else
-                {
-                    _Loop--;
-                }
-                _CurrentInterval = _LoopFromInterval;
-            }
-
-            if (!_Intervals[_CurrentInterval].Iteration(_Runner))
-            {
-                _CurrentInterval++;
-            }
-            return true;
+            _currentInterval++;
         }
+        return true;
+    }
 
-        public void GetNextIterationPoint(ref Vector2 p_point, ref Vector2 p_velocity, int p_step)
+
+    public override void Reset()
+    {
+        _Pause = false;
+        _currentInterval = 0;
+        foreach (var interval in _intervals)
         {
-            if (p_step > 0)
-            {
-                for (int i = 0; i < p_step; i++)
-                {
-                    if (_Intervals.Count <= _CurrentInterval)
-                    {
-                        if (_Loop < 1 && _Loop != -1)
-                        {
-                            return;
-                        }
-                    }
-                    _Intervals[_CurrentInterval].InerationFake(ref p_point, ref p_velocity, i == 0);
-                }
-            }
+            interval.Reset();
         }
+    }
 
-
-        public override void Reset()
+    public override TransformPrototype Clone()
+    {
+        var move = new MoveTransform();
+        move._loop = _loop;
+        _loopFromInterval = 0;
+        move._loopFromInterval = _loopFromInterval;
+        foreach (var i in _intervals)
         {
-            _Pause = false;
-            _CurrentInterval = 0;
-            foreach (var interval in _Intervals)
-            {
-                interval.Reset();
-            }
+            move._intervals.Add(i.Clone());
         }
+        return move;
+    }
 
-        public override TransformPrototype Clone()
-        {
-            var move = new MoveTransform();
-            move._Loop = _Loop;
-            _LoopFromInterval = 0;
-            move._LoopFromInterval = _LoopFromInterval;
-            foreach (var i in _Intervals)
-            {
-                move._Intervals.Add(i.Clone());
-            }
-            return move;
-        }
-
-        public override void CalcDelta()
-        {
-        }
+    public override void CalcDelta()
+    {
     }
 }

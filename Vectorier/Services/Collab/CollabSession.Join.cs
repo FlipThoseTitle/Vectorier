@@ -192,7 +192,7 @@ public sealed partial class CollabSession
             Role = CollabRole.Participant;
             Code = code.ToString();
             AttachEditor(editor, root, accepted.LevelPath);
-            _sync!.LoadSnapshot(snapshot);
+            LevelSync!.LoadSnapshot(snapshot);
             _files = new CollabFileSync(this, root, accepted.LevelPath, isHost: false, hostFiles);
             connection.Received -= OnReceived;
             connection.Closed -= OnClosed;

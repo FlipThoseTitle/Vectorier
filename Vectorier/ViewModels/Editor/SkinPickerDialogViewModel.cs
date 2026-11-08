@@ -9,9 +9,9 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services;
 using Vectorier.Services.Assets;
 using Vectorier.Services.IO;
+using Vectorier.Services.Localization;
 using Vectorier.Services.Projects;
 using Vectorier.ViewModels.Dialogs;
-using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
 

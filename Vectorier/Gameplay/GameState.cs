@@ -8,40 +8,39 @@ using Vectorier.Gameplay.Runners;
 using Vectorier.Gameplay.Trigger;
 using Vectorier.Gameplay.Trigger.Events;
 
-namespace Vectorier.Gameplay
+namespace Vectorier.Gameplay;
+
+public static class GameState
 {
-    public static class GameState
+    /// <summary>
+    /// Clears the previous level's state. <paramref name="projectChanged"/>: the project's own files (trigger
+    /// templates, localization) are read again too.
+    /// </summary>
+    public static void ResetForNewGame(bool projectChanged)
     {
-        /// <summary>
-        /// Clears the previous level's state. <paramref name="projectChanged"/>: the project's own files (trigger
-        /// templates, localization) are read again too.
-        /// </summary>
-        public static void ResetForNewGame(bool projectChanged)
+        SoundsManager.StopMusic();
+        GlobalObjects.Drawables.Clear();
+        GlobalObjects.Updatables.Clear();
+        GlobalObjects.InitAfterAdding = false;
+        Model.ModelsAll.Clear();
+        RunnerRender.Reset();
+        TriggerActionsRenderer.Reset();
+        TE_StartGame.ResetAll();
+        TE_Line.ResetCounter();
+        LocationCamera.ResetAll();
+        ArrestAreaRunner.ActiveArrest = null;
+        TrickAreaRunner.Current = null;
+        VisualRunner.SortingOrder = 0;
+        GameplayUI.Reset();
+        ResourceManager.ClearTextureCache();
+        AtlasDecoder.ClearCache();
+        if (projectChanged)
         {
-            SoundsManager.StopMusic();
-            GlobalObjects.Drawables.Clear();
-            GlobalObjects.Updatables.Clear();
-            GlobalObjects.InitAfterAdding = false;
-            Model.ModelsAll.Clear();
-            RunnerRender.Reset();
-            TriggerActionsRenderer.Reset();
-            TE_StartGame.ResetAll();
-            TE_Line.ResetCounter();
-            LocationCamera.ResetAll();
-            ArrestAreaRunner.ActiveArrest = null;
-            TrickAreaRunner.Current = null;
-            VisualRunner.SortingOrder = 0;
-            GameplayUI.Reset();
-            ResourceManager.ClearTextureCache();
-            AtlasDecoder.ClearCache();
-            if (projectChanged)
-            {
-                ResourceManager.ClearSoundCache();
-                ResourceManager.ClearMusicCache();
-                Localization.Reset();
-            }
-            // TriggerTemplates.xml: the editor may have changed it since the last game.
-            TemplateModule.Reload();
+            ResourceManager.ClearSoundCache();
+            ResourceManager.ClearMusicCache();
+            Localization.Reset();
         }
+        // TriggerTemplates.xml: the editor may have changed it since the last game.
+        TemplateModule.Reload();
     }
 }

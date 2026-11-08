@@ -29,9 +29,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     private static readonly Pen PlacementPen = new(new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD7)), 1, new DashStyle(new double[] { 4, 3 }, 0));
 
     private EditorViewModel? _editor;
-    private SceneRenderer? _renderer;
     private Point _center;
-    private double _zoom = 0.5;
     private bool _animating;
     private bool _framedOnce;
 
@@ -54,11 +52,11 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         set => SetValue(EditorProperty, value);
     }
 
-    public SceneRenderer? Renderer => _renderer;
+    public SceneRenderer? Renderer { get; private set; }
 
-    public double Zoom => _zoom;
+    public double Zoom { get; private set; } = 0.5;
 
-    public SceneViewport Viewport => new(_center, _zoom, Bounds.Size);
+    public SceneViewport Viewport => new(_center, Zoom, Bounds.Size);
 
     private Action<string> TextureLoadedHandler { get; }
 
@@ -97,12 +95,12 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             EditorPreferences.Changed -= OnPreferencesChanged;
         }
         _editor = editor;
-        _renderer = null;
+        Renderer = null;
         _framedOnce = false;
         if (editor != null)
         {
-            _renderer = new SceneRenderer(editor);
-            _renderer.RedrawRequested += () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render);
+            Renderer = new SceneRenderer(editor);
+            Renderer.RedrawRequested += () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render);
             editor.SceneInvalidated += InvalidateVisual;
             editor.PlacementPreviewReset += ClearGhost;
             editor.StructureChanged += OnStructureChanged;
@@ -153,13 +151,13 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             // Each document keeps the view it was left with (Object tab → Scene tab returns exactly there,
             // without passing through the level's camera or the origin first).
             if (_shownDocument != null && _framedOnce)
-                _viewStates.AddOrUpdate(_shownDocument, new ViewState(_center, _zoom));
+                _viewStates.AddOrUpdate(_shownDocument, new ViewState(_center, Zoom));
             _shownDocument = _editor?.Document;
             if (_shownDocument != null && _viewStates.TryGetValue(_shownDocument, out var state))
             {
                 StopFrameAnimation();
                 _center = state.Center;
-                _zoom = state.Zoom;
+                Zoom = state.Zoom;
                 _framedOnce = true;
                 UpdateEditorCenter();
                 InvalidateVisual();
@@ -172,7 +170,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private void OnStructureChanged()
     {
-        _renderer?.InvalidateStructure();
+        Renderer?.InvalidateStructure();
         InvalidateVisual();
     }
 
@@ -186,12 +184,12 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     {
         if (property == null || !PoseProperties.Contains(property))
             _onionCopies.Remove(element);
-        if (_renderer == null)
+        if (Renderer == null)
             return;
         if (property == null || StructuralProperties.Contains(property))
-            _renderer.InvalidateStructure();
+            Renderer.InvalidateStructure();
         else
-            _renderer.InvalidateElement(element);
+            Renderer.InvalidateElement(element);
         InvalidateVisual();
     }
 
@@ -236,7 +234,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         if (camera != null)
         {
             _center = camera.WorldPosition;
-            _zoom = Math.Clamp(Math.Min(Bounds.Width / (CameraElement.ViewSize.Width * 1.25), Bounds.Height / (CameraElement.ViewSize.Height * 1.25)), 0.02, 8);
+            Zoom = Math.Clamp(Math.Min(Bounds.Width / (CameraElement.ViewSize.Width * 1.25), Bounds.Height / (CameraElement.ViewSize.Height * 1.25)), 0.02, 8);
         }
         else
         {
@@ -246,7 +244,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             else
             {
                 _center = new Point(0, 0);
-                _zoom = 0.5;
+                Zoom = 0.5;
             }
         }
         UpdateEditorCenter();
@@ -259,7 +257,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             return;
         _center = rect.Center;
         double w = Math.Max(rect.Width, 50), h = Math.Max(rect.Height, 50);
-        _zoom = Math.Clamp(Math.Min(Bounds.Width / (w * 1.2), Bounds.Height / (h * 1.2)), 0.01, 8);
+        Zoom = Math.Clamp(Math.Min(Bounds.Width / (w * 1.2), Bounds.Height / (h * 1.2)), 0.01, 8);
         UpdateEditorCenter();
         InvalidateVisual();
     }
@@ -267,9 +265,9 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     /// <summary>Centers the view on an element (accounting for its layer's parallax).</summary>
     public void Frame(SceneElement element)
     {
-        if (_renderer == null || Bounds.Width <= 0)
+        if (Renderer == null || Bounds.Width <= 0)
             return;
-        var group = _renderer.GroupFor(element);
+        var group = Renderer.GroupFor(element);
         var bounds = element is CameraElement camera
             ? new Rect(camera.WorldPosition.X - CameraElement.ViewSize.Width / 2, camera.WorldPosition.Y - CameraElement.ViewSize.Height / 2, CameraElement.ViewSize.Width, CameraElement.ViewSize.Height)
             : SceneRenderer.WorldBounds(element);
@@ -299,13 +297,13 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         if (!AnimateFraming || !IsVisible)
         {
             _center = center;
-            _zoom = zoom;
+            Zoom = zoom;
             UpdateEditorCenter();
             InvalidateVisual();
             return;
         }
         _frameFromCenter = _center;
-        _frameFromZoom = _zoom;
+        _frameFromZoom = Zoom;
         _frameToCenter = center;
         _frameToZoom = zoom;
         _frameClock.Restart();
@@ -318,7 +316,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         double t = Math.Clamp(_frameClock.Elapsed.TotalSeconds / FrameDuration, 0, 1);
         double e = 1 - Math.Pow(1 - t, 3); // ease out
         // Zoom moves in log space so it feels even whether zooming in or out.
-        _zoom = Math.Exp(Math.Log(_frameFromZoom) + (Math.Log(_frameToZoom) - Math.Log(_frameFromZoom)) * e);
+        Zoom = Math.Exp(Math.Log(_frameFromZoom) + (Math.Log(_frameToZoom) - Math.Log(_frameFromZoom)) * e);
         _center = new Point(_frameFromCenter.X + (_frameToCenter.X - _frameFromCenter.X) * e,
                             _frameFromCenter.Y + (_frameToCenter.Y - _frameFromCenter.Y) * e);
         UpdateEditorCenter();
@@ -333,16 +331,16 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     private void ZoomAt(Point screen, double factor)
     {
         StopFrameAnimation();
-        double newZoom = Math.Clamp(_zoom * factor, 0.005, 16);
+        double newZoom = Math.Clamp(Zoom * factor, 0.005, 16);
         var before = ScreenToDisplay(screen);
-        _zoom = newZoom;
+        Zoom = newZoom;
         var after = ScreenToDisplay(screen);
         _center += before - after;
         UpdateEditorCenter();
         InvalidateVisual();
     }
 
-    private Point ScreenToDisplay(Point screen) => new((screen.X - Bounds.Width / 2) / _zoom + _center.X, (screen.Y - Bounds.Height / 2) / _zoom + _center.Y);
+    private Point ScreenToDisplay(Point screen) => new((screen.X - Bounds.Width / 2) / Zoom + _center.X, (screen.Y - Bounds.Height / 2) / Zoom + _center.Y);
 
     /// <summary>Default-layer (factor 1) level point under a screen point.</summary>
     public Point ScreenToLevel(Point screen) => ScreenToDisplay(screen);
@@ -358,7 +356,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         MarkFrameRendered();
         var size = Bounds.Size;
         context.FillRectangle(Background, new Rect(size));
-        if (_renderer == null || _editor == null)
+        if (Renderer == null || _editor == null)
             return;
 
         if (IsGameView)
@@ -370,17 +368,17 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         }
 
         var viewport = Viewport;
-        _renderer.RenderScaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
-        _renderer.ShowOriginMarker = !Services.Tutorial.TutorialGuide.IsActive;
+        Renderer.RenderScaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        Renderer.ShowOriginMarker = !Services.Tutorial.TutorialGuide.IsActive;
         using (context.PushClip(new Rect(size)))
         {
-            _renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
+            Renderer.Render(context, viewport, c => RenderMoveVisualizerModel(c, viewport));
             RenderMoveVisualizer(context, viewport);
             RenderPaintCanvas(context, viewport);
             // Others' selections first: this user's own outline stays on top.
             RenderCollabSelections(context, viewport);
             if (!_editor.Paint.IsActive)
-                _renderer.RenderSelection(context, viewport, _editor.Selection);
+                Renderer.RenderSelection(context, viewport, _editor.Selection);
             RenderToolOverlay(context, viewport);
             RenderBrushCursor(context, viewport);
             RenderTutorialGuides(context);
@@ -392,9 +390,9 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private void UpdateAnimationClock()
     {
-        if (_renderer != null && _renderer.HasVisibleAnimation != _animating)
+        if (Renderer != null && Renderer.HasVisibleAnimation != _animating)
         {
-            _animating = _renderer.HasVisibleAnimation;
+            _animating = Renderer.HasVisibleAnimation;
             if (_animating) AnimationClock.Tick += OnAnimationTick;
             else AnimationClock.Tick -= OnAnimationTick;
         }
@@ -412,7 +410,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     private void OnGuidesChanged() => InvalidateVisual();
 
     /// <summary>Main-layer level point to screen (the inverse of <see cref="ScreenToLevel"/>).</summary>
-    private Point LevelToScreen(Point level) => new((level.X - _center.X) * _zoom + Bounds.Width / 2, (level.Y - _center.Y) * _zoom + Bounds.Height / 2);
+    private Point LevelToScreen(Point level) => new((level.X - _center.X) * Zoom + Bounds.Width / 2, (level.Y - _center.Y) * Zoom + Bounds.Height / 2);
 
     /// <summary>Tutorial: where to place something (a ringed cross) and how big it should be (a dashed box).</summary>
     private void RenderTutorialGuides(DrawingContext context)
@@ -464,7 +462,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     /// <summary>Dynamic Editor overlays: motion paths, onion-skin ghosts and the custom-ease support handle.</summary>
     private void RenderDynamics(DrawingContext context, SceneViewport viewport)
     {
-        if (_editor == null || _renderer == null || !_editor.Dynamics.IsBound)
+        if (_editor == null || Renderer == null || !_editor.Dynamics.IsBound)
             return;
         var dyn = _editor.Dynamics;
         int onionSlot = 1; // slot 0 is the placement ghost
@@ -472,7 +470,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         foreach (var track in dyn.Tracks)
         {
             var element = track.Element;
-            var m = viewport.LevelToScreen(_renderer.GroupFor(element));
+            var m = viewport.LevelToScreen(Renderer.GroupFor(element));
             var origin = element.ParentWorldPosition;
             var pivotOffset = PivotToCenter(element);
 
@@ -480,11 +478,11 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             // preview the Project Window shows while placing), under the paths and handles.
             if (dyn.Onion)
             {
-                var group = _renderer.GroupFor(element);
+                var group = Renderer.GroupFor(element);
                 foreach (var key in dyn.OnionKeys(track))
                 {
                     if (OnionGhost(element, key) is { } ghost)
-                        _renderer.RenderGhost(context, viewport, ghost, OnionOpacity, scaling, group, new Vector(origin.X, origin.Y), onionSlot++);
+                        Renderer.RenderGhost(context, viewport, ghost, OnionOpacity, scaling, group, new Vector(origin.X, origin.Y), onionSlot++);
                 }
             }
 
@@ -559,12 +557,12 @@ public sealed partial class SceneView : Control, IInternalDropTarget
 
     private (Point A, Point Handle, Point B, ViewModels.Editor.DynamicKey KeyA, ViewModels.Editor.DynamicKey KeyB)? DynamicSupportHandle(SceneViewport viewport, ViewModels.Editor.DynamicTrack track)
     {
-        if (_editor == null || _renderer == null || !_editor.Dynamics.CustomEase)
+        if (_editor == null || Renderer == null || !_editor.Dynamics.CustomEase)
             return null;
         if (_editor.Dynamics.CurrentSegment(track) is not { } seg)
             return null;
         var element = track.Element;
-        var m = viewport.LevelToScreen(_renderer.GroupFor(element));
+        var m = viewport.LevelToScreen(Renderer.GroupFor(element));
         var origin = element.ParentWorldPosition;
         var off = PivotToCenter(element);
         var (cx, cy) = _editor.Dynamics.ControlPoint(seg.A, seg.B);
@@ -592,13 +590,13 @@ public sealed partial class SceneView : Control, IInternalDropTarget
         RenderSnap(context);
         RenderGizmos(context, viewport);
 
-        if (_editor == null || _renderer == null || _editor.Selection.Count == 0)
+        if (_editor == null || Renderer == null || _editor.Selection.Count == 0)
             return;
 
         // Rect tool: thin bounds of the selection (no gizmo, as requested).
         if (_editor.ActiveTool == EditorTool.Rect && _mode is InteractionMode.None or InteractionMode.RectTransform)
         {
-            var b = _renderer.ScreenBounds(viewport, _editor.GetTopmostSelection());
+            var b = Renderer.ScreenBounds(viewport, _editor.GetTopmostSelection());
             if (b.Width > 0 || b.Height > 0)
                 context.DrawRectangle(null, HandlePen, b);
         }

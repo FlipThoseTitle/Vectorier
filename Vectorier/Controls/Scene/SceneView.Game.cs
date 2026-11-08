@@ -37,7 +37,7 @@ public sealed partial class SceneView
 
     private void RenderGame(DrawingContext context, Size size)
     {
-        if (_renderer == null)
+        if (Renderer == null)
             return;
         // A Gameplay runner: the view follows its model's Camera node, like the game (never the level's Camera).
         var follow = _editor?.MoveVisualizer.GameViewCenter;
@@ -64,7 +64,7 @@ public sealed partial class SceneView
         using (context.PushClip(frame))
         {
             context.FillRectangle(Background, frame);
-            _renderer.Render(context, viewport, SceneRenderMode.Game, c => RenderMoveVisualizerModel(c, viewport));
+            Renderer.Render(context, viewport, SceneRenderMode.Game, c => RenderMoveVisualizerModel(c, viewport));
         }
 
         // Outside the camera's view.

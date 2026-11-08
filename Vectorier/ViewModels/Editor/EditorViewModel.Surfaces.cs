@@ -7,8 +7,8 @@ using Avalonia;
 using Avalonia.Threading;
 using Vectorier.Models.Scene;
 using Vectorier.Services.Assets;
-using Vectorier.Services.Projects;
 using Vectorier.Services.Localization;
+using Vectorier.Services.Projects;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -337,8 +337,15 @@ public sealed partial class EditorViewModel
                 var s = p.Surface!;
                 return new StoredSurface
                 {
-                    X = r.X, Y = r.Y, Width = r.Width, Height = r.Height,
-                    Type = s.Type.ToString(), Floor = s.Floor, LeftWall = s.LeftWall, RightWall = s.RightWall, Seed = s.Seed,
+                    X = r.X,
+                    Y = r.Y,
+                    Width = r.Width,
+                    Height = r.Height,
+                    Type = s.Type.ToString(),
+                    Floor = s.Floor,
+                    LeftWall = s.LeftWall,
+                    RightWall = s.RightWall,
+                    Seed = s.Seed,
                 };
             })
             .ToList();

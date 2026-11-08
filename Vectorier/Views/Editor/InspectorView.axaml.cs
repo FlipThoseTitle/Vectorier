@@ -1,6 +1,6 @@
 using Avalonia.Controls;
-using Avalonia.VisualTree;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Vectorier.ViewModels.Editor;
 
 namespace Vectorier.Views.Editor;

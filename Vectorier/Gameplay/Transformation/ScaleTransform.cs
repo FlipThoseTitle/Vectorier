@@ -1,169 +1,160 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Numerics;
 using System.Xml;
 using Vectorier.Gameplay.Runners;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Transformation
+namespace Vectorier.Gameplay.Transformation;
+
+public class SizeTransform : TransformPrototype
 {
-    public class SizeTransform : TransformPrototype
+    private int _frames;
+
+    private int _currentFrame;
+
+    private float _finalWidth;
+
+    private float _finalHeight;
+
+    private List<Vector2> _points = new List<Vector2>();
+
+    public override int Frames => _frames;
+
+    public SizeTransform()
     {
-        private int _Frames;
+        _Type = Type.Scale;
+    }
 
-        private int _CurrentFrame;
+    public static SizeTransform Create(XmlNode node)
+    {
+        if (node == null)
+            return null;
+        SizeTransform size = new SizeTransform();
+        size.Parse(node);
+        return size;
+    }
 
-        private float _FinalWidth;
+    public override void Parse(XmlNode node)
+    {
+        _frames = node.Attributes["Frames"].ParseInt();
 
-        private float _FinalHeight;
+        _finalWidth = node.Attributes["FinalWidth"].ParseFloat(-1);
+        _finalHeight = node.Attributes["FinalHeight"].ParseFloat(-1);
+    }
 
-        private List<Vector2> _Points = new List<Vector2>();
-
-        public override int Frames => _Frames;
-
-        public SizeTransform()
+    protected void ReplaceZeroByEps(Vector2 point)
+    {
+        if (point.X == 0f)
         {
-            _Type = Type.Scale;
+            point.X = 1E-05f;
         }
-
-        public static SizeTransform Create(XmlNode node)
+        if (point.Y == 0f)
         {
-            if (node == null)
-                return null;
-            SizeTransform size = new SizeTransform();
-            size.Parse(node);
-            return size;
+            point.Y = 1E-05f;
         }
+    }
 
-        public override void Parse(XmlNode node)
+    public override bool Iteration()
+    {
+        if (_Runner == null || _Pause)
         {
-            _Frames = node.Attributes["Frames"].ParseInt();
-
-            _FinalWidth = node.Attributes["FinalWidth"].ParseFloat(-1);
-            _FinalHeight = node.Attributes["FinalHeight"].ParseFloat(-1);
+            return false;
         }
-
-        protected void ReplaceZeroByEps(Vector2 p_point)
+        _Runner.TransformResize(_points[_currentFrame]);
+        _currentFrame++;
+        if (_currentFrame >= _frames)
         {
-            if (p_point.X == 0f)
-            {
-                p_point.X = 1E-05f;
-            }
-            if (p_point.Y == 0f)
-            {
-                p_point.Y = 1E-05f;
-            }
+            _Pause = true;
+            return false;
         }
+        return true;
+    }
 
-        public override bool Iteration()
+    public override void CalcDelta()
+    {
+        _points.Clear();
+        var visualRunner = _Runner as VisualRunner;
+        var quadRunner = _Runner as QuadRunner;
+        if (visualRunner != null)
         {
-            if (_Runner == null || _Pause)
+            if (_finalWidth < 0)
             {
-                return false;
+                _finalWidth = visualRunner.Width;
             }
-            _Runner.TransformResize(_Points[_CurrentFrame]);
-            _CurrentFrame++;
-            if (_CurrentFrame >= _Frames)
+            if (_finalHeight < 0)
             {
-                _Pause = true;
-                return false;
+                _finalHeight = visualRunner.Height;
             }
-            return true;
+            _points.Add(new Vector2(visualRunner.Width, visualRunner.Height));
         }
+        if (quadRunner != null)
+        {
+            if (_finalWidth < 0)
+            {
+                _finalWidth = quadRunner.Width;
+            }
+            if (_finalHeight < 0)
+            {
+                _finalHeight = quadRunner.Height;
+            }
+            _points.Add(new Vector2(quadRunner.Width, quadRunner.Height));
+        }
+        _points.Add(new Vector2(_finalWidth, _finalHeight));
+        CalculatePoints();
+    }
 
-        public override void CalcDelta()
+    private void CalculatePoints()
+    {
+        Vector2 point = _points[0];
+        Vector2 point2 = _points[_points.Count - 1];
+        List<Vector2> list = new List<Vector2>();
+        for (int i = 1; i < _points.Count - 1; i++)
         {
-            _Points.Clear();
-            var visualRunner = _Runner as VisualRunner;
-            var quadRunner = _Runner as QuadRunner;
-            if (visualRunner != null)
-            {
-                if (_FinalWidth < 0)
-                {
-                    _FinalWidth = visualRunner.Width;
-                }
-                if (_FinalHeight < 0)
-                {
-                    _FinalHeight = visualRunner.Height;
-                }
-                _Points.Add(new Vector2(visualRunner.Width, visualRunner.Height));
-            }
-            if (quadRunner != null)
-            {
-                if (_FinalWidth < 0)
-                {
-                    _FinalWidth = quadRunner.Width;
-                }
-                if (_FinalHeight < 0)
-                {
-                    _FinalHeight = quadRunner.Height;
-                }
-                _Points.Add(new Vector2(quadRunner.Width, quadRunner.Height));
-            }
-            _Points.Add(new Vector2(_FinalWidth, _FinalHeight));
-            CalculatePoints();
+            list.Add(_points[i]);
         }
+        _points.Clear();
+        float num = 0f;
+        for (int j = 0; j < _frames; j++)
+        {
+            double num2 = System.Math.Pow(1f - num, list.Count + 1);
+            double num3 = num2 * point.X;
+            double num4 = num2 * point.Y;
+            int num5 = 0;
+            for (num5 = 0; num5 < list.Count; num5++)
+            {
+                num2 = (list.Count + 1) * System.Math.Pow(1f - num, list.Count - num5) * System.Math.Pow(num, num5 + 1);
+                num3 += num2 * list[num5].X;
+                num4 += num2 * list[num5].Y;
+            }
+            num2 = System.Math.Pow(num, num5 + 1);
+            num3 += num2 * point2.X;
+            num4 += num2 * point2.Y;
+            _points.Add(new Vector2((float)num3, (float)num4));
+            num += 1f / _frames;
+        }
+        _points.Add(point2);
+        ReplaceZeroByEps(_points[_points.Count - 1]);
+        for (int num1 = _points.Count - 1; num > 1; num--)
+        {
+            ReplaceZeroByEps(_points[num1 - 1]);
+        }
+        _points.RemoveAt(0);
+    }
 
-        private void CalculatePoints()
-        {
-            Vector2 point = _Points[0];
-            Vector2 point2 = _Points[_Points.Count - 1];
-            List<Vector2> list = new List<Vector2>();
-            for (int i = 1; i < _Points.Count - 1; i++)
-            {
-                list.Add(_Points[i]);
-            }
-            _Points.Clear();
-            float num = 0f;
-            for (int j = 0; j < _Frames; j++)
-            {
-                double num2 = System.Math.Pow(1f - num, list.Count + 1);
-                double num3 = num2 * point.X;
-                double num4 = num2 * point.Y;
-                int num5 = 0;
-                for (num5 = 0; num5 < list.Count; num5++)
-                {
-                    num2 = (list.Count + 1) * System.Math.Pow(1f - num, list.Count - num5) * System.Math.Pow(num, num5 + 1);
-                    num3 += num2 * list[num5].X;
-                    num4 += num2 * list[num5].Y;
-                }
-                num2 = System.Math.Pow(num, num5 + 1);
-                num3 += num2 * point2.X;
-                num4 += num2 * point2.Y;
-                _Points.Add(new Vector2((float)num3, (float)num4));
-                num += 1f / _Frames;
-            }
-            _Points.Add(point2);
-            ReplaceZeroByEps(_Points[_Points.Count - 1]);
-            for (int num1 = _Points.Count - 1; num > 1; num--)
-            {
-                ReplaceZeroByEps(_Points[num1 - 1]);
-                //_Points[num1].Round(100);
-            }
-            _Points.RemoveAt(0);
-        }
+    public override void Reset()
+    {
+        base.Reset();
+        _currentFrame = 0;
+    }
 
-        public override void Reset()
-        {
-            base.Reset();
-            _CurrentFrame = 0;
-        }
-
-        public override TransformPrototype Clone()
-        {
-            var size = new SizeTransform();
-            size._Frames = _Frames;
-            size._FinalHeight = _FinalHeight;
-            size._FinalWidth = _FinalWidth;
-            return size;
-        }
+    public override TransformPrototype Clone()
+    {
+        var size = new SizeTransform();
+        size._frames = _frames;
+        size._finalHeight = _finalHeight;
+        size._finalWidth = _finalWidth;
+        return size;
     }
 }
 

@@ -1,15 +1,13 @@
-using System.Linq;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using Vectorier.ViewModels.Editor;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Editor;
 
 namespace Vectorier.Views.Editor;
 

@@ -1,427 +1,398 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Vectorier.Gameplay.Rl;
 using System.Xml;
 using Vectorier.Gameplay.Level;
 using Vectorier.Gameplay.Models;
+using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Trigger;
 using Vectorier.Gameplay.Trigger.Events;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Runners
+namespace Vectorier.Gameplay.Runners;
+
+public class TriggerRunner : QuadRunner
 {
-    public class TriggerRunner : QuadRunner
+    public enum TriggerColisionType
     {
-        public enum TriggerColisionType
+        OneNode = 0,
+        MultiNode = 1
+    }
+
+    private TriggerTimer _timer;
+    private Variable _nodeVar;
+    private Variable _activeVar;
+
+    private ModelHuman _checkedModel;
+
+    private Dictionary<string, Variable> vars = new Dictionary<string, Variable>();
+
+    private List<TriggerLoop> _loops = new List<TriggerLoop>();
+    private List<TE_ChangeVar> _renderEvents = new List<TE_ChangeVar>();
+
+    private XmlNode _xmlNode;
+    private XmlNode _rawNode;
+
+    private float _w;
+
+    private float _h;
+    public List<string> _NodesName;
+
+    public string CollisionNodeName { get; set; }
+
+    public List<string> TriggerNodesName => _NodesName;
+
+    public List<TriggerLine> Lines { get; private set; }
+
+    public Variable AIVar { get; private set; }
+
+    public Variable ModelVar { get; private set; }
+
+    public string NodeName => _nodeVar == null ? "COM" : _nodeVar.ValueString;
+
+    public bool IsActive => _activeVar.ValueInt == 1;
+
+    public string statistic { get; }
+
+    public TriggerColisionType CollisionType { get; private set; } = TriggerColisionType.OneNode;
+
+    public bool IsVisible;
+
+    public TriggerRunner(float x, float y, float width, float height, XmlNode node)
+: base(x, y, width, height, sticky: false, 0, node.Attributes["Name"].ParseString(string.Empty))
+    {
+        TypeClass = RunnerType.Trigger;
+        _timer = new TriggerTimer(this);
+        _w = width;
+        _h = height;
+        _xmlNode = node["Content"];
+        statistic = node.Attributes["Statistic"].ParseString();
+        _rawNode = node;
+
+        Z = -14;
+    }
+
+    public void Init()
+    {
+        parseVariable(_xmlNode["Init"]);
+        SetTriggerCollisionType();
+        XmlNode xmlNode = _xmlNode["Template"];
+        if (xmlNode != null)
         {
-            OneNode = 0,
-            MultiNode = 1
+            string value = xmlNode.Attributes["Name"].Value;
+            parseTemplate(TemplateModule.getTemplateXmlNode(value));
         }
+        parseLoops(_xmlNode);
+        InitEvents();
+    }
 
-        private TriggerTimer _timer;
-
-        private Variable _AIvar;
-
-        private Variable _nodeVar;
-
-        private Variable _modelVar;
-
-        private Variable _activeVar;
-
-        private ModelHuman _checkedModel;
-
-        private Dictionary<string, Variable> vars = new Dictionary<string, Variable>();
-
-        private List<TriggerLoop> _loops = new List<TriggerLoop>();
-
-        private List<TriggerLine> _lines;
-
-        private List<TE_ChangeVar> _renderEvents = new List<TE_ChangeVar>();
-
-        private XmlNode _xmlNode;
-
-        private string _statistic;
-
-        private XmlNode _rawNode;
-
-        private float _w;
-
-        private float _h;
-
-        private string _CollisionNodeName;
-
-        public List<string> _NodesName;
-
-        private TriggerColisionType _CollisionType = TriggerColisionType.OneNode;
-
-        public string CollisionNodeName
+    private void SetTriggerCollisionType()
+    {
+        string[] array = _nodeVar.ValueString.Split('|');
+        if (array.Length == 1)
         {
-            get => _CollisionNodeName;
-            set => _CollisionNodeName = value;
+            CollisionType = TriggerColisionType.OneNode;
+            CollisionNodeName = array[0];
         }
-
-        public List<string> TriggerNodesName => _NodesName;
-
-        public List<TriggerLine> Lines => _lines;
-
-        public Variable AIVar => _AIvar;
-
-        public Variable ModelVar => _modelVar;
-
-        public string NodeName => _nodeVar == null ? "COM" : _nodeVar.ValueString;
-
-        public bool IsActive => _activeVar.ValueInt == 1;
-
-        public string statistic => _statistic;
-
-        public TriggerColisionType CollisionType => _CollisionType;
-
-        public bool IsVisible;
-
-        public TriggerRunner(float p_x, float p_y, float p_width, float p_height, XmlNode p_node)
-    : base(p_x, p_y, p_width, p_height, sticky: false, 0, p_node.Attributes["Name"].ParseString(string.Empty))
+        else
         {
-            TypeClass = RunnerType.Trigger;
-            _timer = new TriggerTimer(this);
-            _w = p_width;
-            _h = p_height;
-            _xmlNode = p_node["Content"];
-            _statistic = p_node.Attributes["Statistic"].ParseString();
-            _rawNode = p_node;
-
-            //GlobalObjects.AddDrawable(this);
-            Z = -14;
+            CollisionType = TriggerColisionType.MultiNode;
+            _NodesName = new List<string>(array);
         }
+    }
 
-        public void Init()
+    private void InitEvents()
+    {
+        foreach (TriggerLoop loop in _loops)
         {
-            parseVariable(_xmlNode["Init"]);
-            SetTriggerCollisionType();
-            XmlNode xmlNode = _xmlNode["Template"];
-            if (xmlNode != null)
+            foreach (TriggerEvent @event in loop.Events)
             {
-                string value = xmlNode.Attributes["Name"].Value;
-                parseTemplate(TemplateModule.getTemplateXmlNode(value));
+                if (@event.Type == TriggerEvent.EventType.TET_ON_SHOW || @event.Type == TriggerEvent.EventType.TET_ON_HIDE)
+                {
+                    GlobalObjects.AddDrawable(this);
+                }
+                if (@event.Type == TriggerEvent.EventType.TET_VAR_CHANGE)
+                {
+                    _renderEvents.Add((TE_ChangeVar)@event);
+                }
             }
-            parseLoops(_xmlNode);
-            InitEvents();
         }
+    }
 
-        private void SetTriggerCollisionType()
+    public void DrawRectangle()
+    {
+        if (!IsEnabled)
+            return;
+
+        var vs = Sets.Current.Containers[1];
+        var pos = vs.TransformPoint(rectangle.Origin);
+        Raylib.DrawRectangleV(pos, rectangle.Size * WorldScale, new Color(255, 255, 0, 64));
+    }
+
+    public override void Draw()
+    {
+        var vs = Sets.Current.Containers[1];
+
+        var rect = new Rectangle(rectangle);
+        rect.Origin = vs.TransformPoint(rect.Origin);
+        rect.Size *= vs.FrameScale;
+
+        bool visibleNow = VectorGame.Instance.CameraRectangle.Intersect(rect);
+
+        if (!IsVisible && visibleNow)
         {
-            string[] array = _nodeVar.ValueString.Split('|');
-            if (array.Length == 1)
+            IsVisible = true;
+            OnBecameVisible();
+        }
+        else if (IsVisible && !visibleNow)
+        {
+            IsVisible = false;
+            OnBecameUnvisible();
+        }
+    }
+
+    private void OnBecameVisible()
+    {
+        CheckEvent(new TE_OnShow(), null);
+    }
+
+    private void OnBecameUnvisible()
+    {
+        CheckEvent(new TE_OnHide(), null);
+    }
+
+    public void parseTemplate(XmlNode node)
+    {
+        parseLoops(node);
+    }
+
+    public void parseVariable(XmlNode node, bool isTemplate = false)
+    {
+        if (node == null)
+        {
+            return;
+        }
+        foreach (XmlNode childNode in node.ChildNodes)
+        {
+            if (!childNode.LocalName.Equals("SetVariable"))
             {
-                _CollisionType = TriggerColisionType.OneNode;
-                _CollisionNodeName = array[0];
+                continue;
+            }
+            string text = childNode.Attributes["Name"].ParseString();
+            string text2 = childNode.Attributes["Value"].ParseString(string.Empty);
+            if (vars.ContainsKey("_" + text))
+            {
+                switch (vars["_" + text].Type)
+                {
+                    case VariableTypeE.VT_INT:
+                        vars["_" + text].setValue(int.Parse(text2, System.Globalization.CultureInfo.InvariantCulture));
+                        break;
+                    case VariableTypeE.VT_DOUBLE:
+                        vars["_" + text].setValue(float.Parse(text2, System.Globalization.CultureInfo.InvariantCulture));
+                        break;
+                    case VariableTypeE.VT_STRING:
+                        vars["_" + text].setValue(text2);
+                        break;
+                }
             }
             else
             {
-                _CollisionType = TriggerColisionType.MultiNode;
-                _NodesName = new List<string>(array);
+                vars["_" + text] = Variable.createVariable(text2, text, this);
             }
         }
-
-        private void InitEvents()
+        if (!isTemplate)
         {
-            foreach (TriggerLoop loop in _loops)
+            AIVar = vars["_$AI"];
+            _nodeVar = vars["_$Node"];
+            _activeVar = vars["_$Active"];
+            vars["_$ActionID"] = Variable.createVariable(" ", "$ActionID", this);
+            if (!vars.ContainsKey("_$Model"))
             {
-                foreach (TriggerEvent @event in loop.Events)
+                ModelVar = Variable.createVariable(" ", "$Model", this);
+                vars["_$Model"] = ModelVar;
+            }
+            else
+            {
+                ModelVar = vars["_$Model"];
+            }
+            vars["_$Key"] = Variable.createVariable(" ", "$Key", this);
+            if (AIVar == null)
+            {
+                AIVar = Variable.createVariable("-1", "$AI");
+            }
+            if (_activeVar == null)
+            {
+            }
+            if (_nodeVar != null)
+            {
+            }
+        }
+    }
+
+    public void parseLoops(XmlNode node)
+    {
+        if (node == null)
+        {
+            return;
+        }
+        foreach (XmlNode childNode in node.ChildNodes)
+        {
+            if (string.Equals(childNode.LocalName, "Loop"))
+            {
+                TriggerLoop triggerRunnerLoop;
+                if (childNode.Attributes["Template"] != null)
                 {
-                    if (@event.Type == TriggerEvent.EventType.TET_ON_SHOW || @event.Type == TriggerEvent.EventType.TET_ON_HIDE)
-                    {
-                        GlobalObjects.AddDrawable(this);
-                    }
-                    if (@event.Type == TriggerEvent.EventType.TET_VAR_CHANGE)
-                    {
-                        _renderEvents.Add((TE_ChangeVar)@event);
-                    }
-                }
-            }
-        }
-
-        public void DrawRectangle()
-        {
-            if (!IsEnabled)
-                return;
-
-            var vs = Sets.Current.Containers[1];
-            var pos = vs.TransformPoint(rectangle.Origin);
-            Raylib.DrawRectangleV(pos, rectangle.Size * WorldScale, new Color(255, 255, 0, 64));
-        }
-
-        public override void Draw()
-        {
-            var vs = Sets.Current.Containers[1];
-
-            var rect = new Rectangle(rectangle);
-            rect.Origin = vs.TransformPoint(rect.Origin);
-            rect.Size *= vs.FrameScale;
-
-            bool visibleNow = VectorGame.Instance.CameraRectangle.Intersect(rect);
-
-            if (!IsVisible && visibleNow)
-            {
-                IsVisible = true;
-                OnBecameVisible();
-            }
-            else if (IsVisible && !visibleNow)
-            {
-                IsVisible = false;
-                OnBecameUnvisible();
-            }
-        }
-
-        private void OnBecameVisible()
-        {
-            CheckEvent(new TE_OnShow(), null);
-        }
-
-        private void OnBecameUnvisible()
-        {
-            CheckEvent(new TE_OnHide(), null);
-        }
-
-        public void parseTemplate(XmlNode p_node)
-        {
-            parseLoops(p_node);
-        }
-
-        public void parseVariable(XmlNode p_node, bool isTemplate = false)
-        {
-            if (p_node == null)
-            {
-                return;
-            }
-            foreach (XmlNode childNode in p_node.ChildNodes)
-            {
-                if (!childNode.LocalName.Equals("SetVariable"))
-                {
-                    continue;
-                }
-                string text = childNode.Attributes["Name"].ParseString();
-                string text2 = childNode.Attributes["Value"].ParseString(string.Empty);
-                if (vars.ContainsKey("_" + text))
-                {
-                    switch (vars["_" + text].Type)
-                    {
-                        case VariableTypeE.VT_INT:
-                            vars["_" + text].setValue(int.Parse(text2, System.Globalization.CultureInfo.InvariantCulture));
-                            break;
-                        case VariableTypeE.VT_DOUBLE:
-                            vars["_" + text].setValue(float.Parse(text2, System.Globalization.CultureInfo.InvariantCulture));
-                            break;
-                        case VariableTypeE.VT_STRING:
-                            vars["_" + text].setValue(text2);
-                            break;
-                    }
+                    string value = childNode.Attributes["Template"].Value;
+                    XmlNode templateLoopXML = TemplateModule.getTemplateLoopXML(value);
+                    triggerRunnerLoop = TriggerLoop.createLoop(templateLoopXML, this);
+                    _loops.Add(triggerRunnerLoop);
                 }
                 else
                 {
-                    vars["_" + text] = Variable.createVariable(text2, text, this);
-                }
-            }
-            if (!isTemplate)
-            {
-                _AIvar = vars["_$AI"];
-                _nodeVar = vars["_$Node"];
-                _activeVar = vars["_$Active"];
-                vars["_$ActionID"] = Variable.createVariable(" ", "$ActionID", this);
-                if (!vars.ContainsKey("_$Model"))
-                {
-                    _modelVar = Variable.createVariable(" ", "$Model", this);
-                    vars["_$Model"] = _modelVar;
-                }
-                else
-                {
-                    _modelVar = vars["_$Model"];
-                }
-                vars["_$Key"] = Variable.createVariable(" ", "$Key", this);
-                if (_AIvar == null)
-                {
-                    _AIvar = Variable.createVariable("-1", "$AI");
-                }
-                if (_activeVar == null)
-                {
-                }
-                if (_nodeVar != null)
-                {
+                    triggerRunnerLoop = TriggerLoop.createLoop(childNode, this);
+                    _loops.Add(triggerRunnerLoop);
                 }
             }
         }
+    }
 
-        public void parseLoops(XmlNode p_node)
+    public void CheckEvent(TriggerEvent @event, ModelHuman model)
+    {
+        if (!IsEnabled || (!IsActive && !@event.IsTimeOutOrActivate()) || (model != null && model.IsPhysics && !@event.IsCollision()))
         {
-            if (p_node == null)
+            return;
+        }
+        _checkedModel = model;
+        List<List<TriggerAction>> list = new List<List<TriggerAction>>();
+        foreach (var loop in _loops)
+        {
+            if (loop.CheckEvent(@event))
             {
-                return;
-            }
-            foreach (XmlNode childNode in p_node.ChildNodes)
-            {
-                if (string.Equals(childNode.LocalName, "Loop"))
-                {
-                    TriggerLoop triggerRunnerLoop;
-                    if (childNode.Attributes["Template"] != null)
-                    {
-                        string value = childNode.Attributes["Template"].Value;
-                        XmlNode templateLoopXML = TemplateModule.getTemplateLoopXML(value);
-                        triggerRunnerLoop = TriggerLoop.createLoop(templateLoopXML, this);
-                        _loops.Add(triggerRunnerLoop);
-                    }
-                    else
-                    {
-                        triggerRunnerLoop = TriggerLoop.createLoop(childNode, this);
-                        _loops.Add(triggerRunnerLoop);
-                    }
-                }
+                list.Add(loop.Actions);
             }
         }
-
-        public void CheckEvent(TriggerEvent p_event, ModelHuman p_model)
+        if (list.Count != 0)
         {
-            if (!IsEnabled || (!IsActive && !p_event.IsTimeOutOrActivate()) || (p_model != null && p_model.IsPhysics && !p_event.IsCollision()))
+            foreach (var actions in list)
             {
-                return;
+                TriggerActionsRenderer.Current.AddActions(actions);
             }
-            _checkedModel = p_model;
-            List<List<TriggerAction>> list = new List<List<TriggerAction>>();
-            foreach (var loop in _loops)
+            if (model != null)
             {
-                if (loop.CheckEvent(p_event))
+                if (model.UserData.IsSelf)
                 {
-                    list.Add(loop.Actions);
+                    model.controllerStatistics.SetTrigger(this);
                 }
             }
-            if (list.Count != 0)
+            ModelVar.setValue("");
+            _checkedModel = null;
+        }
+    }
+
+    public void ResetRenderEvents()
+    {
+        foreach (var @event in _renderEvents)
+        {
+            @event.Reset();
+        }
+    }
+
+    public void CheckRenderEvent(ModelHuman model)
+    {
+        if (_renderEvents == null)
+        {
+            return;
+        }
+        ModelVar.setValue(model.ModelName);
+        foreach (TE_ChangeVar renderEvent in _renderEvents)
+        {
+            if (renderEvent.IsChange())
             {
-                foreach (var actions in list)
-                {
-                    TriggerActionsRenderer.Current.AddActions(actions);
-                }
-                if (p_model != null)
-                {
-                    if (p_model.UserData.IsSelf)
-                    {
-                        p_model.controllerStatistics.SetTrigger(this);
-                    }
-                }
-                _modelVar.setValue("");
-                _checkedModel = null;
+                CheckEvent(renderEvent, model);
+                ModelVar.setValue(model.ModelName);
             }
         }
+        ModelVar.setValue(string.Empty);
+    }
 
-        public void ResetRenderEvents()
+    public override bool Render()
+    {
+        return _timer.Render();
+    }
+
+    public override void Reset()
+    {
+        base.Reset();
+        _timer.Reset();
+        foreach (var vars in vars.Values)
         {
-            foreach (var @event in _renderEvents)
+            vars.resetValues();
+        }
+        foreach (var loop in _loops)
+        {
+            loop.Reset();
+        }
+        if (Lines != null)
+        {
+            foreach (var line in Lines)
             {
-                @event.Reset();
+                line.Reset();
             }
         }
+    }
 
-        public void CheckRenderEvent(ModelHuman p_model)
+    public Variable GetVar(string key)
+    {
+        if (!vars.ContainsKey(key))
         {
-            if (_renderEvents == null)
-            {
-                return;
-            }
-            _modelVar.setValue(p_model.ModelName);
-            foreach (TE_ChangeVar renderEvent in _renderEvents)
-            {
-                if (renderEvent.IsChange())
-                {
-                    CheckEvent(renderEvent, p_model);
-                    _modelVar.setValue(p_model.ModelName);
-                }
-            }
-            _modelVar.setValue(string.Empty);
-        }
-
-        public override bool Render()
-        {
-            return _timer.Render();
-        }
-
-        public override void Reset()
-        {
-            base.Reset();
-            _timer.Reset();
-            foreach (var vars in vars.Values)
-            {
-                vars.resetValues();
-            }
-            foreach (var loop in _loops)
-            {
-                loop.Reset();
-            }
-            if (_lines != null)
-            {
-                foreach (var line in _lines)
-                {
-                    line.Reset();
-                }
-            }
-        }
-
-        public Variable GetVar(string p_key)
-        {
-            if (!vars.ContainsKey(p_key))
-            {
-                Console.WriteLine("No Var Name = " + p_key + " in trigger " + Name, true);
-                return null;
-            }
-            return vars[p_key];
-        }
-
-        public SpawnRunner GetSpawnByName(string p_name)
-        {
-            foreach (var spawn in ParentElements.Spawns)
-            {
-                if (spawn.Name == p_name)
-                {
-                    return spawn;
-                }
-            }
+            Console.WriteLine("No Var Name = " + key + " in trigger " + Name, true);
             return null;
         }
+        return vars[key];
+    }
 
-        public void SetModelVar()
+    public SpawnRunner GetSpawnByName(string name)
+    {
+        foreach (var spawn in ParentElements.Spawns)
         {
-            if (_checkedModel == null)
+            if (spawn.Name == name)
             {
-                return;
+                return spawn;
             }
-            _modelVar.setValue(_checkedModel.ModelName);
         }
+        return null;
+    }
 
-        public void AddLine(TriggerLine p_line)
+    public void SetModelVar()
+    {
+        if (_checkedModel == null)
         {
-            if (_lines == null)
-            {
-                _lines = new List<TriggerLine>();
-            }
-            _lines.Add(p_line);
+            return;
         }
+        ModelVar.setValue(_checkedModel.ModelName);
+    }
 
-        public void SetKeyVar(string p_key)
+    public void AddLine(TriggerLine line)
+    {
+        if (Lines == null)
         {
-            vars["_$Key"].setValue(p_key);
+            Lines = new List<TriggerLine>();
         }
+        Lines.Add(line);
+    }
 
-        public void SetTimer(int p_frames)
-        {
-            _timer.Start(p_frames);
-        }
+    public void SetKeyVar(string key)
+    {
+        vars["_$Key"].setValue(key);
+    }
 
-        public override string ToString()
-        {
-            return null;
-        }
+    public void SetTimer(int frames)
+    {
+        _timer.Start(frames);
+    }
+
+    public override string ToString()
+    {
+        return null;
     }
 }

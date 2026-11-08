@@ -1,146 +1,133 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Vectorier.Gameplay.Rl;
 using System.Numerics;
+using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Runners.Animation;
 using Vectorier.Gameplay.Utilities;
 
-namespace Vectorier.Gameplay.Runners
+namespace Vectorier.Gameplay.Runners;
+
+public class VisualRunner : Runner
 {
-    public class VisualRunner : Runner
+    public int Type;
+
+    public int Depth;
+
+    public static int SortingOrder;
+
+    public int Order;
+
+    public bool IsVanishing => Type == 2;
+
+    public bool IsAnimation;
+
+    public float Width;
+
+    public float Height;
+
+    public float DefaultWidth;
+
+    public float DefaultHeight;
+
+    public Color Color;
+
+    public Color DefaultColor;
+
+    public Matrix? Matrix;
+
+    public ImageRendering Image;
+
+    public AnimationSprite Animation;
+
+    public VisualRunner(string className, float x, float y, float width, float height, int type, int depth, Matrix? matrix = null, Color color = default) : base(x, y)
     {
-        public int Type;
+        Name = className;
 
-        public int Depth;
+        TypeClass = RunnerType.Visual;
 
-        public static int SortingOrder;
+        Type = type;
+        Depth = depth;
 
-        public int Order;
+        Order = SortingOrder;
+        SortingOrder++;
 
-        public bool IsStatic => Type < 2;
+        Z = Order * -0.0001f - 1;
 
-        public bool IsDynamic => Type == 3;
+        Width = width;
+        Height = height;
+        DefaultWidth = width;
+        DefaultHeight = height;
 
-        public bool IsVanishing => Type == 2;
+        Color = color;
+        DefaultColor = color;
 
-        public bool IsAnimation;
+        Matrix = matrix;
 
-        public float Width;
 
-        public float Height;
 
-        public float DefaultWidth;
 
-        public float DefaultHeight;
+        IsAnimation = ResourceManager.FileExists(VectorPaths.AnimatedTextures + "/" + Name, out string path, ".plist", ".json");
+    }
 
-        public Color Color;
+    public override void InitRunner(Vector2 point)
+    {
+        base.InitRunner(point);
 
-        public Color DefaultColor;
-
-        public Matrix? Matrix;
-
-        public ImageRendering Image;
-
-        public AnimationSprite Animation;
-
-        public VisualRunner(string className, float x, float y, float width, float height, int type, int depth, Matrix? matrix = null, Color color = default) : base(x, y)
+        if (Depth == 1)
         {
-            Name = className;
-
-            TypeClass = RunnerType.Visual;
-
-            Type = type;
-            Depth = depth;
-
-            Order = SortingOrder;
-            SortingOrder++;
-
-            Z = Order * -0.0001f - 1;
-
-            Width = width;
-            Height = height;
-            DefaultWidth = width;
-            DefaultHeight = height;
-
-            Color = color;
-            DefaultColor = color;
-
-            Matrix = matrix;
-
-
-
-
-            IsAnimation = ResourceManager.FileExists(VectorPaths.AnimatedTextures + "/" + Name, out string path, ".plist", ".json");
+            Z += 3;
         }
-
-        public override void InitRunner(Vector2 point)
+        if (Depth == 0)
         {
-            base.InitRunner(point);
-
-            if (Depth == 1)
-            {
-                Z += 3;
-            }
-            if (Depth == 0)
-            {
-                Z -= 3;
-            }
+            Z -= 3;
         }
+    }
 
-        public void Init()
+    public void Init()
+    {
+        if (IsAnimation)
         {
-            if (IsAnimation)
-            {
-                Animation = new AnimationSprite(Name, Width, Height)
-                {
-                    Parent = this,
-                    Iterations = -1,
-                    FPS = 20,
-                    Matrix = Matrix,
-                    Z = Z
-                };
-                Animation.Play();
-                return;
-            }
-
-            Image = new ImageRendering(Name, 0, 0, Width, Height, Matrix, Color)
+            Animation = new AnimationSprite(Name, Width, Height)
             {
                 Parent = this,
+                Iterations = -1,
+                FPS = 20,
+                Matrix = Matrix,
                 Z = Z
             };
-            Image.GenerateContent();
+            Animation.Play();
+            return;
         }
 
-        public override void TransformColor(Vectorier.Gameplay.Rl.Color p_delta)
+        Image = new ImageRendering(Name, 0, 0, Width, Height, Matrix, Color)
         {
+            Parent = this,
+            Z = Z
+        };
+        Image.GenerateContent();
+    }
 
-            Color.Add(p_delta);
-            UpdateColor();
+    public override void TransformColor(Vectorier.Gameplay.Rl.Color delta)
+    {
+
+        Color.Add(delta);
+        UpdateColor();
+    }
+
+    public override void TransformColorEnd(Vectorier.Gameplay.Rl.Color color)
+    {
+        Color = color;
+        UpdateColor();
+    }
+
+    public void UpdateColor()
+    {
+        if (Color.R < 0f)
+        {
+            return;
         }
-
-        public override void TransformColorEnd(Vectorier.Gameplay.Rl.Color p_color)
+        if (Image != null)
         {
-            Color = p_color;
-            UpdateColor();
-        }
-
-        public void UpdateColor()
-        {
-            if (Color.R < 0f)
-            {
-                return;
-            }
-            if (Image != null)
-            {
-                Image.Color = Color;
-            }
+            Image.Color = Color;
         }
     }
 }

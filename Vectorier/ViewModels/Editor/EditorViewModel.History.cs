@@ -10,12 +10,10 @@ using Vectorier.Services.Localization;
 namespace Vectorier.ViewModels.Editor;
 
 /// <summary>
-/// Undo/redo. Every committed change stores a snapshot of the whole scene (Unity-like "record object" for the
-/// level). Changes are detected automatically from element property notifications and coalesced: a drag in
-/// the Scene, a slider or a value typed in a field is a single undo step, committed once the input is finished
-/// (pointer released, or a short pause after typing). Selection changes are steps too (they share the scene
-/// snapshot, so they cost almost nothing). The Hierarchy's expanded rows survive undo and redo. While the Dynamic
-/// Editor is open, each step also holds its timelines (keys, playhead, unsaved flags, poses not keyed yet).
+/// Undo/redo by whole-scene snapshots. Changes are detected from element property notifications and coalesced
+/// into one step per input (a drag, a slider, a typed value), committed when the input ends. Selection changes are
+/// steps too (they share the snapshot). Hierarchy expansion survives undo; while the Dynamic Editor is open each
+/// step also holds its timelines.
 /// </summary>
 public sealed partial class EditorViewModel
 {

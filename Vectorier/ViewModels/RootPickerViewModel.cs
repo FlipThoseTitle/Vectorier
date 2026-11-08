@@ -4,7 +4,6 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Vectorier.Services;
-using Vectorier.Services.IO;
 using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels;

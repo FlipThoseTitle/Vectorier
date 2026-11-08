@@ -28,7 +28,7 @@ public partial class SceneView
     /// <summary>The selected Moving Animation (alone in the selection), or null.</summary>
     private AnimationElement? DirectionTarget()
     {
-        if (_editor == null || _renderer == null || IsGameView || _editor.PlacementType != null || _editor.Paint.IsActive)
+        if (_editor == null || Renderer == null || IsGameView || _editor.PlacementType != null || _editor.Paint.IsActive)
             return null;
         if (_editor.Selection.Count != 1 || _editor.Selection[0] is not AnimationElement { AnimationType: 1 } animation || animation.IsLockedInScene)
             return null;
@@ -40,7 +40,7 @@ public partial class SceneView
     {
         if (DirectionTarget() is not { } animation)
             return null;
-        var m = viewport.LevelToScreen(_renderer!.GroupFor(animation));
+        var m = viewport.LevelToScreen(Renderer!.GroupFor(animation));
         var origin = animation.ParentWorldPosition;
         var bounds = animation.GetLocalBounds();
         var center = new Point(origin.X + bounds.Center.X, origin.Y + bounds.Center.Y);
@@ -95,9 +95,9 @@ public partial class SceneView
 
     private void DragAnimationDirection(Point pos)
     {
-        if (_directionElement is not { } animation || _renderer == null)
+        if (_directionElement is not { } animation || Renderer == null)
             return;
-        var m = Viewport.LevelToScreen(_renderer.GroupFor(animation));
+        var m = Viewport.LevelToScreen(Renderer.GroupFor(animation));
         var origin = animation.ParentWorldPosition;
         var bounds = animation.GetLocalBounds();
         var center = new Point(origin.X + bounds.Center.X, origin.Y + bounds.Center.Y).Transform(m);

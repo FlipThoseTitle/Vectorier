@@ -3,89 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Vectorier.Services.IO;
-using Vectorier.Services.Projects;
 using Vectorier.Services.Localization;
+using Vectorier.Services.Projects;
 
 namespace Vectorier.Services.Assets;
-
-/// <summary>A texture file of the project (static image or sprite sheet with a .plist/.json).</summary>
-public sealed class TextureEntry
-{
-    public TextureEntry(string name, string path, string? atlasPath)
-    {
-        Name = name;
-        Path = path;
-        AtlasPath = atlasPath;
-    }
-
-    /// <summary>File name without extension: the ClassName used in XML.</summary>
-    public string Name { get; }
-    public string Path { get; }
-    public string? AtlasPath { get; }
-    public bool IsAnimated => AtlasPath != null;
-    public string FileName => VPath.GetFileName(Path);
-    public string Extension => VPath.GetExtension(Path);
-}
-
-/// <summary>A loaded texture. For sprite sheets, <see cref="Frames"/> lists the animation frames.</summary>
-public sealed class TextureAsset
-{
-    public TextureAsset(TextureEntry entry, Bitmap bitmap, IReadOnlyList<AtlasFrame>? frames)
-    {
-        Entry = entry;
-        Bitmap = bitmap;
-        Frames = frames is { Count: > 0 } ? frames : null;
-        var size = Frames != null ? Frames[0].RealSize : new Size(bitmap.PixelSize.Width, bitmap.PixelSize.Height);
-        Width = (int)Math.Round(size.Width);
-        Height = (int)Math.Round(size.Height);
-    }
-
-    public TextureEntry Entry { get; }
-    public Bitmap Bitmap { get; }
-    public IReadOnlyList<AtlasFrame>? Frames { get; }
-    public bool IsAnimated => Frames != null;
-
-    /// <summary>Logical size (first frame's untrimmed size for sprite sheets).</summary>
-    public int Width { get; }
-    public int Height { get; }
-
-    /// <summary>Animation frames play at 20 FPS like the game's AnimationSprite.</summary>
-    public const double FramesPerSecond = 20;
-
-    public int FrameAt(double seconds) => Frames == null ? 0 : (int)(seconds * FramesPerSecond) % Frames.Count;
-
-    /// <summary>Draws the texture (or one frame) stretched over <paramref name="dest"/>.</summary>
-    public void Draw(DrawingContext context, Rect dest, int frame = 0, Bitmap? tinted = null)
-    {
-        var Bitmap = tinted ?? this.Bitmap;
-        if (Frames == null)
-        {
-            context.DrawImage(Bitmap, new Rect(0, 0, Bitmap.PixelSize.Width, Bitmap.PixelSize.Height), dest);
-            return;
-        }
-
-        var f = Frames[Math.Clamp(frame, 0, Frames.Count - 1)];
-        double sx = dest.Width / Math.Max(1, f.RealSize.Width);
-        double sy = dest.Height / Math.Max(1, f.RealSize.Height);
-        var box = new Rect(dest.X + f.ResultBox.X * sx, dest.Y + f.ResultBox.Y * sy, f.ResultBox.Width * sx, f.ResultBox.Height * sy);
-
-        if (!f.Rotated)
-        {
-            context.DrawImage(Bitmap, f.Source, box);
-            return;
-        }
-
-        // Stored rotated 90° clockwise: rotate back counter-clockwise into the box.
-        var transform = Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(box.X, box.Y + box.Height);
-        using (context.PushTransform(transform))
-            context.DrawImage(Bitmap, f.Source, new Rect(0, 0, box.Height, box.Width));
-    }
-}
 
 /// <summary>
 /// Index and cache of a project's textures (textures/ and animatedtextures/). Bitmaps load asynchronously;
@@ -203,7 +127,7 @@ public sealed class TextureLibrary
             return TryGet(entry.Name) is { } asset ? (asset.Width, asset.Height) : null;
         if (_sizes.TryGetValue(entry.Path, out var size))
             return size;
-        _sizeLoading.GetOrAdd(entry.Path, _ => ReadSizeAsync(entry));
+        _sizeLoading.GetOrAdd(entry.Path, static (_, arg) => arg.Library.ReadSizeAsync(arg.Entry), (Library: this, Entry: entry));
         return null;
     }
 
@@ -343,8 +267,9 @@ public sealed class TextureLibrary
     }
 
     // UI thread only (renders and the posted completions).
-    private readonly Dictionary<string, Thumb> _thumbs = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _thumbLoading = new(StringComparer.Ordinal);
+    // Keyed by (texture path, width): looked up for every image drawn, so the key is not a built string.
+    private readonly Dictionary<(string Path, int Width), Thumb> _thumbs = new();
+    private readonly HashSet<(string Path, int Width)> _thumbLoading = new();
     private long _thumbBytes;
 
     /// <summary>Thumbnails drawn this recently are never freed (what is on screen stays, even past the budget).</summary>
@@ -357,7 +282,7 @@ public sealed class TextureLibrary
     public static int ThumbnailWidth(double pixelWidth) =>
         Math.Clamp((int)Math.Pow(2, Math.Ceiling(Math.Log2(Math.Max(MinThumbnailWidth, pixelWidth)))), MinThumbnailWidth, MaxThumbnailWidth);
 
-    private static string ThumbKey(TextureEntry entry, int width) => entry.Path + "|" + width.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    private static (string Path, int Width) ThumbKey(TextureEntry entry, int width) => (entry.Path, width);
 
     /// <summary>
     /// Downscaled bitmap of a static texture for an on-screen width (rounded up to a power of two), or null while it
@@ -367,7 +292,7 @@ public sealed class TextureLibrary
     public Bitmap? TryGetThumbnail(TextureEntry entry, int width, bool nearest = false)
     {
         width = ThumbnailWidth(width);
-        string key = ThumbKey(entry, width);
+        var key = ThumbKey(entry, width);
         if (_thumbs.TryGetValue(key, out var cached))
         {
             cached.LastUse = Environment.TickCount64;
@@ -393,7 +318,7 @@ public sealed class TextureLibrary
         return thumb.Bitmap;
     }
 
-    private async Task LoadThumbnailAsync(TextureEntry entry, int width, string key)
+    private async Task LoadThumbnailAsync(TextureEntry entry, int width, (string Path, int Width) key)
     {
         Bitmap? bitmap = null;
         try
@@ -452,7 +377,7 @@ public sealed class TextureLibrary
             _sizes.TryRemove(path, out _);
         void Drop()
         {
-            foreach (var key in _thumbs.Keys.Where(k => k.Contains("/" + name + ".", StringComparison.Ordinal)).ToList())
+            foreach (var key in _thumbs.Keys.Where(k => k.Path.Contains("/" + name + ".", StringComparison.Ordinal)).ToList())
             {
                 if (_thumbs.Remove(key, out var thumb))
                 {

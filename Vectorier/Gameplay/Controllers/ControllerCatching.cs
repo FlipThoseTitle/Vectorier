@@ -1,137 +1,129 @@
-// Ported from Vector-Raylib-For-Vectorier (the game).
 #nullable disable warnings
-#pragma warning disable CS0169, CS0414, CS0649, CS0660, CS0661, CS8073, CS0162, CS0168, CS0219, CS0108, CS0114, CS0067 // the game's own code
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Numerics;
 using Vectorier.Gameplay.Models;
 using Vectorier.Gameplay.Node;
 
-namespace Vectorier.Gameplay.Controllers
+namespace Vectorier.Gameplay.Controllers;
+
+public class ControllerCatching
 {
-    public class ControllerCatching
+    private ModelHuman _model;
+
+    private List<string> _mureders;
+
+    private bool _isPlay;
+
+    private Dictionary<ModelHuman, int> _targets = new Dictionary<ModelHuman, int>();
+
+    public static float DistanceFactor = 250;
+
+    public static float Timeout = 0.35f;
+
+    public static float HeightFactor = 2;
+
+    public ControllerCatching(ModelHuman model)
     {
-        private ModelHuman _Model;
+        _model = model;
+        _mureders = _model.Murders;
+    }
 
-        private List<string> _Mureders;
+    public void Play()
+    {
+        SoundsManager.PlaySounds(SoundType.enemy_charge);
+        _model.controllerModelEffect.RunTaserEffect();
+        _isPlay = true;
+    }
 
-        private bool _IsPlay;
+    public void Stop()
+    {
+        _model.controllerModelEffect.StopTaserEffect();
+        _isPlay = false;
+    }
 
-        private Dictionary<ModelHuman, int> _Targets = new Dictionary<ModelHuman, int>();
-
-        public static float DistanceFactor = 250;
-
-        public static float Timeout = 0.35f;
-
-        public static float HeightFactor = 2;
-
-        public ControllerCatching(ModelHuman model)
+    public void Catch(ModelHuman modelHuman)
+    {
+        Stop();
+        modelHuman.StartPhysics();
+        if (modelHuman.IsSelf)
         {
-            _Model = model;
-            _Mureders = _Model.Murders;
+            LevelMainController.current.Murder(modelHuman);
         }
-
-        public void Play()
+        else
         {
-            SoundsManager.PlaySounds(SoundType.enemy_charge);
-            _Model.controllerModelEffect.RunTaserEffect();
-            _IsPlay = true;
-        }
-
-        public void Stop()
-        {
-            _Model.controllerModelEffect.StopTaserEffect();
-            _IsPlay = false;
-        }
-
-        public void Catch(ModelHuman modelHuman)
-        {
-            Stop();
-            modelHuman.StartPhysics();
-            if (modelHuman.IsSelf)
+            if (LevelMainController.IsHunterMode)
             {
-                LevelMainController.current.Murder(modelHuman);
+                LevelMainController.current.Win(modelHuman, 1);
+            }
+        }
+        SoundsManager.PlaySounds(SoundType.enemy_discharge);
+        modelHuman.controllerModelEffect.RunParalyzeEffect();
+        _model.controllerModelEffect.RunTaserExplosion();
+    }
+
+    public void Render(ModelHuman modelHuman)
+    {
+        if (modelHuman == null)
+        {
+            return;
+        }
+        if (_mureders.Contains(modelHuman.Name))
+        {
+            if (IsActive(modelHuman))
+            {
+                if (_targets.ContainsKey(modelHuman))
+                {
+                    if (_targets[modelHuman] != -1)
+                    {
+                        _targets[modelHuman] -= 1;
+                        if (_targets[modelHuman] == 0)
+                        {
+                            Catch(modelHuman);
+                        }
+                        return;
+                    }
+                }
+                _targets[modelHuman] = (int)(Timeout * 60);
+                if (_isPlay)
+                {
+                    return;
+                }
+                Play();
             }
             else
             {
-                if (LevelMainController.IsHunterMode)
+                if (!_targets.ContainsKey(modelHuman))
                 {
-                    LevelMainController.current.Win(modelHuman, 1);
+                    return;
                 }
-            }
-            SoundsManager.PlaySounds(SoundType.enemy_discharge);
-            //GamepadController.Instance.Rumble(0.7f, 0.7f,0.5f);
-            modelHuman.controllerModelEffect.RunParalyzeEffect();
-            _Model.controllerModelEffect.RunTaserExplosion();
-        }
-
-        public void Render(ModelHuman modelHuman)
-        {
-            if (modelHuman == null)
-            {
-                return;
-            }
-            if (_Mureders.Contains(modelHuman.Name))
-            {
-                if (IsActive(modelHuman))
-                {
-                    if (_Targets.ContainsKey(modelHuman))
-                    {
-                        if (_Targets[modelHuman] != -1)
-                        {
-                            _Targets[modelHuman] -= 1;
-                            if (_Targets[modelHuman] == 0)
-                            {
-                                Catch(modelHuman);
-                            }
-                            return;
-                        }
-                    }
-                    _Targets[modelHuman] = (int)(Timeout * 60);
-                    if (_IsPlay)
-                    {
-                        return;
-                    }
-                    Play();
-                }
-                else
-                {
-                    if (!_Targets.ContainsKey(modelHuman))
-                    {
-                        return;
-                    }
-                    _Targets.Remove(modelHuman);
-                    Stop();
-                }
+                _targets.Remove(modelHuman);
+                Stop();
             }
         }
+    }
 
-        public bool IsActive(ModelHuman modelHuman)
+    public bool IsActive(ModelHuman modelHuman)
+    {
+        if (!_model.IsEnabled || !modelHuman.IsEnabled || _model.IsPhysics || modelHuman.IsPhysics || _model.LockInterval)
         {
-            if (!_Model.IsEnabled || !modelHuman.IsEnabled || _Model.IsPhysics || modelHuman.IsPhysics || _Model.LockInterval)
-            {
-                return false;
-            }
-            return Distance(_Model.ModelObject.CenterOfMassNode, modelHuman.ModelObject.CenterOfMassNode);
+            return false;
         }
+        return Distance(_model.ModelObject.CenterOfMassNode, modelHuman.ModelObject.CenterOfMassNode);
+    }
 
-        public bool Distance(ModelNode node1, ModelNode node2)
-        {
-            var vector = new Vector3();
-            vector.X = MathF.Abs((float)node2.Start.X - (float)node1.Start.X);
-            vector.Y = MathF.Abs((float)node2.Start.Y - (float)node1.Start.Y) * HeightFactor;
+    public bool Distance(ModelNode node1, ModelNode node2)
+    {
+        var vector = new Vector3();
+        vector.X = MathF.Abs((float)node2.Start.X - (float)node1.Start.X);
+        vector.Y = MathF.Abs((float)node2.Start.Y - (float)node1.Start.Y) * HeightFactor;
 
-            return Vector3.Distance(vector, Vector3.Zero) < DistanceFactor;
-        }
+        return Vector3.Distance(vector, Vector3.Zero) < DistanceFactor;
+    }
 
-        public void Reset()
-        {
-            _Model.controllerModelEffect.StopTaserEffect();
-            _IsPlay = false;
-        }
+    public void Reset()
+    {
+        _model.controllerModelEffect.StopTaserEffect();
+        _isPlay = false;
     }
 }

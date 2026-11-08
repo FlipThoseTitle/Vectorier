@@ -1,44 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Vectorier.ViewModels;
-using Vectorier.ViewModels.Dialogs;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Dialogs;
 
 namespace Vectorier.Services;
-
-public enum MessageKind
-{
-    Info,
-    Warning,
-    Error,
-    Question
-}
-
-public enum SaveChoice
-{
-    Save,
-    DontSave,
-    Cancel
-}
-
-public interface IDialogService
-{
-    Task ShowMessageAsync(string title, string message, MessageKind kind = MessageKind.Info);
-
-    Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, string? cancelText = null, MessageKind kind = MessageKind.Question);
-
-    Task<SaveChoice> AskSaveChangesAsync(string documentName);
-
-    /// <summary>Asks for a line of text. <paramref name="validate"/> returns an error message or null.</summary>
-    Task<string?> PromptAsync(string title, string label, string initialText = "", Func<string, string?>? validate = null, string? confirmText = null);
-
-    /// <summary>Shows any dialog view model and returns the value passed to <see cref="DialogViewModel.Close"/>.</summary>
-    Task<object?> ShowAsync(DialogViewModel dialog);
-}
 
 /// <summary>
 /// Shows dialogs as modal windows centered over the current window on the desktop, and as an in-page
@@ -129,51 +96,6 @@ public sealed class DialogService : IDialogService
         return null;
     }
 }
-
-/// <summary>Modal window used for dialogs on the desktop.</summary>
-public sealed class DialogWindow : Window
-{
-    private readonly DialogViewModel _dialog;
-
-    public DialogWindow(DialogViewModel dialog)
-    {
-        _dialog = dialog;
-        Title = dialog.Title;
-        Content = dialog;
-        SizeToContent = dialog.Resizable ? SizeToContent.Manual : SizeToContent.WidthAndHeight;
-        if (dialog.Resizable)
-        {
-            Width = dialog.PreferredWidth;
-            Height = dialog.PreferredHeight;
-        }
-        CanResize = dialog.Resizable;
-        ShowInTaskbar = false;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Icon = ShellWindow.LoadIcon();
-        MinWidth = 320;
-
-        dialog.CloseRequested += Close;
-        KeyDown += OnKeyDown;
-        Controls.FocusOut.Attach(this);
-    }
-
-    private void OnKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape && _dialog.CanCancelWithEscape)
-        {
-            _dialog.Cancel();
-            e.Handled = true;
-        }
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _dialog.CloseRequested -= Close;
-        _dialog.Cancel();
-    }
-}
-
 
 /// <summary>
 /// "Already exists. Replace it?" for a batch of files: the question has an "Apply to all files" check box, and

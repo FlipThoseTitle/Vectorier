@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 
 namespace Vectorier.Services;
 
@@ -111,10 +110,4 @@ public static class EditorPreferences
         get => Enum.TryParse<ScrollNavigation>(Get(KeyScrollNavigation), out var n) ? n : ScrollNavigation.Auto;
         set => Set(KeyScrollNavigation, value.ToString());
     }
-
-    public static double GetDouble(string key, double fallback) =>
-        double.TryParse(Get(key), NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : fallback;
-
-    public static void SetDouble(string key, double value) =>
-        AppServices.Platform?.Settings.Set(key, value.ToString(CultureInfo.InvariantCulture));
 }
