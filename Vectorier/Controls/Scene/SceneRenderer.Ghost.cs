@@ -32,6 +32,15 @@ public partial class SceneRenderer
     /// <summary>The biggest cached preview picture (pixels).</summary>
     private const double GhostCacheMaxPixels = 4096.0 * 4096.0;
 
+    /// <summary>The renderer is done (its Scene View let go of the editor): the bitmaps it made itself go.</summary>
+    public void ReleaseBitmaps()
+    {
+        ForgetGhost();
+        foreach (var image in _trackImages.Values)
+            image?.Dispose();
+        _trackImages.Clear();
+    }
+
     /// <summary>The placement preview changed (another asset, or it was removed): its picture is drawn again.</summary>
     public void ForgetGhost()
     {

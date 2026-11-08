@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Vectorier.Models.Scene;
 using Vectorier.Services.IO;
 
@@ -117,7 +118,7 @@ public sealed class ObjectLibrary
             string? name = obj.Attribute("Name")?.Value;
             if (string.IsNullOrWhiteSpace(name))
                 continue;
-            var def = new ObjectDefinition(name, fileName, obj);
+            var def = new ObjectDefinition(name, fileName, new XElement(obj.Name, obj.Attributes()), obj.ToString(SaveOptions.DisableFormatting));
             result.Definitions[name] = def;
             result.Ordered.Add(def);
         }

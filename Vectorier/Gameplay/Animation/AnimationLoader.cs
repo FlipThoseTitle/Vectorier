@@ -29,6 +29,17 @@ public class AnimationLoader
         ParseAnimations();
     }
 
+    /// <summary>The editor's addition: the parsed moves are let go (the editor closed); the next game parses them again.</summary>
+    public void Unload()
+    {
+        AnimationBinaryParser.ClearCachedBinary();
+        AnimationGroup.ClearGroups();
+        Animations.Animation.Clear();
+        AnimationReaction.Reactions.Clear();
+        AnimationTrickInfo.TricksLoaded.Clear();
+        AnimationReaction.MovesVersion++;
+    }
+
     public void ReloadAnimations()
     {
         AnimationBinaryParser.ClearCachedBinary();

@@ -31,7 +31,10 @@ public class TexturePreview : Control
     public static readonly StyledProperty<IBrush?> TintProperty =
         AvaloniaProperty.Register<TexturePreview, IBrush?>(nameof(Tint));
 
-    private TextureAsset? _asset;
+    // Full-size textures: one of the library's is looked up by name at render time (the library may let it go and
+    // load it again); a file shadowed by a sprite sheet of the same name is loaded for this preview and owned.
+    private string? _assetName;
+    private TextureAsset? _owned;
     private TextureEntry? _thumbEntry;
     private TextureLibrary? _subscribed;
     private bool _attached;
@@ -102,9 +105,19 @@ public class TexturePreview : Control
 
     private void OnTextureLoaded(string name)
     {
-        if (_thumbEntry != null && name == _thumbEntry.Name)
+        if ((_thumbEntry != null && name == _thumbEntry.Name) || name == _assetName)
             InvalidateVisual();
     }
+
+    private void DropTexture()
+    {
+        _assetName = null;
+        _owned?.Bitmap.Dispose();
+        _owned = null;
+        _thumbEntry = null;
+    }
+
+    private TextureAsset? CurrentAsset => _owned ?? (_assetName != null ? Library?.TryGet(_assetName) : null);
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -113,15 +126,13 @@ public class TexturePreview : Control
         StopAnimation();
         Subscribe(null);
         // A recycled tile must not keep a texture alive.
-        _asset = null;
-        _thumbEntry = null;
+        DropTexture();
     }
 
     private async void Reload()
     {
         int version = ++_requestVersion;
-        _asset = null;
-        _thumbEntry = null;
+        DropTexture();
         StopAnimation();
         Subscribe(null);
         InvalidateVisual();
@@ -139,10 +150,23 @@ public class TexturePreview : Control
         if (entry.IsAnimated || !UseThumbnail)
         {
             // A static file that shares its name with a sprite sheet is loaded on its own.
-            var asset = ReferenceEquals(library.Find(name), entry) ? await library.GetAsync(name) : await library.LoadEntryAsync(entry);
+            bool shared = ReferenceEquals(library.Find(name), entry);
+            var asset = shared ? await library.GetAsync(name) : await library.LoadEntryAsync(entry);
             if (version != _requestVersion)
+            {
+                if (!shared)
+                    asset?.Bitmap.Dispose();
                 return;
-            _asset = asset;
+            }
+            if (shared)
+            {
+                _assetName = name;
+                Subscribe(library); // drawn again if the library loads it again
+            }
+            else
+            {
+                _owned = asset;
+            }
             if (asset?.IsAnimated == true && _attached)
                 StartAnimation();
         }
@@ -181,10 +205,11 @@ public class TexturePreview : Control
 
         double w, h;
         Bitmap? thumbnail = null;
-        if (_asset != null)
+        var asset = CurrentAsset;
+        if (asset != null)
         {
-            w = _asset.Width;
-            h = _asset.Height;
+            w = asset.Width;
+            h = asset.Height;
         }
         else if (_thumbEntry != null && Library is { } library)
         {
@@ -206,8 +231,8 @@ public class TexturePreview : Control
 
         using (context.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = BitmapInterpolationMode.MediumQuality }))
         {
-            if (_asset != null)
-                _asset.Draw(context, dest, _asset.FrameAt(AnimationClock.Seconds));
+            if (asset != null)
+                asset.Draw(context, dest, asset.FrameAt(AnimationClock.Seconds));
             else if (thumbnail != null)
                 context.DrawImage(thumbnail, dest);
         }

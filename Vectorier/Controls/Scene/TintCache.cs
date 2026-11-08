@@ -50,6 +50,15 @@ public static class TintCache
         return tinted;
     }
 
+    /// <summary>Lets go of every copy (a level editor closed: the next level tints its own).</summary>
+    public static void Clear()
+    {
+        foreach (var tinted in Cache.Values)
+            tinted?.Dispose();
+        Cache.Clear();
+        Order.Clear();
+    }
+
     private static Bitmap Build(Bitmap source, Color tint)
     {
         var size = source.PixelSize;

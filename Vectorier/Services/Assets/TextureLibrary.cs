@@ -370,6 +370,30 @@ public sealed class TextureLibrary
         }
     }
 
+    // ================= RELEASING ================= //
+
+    /// <summary>
+    /// Lets go of the full-size textures (a level editor closed): they load again when something draws them. Every
+    /// user draws them at render time only, so none is left holding one.
+    /// </summary>
+    public void ReleaseLoaded()
+    {
+        foreach (var asset in _loaded.Values)
+            asset?.Bitmap.Dispose();
+        _loaded.Clear();
+    }
+
+    /// <summary>Lets go of everything loaded (another project is opened). UI thread.</summary>
+    public void ReleaseAll()
+    {
+        ReleaseLoaded();
+        foreach (var thumb in _thumbs.Values)
+            thumb.Bitmap?.Dispose();
+        _thumbs.Clear();
+        _thumbBytes = 0;
+        _sizes.Clear();
+    }
+
     public void Invalidate(string name)
     {
         _loaded.TryRemove(name, out _);

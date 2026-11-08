@@ -15,27 +15,46 @@ public sealed class ObjectDefinition
     {
         Name = name;
         SourceFile = sourceFile;
-        Xml = xml;
+        _xml = xml;
+        _header = xml;
     }
+
+    /// <summary>
+    /// A definition of an object file, kept as text until it is built: a parsed tree of every object file of a
+    /// project takes several times their size. <paramref name="header"/> is the Object element with its attributes only.
+    /// </summary>
+    public ObjectDefinition(string name, string sourceFile, XElement header, string xmlText)
+    {
+        Name = name;
+        SourceFile = sourceFile;
+        _header = header;
+        _text = xmlText;
+    }
+
+    private readonly XElement? _xml;
+    private readonly XElement _header;
+    private readonly string? _text;
 
     public string Name { get; }
     public string SourceFile { get; }
-    public XElement Xml { get; }
+
+    /// <summary>The whole Object element (parsed from its text each time it is asked for: only building it needs it).</summary>
+    public XElement Xml => _xml ?? XElement.Parse(_text!);
 
     /// <summary>Building entry / exit (InX, InY / OutX, OutY), relative to the instance; null for plain objects.</summary>
     public Point? In => Point2("InX", "InY");
     public Point? Out => Point2("OutX", "OutY");
 
     /// <summary>A Building definition: it has any of the In / Out / Box attributes.</summary>
-    public bool IsBuilding => BuildingAttributes.Any(a => Xml.Attribute(a) != null);
+    public bool IsBuilding => BuildingAttributes.Any(a => _header.Attribute(a) != null);
 
     public static readonly string[] BuildingAttributes = { "InX", "InY", "OutX", "OutY", "BoxX", "BoxY", "BoxWidth", "BoxHeight" };
 
     private Point? Point2(string x, string y)
     {
-        if (Xml.Attribute(x) == null && Xml.Attribute(y) == null)
+        if (_header.Attribute(x) == null && _header.Attribute(y) == null)
             return null;
-        return new Point(Num.Parse((string?)Xml.Attribute(x)), Num.Parse((string?)Xml.Attribute(y)));
+        return new Point(Num.Parse((string?)_header.Attribute(x)), Num.Parse((string?)_header.Attribute(y)));
     }
 
     /// <summary>

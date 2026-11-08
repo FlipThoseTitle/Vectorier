@@ -375,9 +375,10 @@ public sealed class SceneXmlReader
         _building.Add(def.Name);
         try
         {
-            var content = def.Xml.Element("Content");
+            var xml = def.Xml;
+            var content = xml.Element("Content");
             def.Content = content != null ? ReadContent(content) : new List<SceneElement>();
-            def.Dynamics = def.Xml.Element("Properties")?.Element("Dynamic")?.Elements("Transformation")
+            def.Dynamics = xml.Element("Properties")?.Element("Dynamic")?.Elements("Transformation")
                 .Select(ReadTransformation).ToList() ?? new List<DynamicTransformation>();
             def.ComputeBounds();
             def.IsBuilt = true;

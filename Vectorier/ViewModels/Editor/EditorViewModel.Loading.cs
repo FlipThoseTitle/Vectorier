@@ -35,7 +35,8 @@ public partial class EditorViewModel
             ProjectWindow.SetContext(ActiveElementType?.Type ?? ElementType.Object);
             _ = EnsureTrickTriggersAsync();
             // The game gets its files and moves ready meanwhile: Play starts right away.
-            _ = Services.Game.GameHost.Current.WarmUpAsync(Project);
+            var settings = Document.Settings;
+            _ = Services.Game.GameHost.Current.WarmUpAsync(Project, settings.CitySets.Concat(settings.GroundSets).Concat(settings.LibrarySets).ToList());
         }
         catch (Exception ex)
         {

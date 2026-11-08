@@ -15,7 +15,6 @@ namespace Vectorier.Gameplay.Level;
 
 public class Location
 {
-    private static Location _current;
     private List<QuadRunner> _culledQuads = new List<QuadRunner>();
 
     private List<QuadRunner> belongQuads = new List<QuadRunner>();
@@ -42,8 +41,6 @@ public class Location
 
         Grid.InitGrid(Sets.QuadsAll);
         transformManager = new TransformManager();
-
-        _current = this;
     }
 
     private void LoadXml(string xmlPath)

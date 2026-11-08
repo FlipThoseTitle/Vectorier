@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Avalonia.Media;
 using Vectorier.Gameplay;
+using Vectorier.Gameplay.Animation;
 using Vectorier.Gameplay.Rl;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
@@ -163,7 +164,40 @@ public sealed class GameHost
         {
             Game?.Close();
             GameState.ResetForNewGame(false);
+            // The played level (its runners, models, triggers, parsed sets) is not kept.
+            LevelMainController.Clear();
+            Gameplay.Level.Sets.Clear();
+            Gameplay.Runners.TutorialAreaRunner.Clear();
         }
+    }
+
+    /// <summary>
+    /// The level editor closed: the game lets go of everything it read and parsed for the project (files, object
+    /// sets, moves, sounds, music). The next editor reads them again while it opens (<see cref="WarmUpAsync"/>).
+    /// </summary>
+    public void ReleaseProjectData()
+    {
+        Stop();
+        using (Invariant())
+        {
+            LevelMainController.Clear(); // the Move Visualizer's level
+            Gameplay.Level.Sets.Clear();
+            Gameplay.Runners.TutorialAreaRunner.Clear();
+            GameState.ResetForNewGame(false);
+            ResourceManager.ClearSoundCache();
+            ResourceManager.ClearMusicCache();
+            AnimationLoader.Current.Unload();
+            Raylib.ReleaseCaches();
+        }
+        GameFiles.Clear();
+        Gameplay.Utilities.XmlUtils.ClearParsedCache();
+        _loaded.Clear();
+        _movesSignature = null;
+        _parsedSignature = null;
+        _projectPath = null; // the next game starts as for another project: everything read again
+        GameFiles.TextureProvider = null;
+        _context = null;
+        lock (_missingTextures) _missingTextures.Clear();
     }
 
     // ================= THE MOVE VISUALIZER ================= //
@@ -199,10 +233,11 @@ public sealed class GameHost
 
     /// <summary>
     /// Reads what the game needs and parses the project's moves while the editor opens a level, so Play (and the
-    /// Move Visualizer's Gameplay mode) start right away. Nothing happens while the game is in use; errors are
-    /// left for Play to report.
+    /// Move Visualizer's Gameplay mode) start right away. Of the object sets, only the level's
+    /// (<paramref name="setFiles"/>, and the sets they name) are parsed ahead: the others take memory and are parsed
+    /// when a level using them is played. Nothing happens while the game is in use; errors are left for Play to report.
     /// </summary>
-    public async Task WarmUpAsync(ProjectInfo project)
+    public async Task WarmUpAsync(ProjectInfo project, IEnumerable<string> setFiles)
     {
         if (IsRunning || LevelMainController.current != null)
             return;
@@ -215,15 +250,35 @@ public sealed class GameHost
             await PrepareMovesAsync(project);
             if (!IsRunning && LevelMainController.current == null)
                 await ParseMovesAsync();
-            // The object sets, trigger templates and models are parsed ahead too (kept until they change).
+            // The level's object sets, the trigger templates and the models are parsed ahead too (kept until they change).
             var xml = GameFiles.GetAllKeys().Where(k => k.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
-                && (k.StartsWith("xmlroot/", StringComparison.OrdinalIgnoreCase) && !k.StartsWith("xmlroot/levels/", StringComparison.OrdinalIgnoreCase)
-                    || k.StartsWith("models/", StringComparison.OrdinalIgnoreCase))).ToList();
-            await Task.Run(() => Parallel.ForEach(xml, key =>
+                && (k.StartsWith("models/", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "xmlroot/TriggerTemplates.xml", StringComparison.OrdinalIgnoreCase))).ToList();
+            var sets = setFiles.Select(f => "xmlroot/" + f).ToList();
+            await Task.Run(() =>
+            {
+                Parallel.ForEach(xml, key => Parse(key));
+                // A set may name other sets: those are parsed too.
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                while (sets.Count > 0)
+                {
+                    var batch = sets.Where(seen.Add).Where(GameFiles.Contains).ToList();
+                    var nested = new System.Collections.Concurrent.ConcurrentBag<string>();
+                    Parallel.ForEach(batch, key =>
+                    {
+                        if (Parse(key)?["Root"]?["Sets"] is { } named)
+                            foreach (System.Xml.XmlNode set in named)
+                                if (set.Attributes?["FileName"]?.Value is { Length: > 0 } file)
+                                    nested.Add("xmlroot/" + file);
+                    });
+                    sets = nested.ToList();
+                }
+            });
+
+            static System.Xml.XmlDocument? Parse(string key)
             {
                 int slash = key.LastIndexOf('/');
-                Gameplay.Utilities.XmlUtils.OpenXMLDocument(key[..slash], key[(slash + 1)..], dialog: false);
-            }));
+                return Gameplay.Utilities.XmlUtils.OpenXMLDocument(key[..slash], key[(slash + 1)..], dialog: false);
+            }
         }
         catch (Exception ex)
         {

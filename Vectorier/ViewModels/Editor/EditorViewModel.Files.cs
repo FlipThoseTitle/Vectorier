@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Vectorier.Models.Scene;
 using Vectorier.Services;
 using Vectorier.Services.Collab;
+using Vectorier.Services.Game;
 using Vectorier.Services.IO;
 using Vectorier.Services.Localization;
 using Vectorier.Services.Xml;
@@ -335,5 +336,16 @@ public partial class EditorViewModel
         MoveVisualizer.Stop();
         Dynamics.StopPreview();
         UnhookGame();
+        Paint.Reset();
+        // This level's textures go (the next screen loads only what it draws: it has drawn nothing yet).
+        Context.Textures.ReleaseLoaded();
+        Controls.Scene.TintCache.Clear();
+        // The parsed object files and the game's data go too, unless the screen after this one is an editor of
+        // the same project, which uses them.
+        if (AppServices.Shell.CurrentScreen is EditorViewModel next && !ReferenceEquals(next, this)
+            && string.Equals(next.Project.Path, Project.Path, StringComparison.Ordinal))
+            return;
+        GameHost.Current.ReleaseProjectData();
+        ProjectContext.ReleaseEditorData(Project);
     }
 }

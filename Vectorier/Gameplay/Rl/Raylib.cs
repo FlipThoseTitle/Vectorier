@@ -471,6 +471,16 @@ public static class Raylib
         return layout;
     }
 
+    /// <summary>The editor's addition: laid-out texts, brushes and pens are let go (the level editor closed).</summary>
+    public static void ReleaseCaches()
+    {
+        foreach (var layout in _texts.Values)
+            layout.Dispose();
+        _texts.Clear();
+        _brushes.Clear();
+        _pens.Clear();
+    }
+
     private static uint Pack(Color c) => (uint)(c.R << 24 | c.G << 16 | c.B << 8 | c.A);
 
     public static void DrawTextEx(Font font, string text, Vector2 position, float fontSize, float spacing, Color tint)

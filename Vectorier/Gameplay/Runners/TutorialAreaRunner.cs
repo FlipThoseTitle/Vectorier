@@ -16,6 +16,9 @@ public class TutorialAreaRunner : AreaRunner
 
     public static TutorialAreaRunner current { get; private set; }
 
+    /// <summary>The editor's addition: the game stopped, its level is not kept through the active tutorial area.</summary>
+    public static void Clear() => current = null;
+
     private bool ShowTutorial
     {
         get

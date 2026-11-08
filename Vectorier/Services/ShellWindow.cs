@@ -73,5 +73,8 @@ public sealed class ShellWindow : Window
     {
         base.OnClosed(e);
         Screen.OnClosed();
+        // The screen's views leave the visual tree: they let go of what outlives them (the project's libraries,
+        // static events), so nothing keeps the closed window and its screen alive.
+        Content = null;
     }
 }

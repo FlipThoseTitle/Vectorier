@@ -95,6 +95,7 @@ public sealed partial class SceneView : Control, IInternalDropTarget
             EditorPreferences.Changed -= OnPreferencesChanged;
         }
         _editor = editor;
+        Renderer?.ReleaseBitmaps();
         Renderer = null;
         _framedOnce = false;
         if (editor != null)

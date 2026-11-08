@@ -67,6 +67,9 @@ public class Sets
 
     public static Sets Current { get; protected set; }
 
+    /// <summary>The editor's addition: the game stopped, its level (and its parsed set files) is not kept.</summary>
+    public static void Clear() => Current = null;
+
     public Dictionary<float, VisualContainer> Containers => _Containers;
 
     public List<Runner> AllRunners => _allRunners;

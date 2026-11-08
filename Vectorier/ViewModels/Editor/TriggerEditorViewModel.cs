@@ -29,7 +29,8 @@ public enum TriggerEditorMode
 public sealed partial class TriggerEditorViewModel : ViewModelBase
 {
     public const string PresetFolder = "Editor/TriggerPresets";
-    private static readonly Dictionary<string, TriggerTemplateLibrary> Libraries = new(StringComparer.Ordinal);
+    // The templates read last (one project's: another project reads its own).
+    private static (string ProjectPath, TriggerTemplateLibrary Library)? _lastLibrary;
 
     public TriggerEditorViewModel(EditorViewModel editor, TriggerElement trigger)
     {
@@ -40,7 +41,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
         Data = TriggerData.Parse(trigger.ContentXml);
         ReadTypes(Data, trigger.VariableTypes);
         SelectedLoop = Data.loops.Count > 0 ? 0 : -1;
-        Library = Libraries.TryGetValue(editor.Project.Path, out var lib) ? lib : new TriggerTemplateLibrary();
+        Library = _lastLibrary is { } last && last.ProjectPath == editor.Project.Path ? last.Library : new TriggerTemplateLibrary();
         _ = InitializeAsync();
     }
 
@@ -122,7 +123,7 @@ public sealed partial class TriggerEditorViewModel : ViewModelBase
         var library = new TriggerTemplateLibrary();
         await library.LoadAsync(AppServices.FileSystem, VPath.Combine(Editor.Project.XmlRoot, "TriggerTemplates.xml"));
         Library = library;
-        Libraries[Editor.Project.Path] = library;
+        _lastLibrary = (Editor.Project.Path, library);
         RefreshSceneSources();
         await LoadProjectSourcesAsync();
         InferTypesFromTemplates();
