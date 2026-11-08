@@ -114,7 +114,7 @@ public partial class EditorView : UserControl
     {
         if (TopLevel.GetTopLevel(this) is Window owner)
         {
-            if (full && _fullScreenWindow == null)
+            if (full && _fullScreenWindow == null && owner.IsVisible) // a closed editor window owns nothing
             {
                 _fullScreenView = new Vectorier.Controls.GameView();
                 var window = new Window

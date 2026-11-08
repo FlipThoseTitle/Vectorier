@@ -291,10 +291,14 @@ public partial class SceneView
         else if (Tool == EditorTool.Rect && _editor.HasSelection)
         {
             var zone = RectZone(pos);
+            if (zone == RectHandle.Rotate)
+            {
+                Cursor = RotateCursor;
+                return;
+            }
             type = zone switch
             {
                 RectHandle.Move => StandardCursorType.SizeAll,
-                RectHandle.Rotate => StandardCursorType.Hand,
                 RectHandle.Left or RectHandle.Right => StandardCursorType.SizeWestEast,
                 RectHandle.Top or RectHandle.Bottom => StandardCursorType.SizeNorthSouth,
                 RectHandle.Left | RectHandle.Top or RectHandle.Right | RectHandle.Bottom => StandardCursorType.TopLeftCorner,

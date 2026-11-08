@@ -352,12 +352,14 @@ public partial class SceneView
 
     // ================= CURSORS ================= //
 
-
     /// <summary>Open hand while panning with the right mouse button.</summary>
     private static Cursor HandCursor => field ??= MakeCursor("Icon.Pan") ?? new Cursor(StandardCursorType.SizeAll);
 
     /// <summary>Magnifying glass while zooming with Alt + right mouse button.</summary>
     private static Cursor ZoomCursor => field ??= MakeCursor("Icon.Search") ?? new Cursor(StandardCursorType.SizeNorthSouth);
+
+    /// <summary>The Rotate tool's arrow, over the Rect Tool's rotation zones (just outside the corners).</summary>
+    private static Cursor RotateCursor => field ??= MakeCursor("Icon.Rotate") ?? new Cursor(StandardCursorType.Hand);
 
     /// <summary>Renders an icon of the app (black with a white outline) into a 32×32 cursor.</summary>
     private static Cursor? MakeCursor(string iconKey)

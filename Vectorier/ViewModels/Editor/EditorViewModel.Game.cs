@@ -38,6 +38,23 @@ public partial class EditorViewModel
         VectorierGameHooks.Install(this);
     }
 
+    /// <summary>
+    /// The editor closed: its game ends and it stops listening to the host, which outlives it (a closed editor
+    /// still handling F11 would open a full screen window over its closed one).
+    /// </summary>
+    private void UnhookGame()
+    {
+        if (!_gameHooked)
+            return;
+        if (GameHost.Current.IsRunning)
+            GameHost.Current.Stop();
+        _gameHooked = false;
+        GameHost.Current.RunningChanged -= OnGameRunningChanged;
+        GameHost.Current.FullScreenToggled -= OnGameFullScreenToggled;
+        GameHost.Current.Failed -= OnGameFailed;
+        VectorierGameHooks.Uninstall(this);
+    }
+
     private void OnGameRunningChanged()
     {
         IsGameRunning = GameHost.Current.IsRunning;
@@ -121,5 +138,11 @@ internal static class VectorierGameHooks
             if (_editor is { } editor)
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = GameHost.Current.ReloadMovesAsync(editor.Project));
         };
+    }
+
+    public static void Uninstall(EditorViewModel editor)
+    {
+        if (_editor == editor)
+            _editor = null;
     }
 }

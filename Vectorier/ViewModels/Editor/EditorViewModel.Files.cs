@@ -322,5 +322,6 @@ public partial class EditorViewModel
         CollabSession.Current.EditorClosed(this);
         MoveVisualizer.Stop();
         Dynamics.StopPreview();
+        UnhookGame();
     }
 }
