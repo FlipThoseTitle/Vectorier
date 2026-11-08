@@ -29,6 +29,7 @@ internal enum InteractionMode
     SnapMove,
     SnapScale,
     Paint,
+    PaintShape,
 }
 
 [Flags]
@@ -254,9 +255,9 @@ public sealed partial class SceneView
         if (TryStartSnapDrag(pos))
             return;
 
-        // Gizmo handles win over whatever is below them.
-        // A double click picks the next element underneath, even over the gizmo of the current one.
-        if (e.ClickCount < 2 && (mods & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Alt)) == 0 && TryStartGizmoDrag(pos))
+        // Gizmo handles win over whatever is below them, Ctrl held or not (Ctrl snaps the transform; elsewhere it
+        // adds to the selection). A double click picks the next element underneath, even over the gizmo.
+        if (e.ClickCount < 2 && (mods & (KeyModifiers.Meta | KeyModifiers.Alt)) == 0 && TryStartGizmoDrag(pos))
             return;
         _gizmoHandle = GizmoHandle.None;
 
@@ -441,10 +442,10 @@ public sealed partial class SceneView
             return;
         _editor.ScenePointer = ScreenToLevel(pos);
 
-        if (_mode == InteractionMode.Paint || Tool == EditorTool.Brush)
+        if (_mode is InteractionMode.Paint or InteractionMode.PaintShape || Tool == EditorTool.Brush)
         {
             PaintMoved(pos);
-            if (_mode == InteractionMode.Paint)
+            if (_mode is InteractionMode.Paint or InteractionMode.PaintShape)
                 return;
         }
 
@@ -543,6 +544,12 @@ public sealed partial class SceneView
         if (_mode == InteractionMode.Paint)
         {
             EndPaintStroke();
+            e.Pointer.Capture(null);
+            return;
+        }
+        if (_mode == InteractionMode.PaintShape)
+        {
+            ReleaseShape();
             e.Pointer.Capture(null);
             return;
         }
@@ -687,6 +694,7 @@ public sealed partial class SceneView
     {
         base.OnPointerCaptureLost(e);
         EndPaintStroke();
+        CancelShapeDrag();
         if (_mode is InteractionMode.Pan or InteractionMode.Zoom or InteractionMode.RubberBand or InteractionMode.PlaceDrag)
         {
             _mode = InteractionMode.None;

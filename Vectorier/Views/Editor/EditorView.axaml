@@ -266,10 +266,16 @@
                     <!-- Brush options (Brush tool only) -->
                     <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsBrushTool}" Margin="6,0,0,0">
                         <Rectangle Width="1" Margin="0,3" Fill="{DynamicResource AppBorder}" />
-                        <ComboBox ItemsSource="{x:Static vm:PaintViewModel.BrushKinds}" SelectedItem="{Binding Paint.Kind}" Width="96"
-                                  ToolTip.Tip="{l:Tr 'Hard: solid edge&#10;Soft: feathered edge&#10;Airbrush: keeps spraying while held&#10;Blur: softens the paint'}" />
+                        <ComboBox Name="BrushKindBox" ItemsSource="{x:Static vm:PaintViewModel.BrushMenu}" SelectedItem="{Binding Paint.Kind}" Width="112"
+                                  ToolTip.Tip="{l:Tr 'Hard: solid edge&#10;Soft: feathered edge&#10;Airbrush: keeps spraying while held&#10;Blur: softens the paint&#10;&#10;Rectangle, Circle: drag a box to fill&#10;Lasso: drag a free shape to fill&#10;Polyline: click points, then click the first point (or press Enter) to fill&#10;Erase removes the shape instead'}">
+                            <ComboBox.DataTemplates>
+                                <DataTemplate DataType="vm:BrushMenuDivider">
+                                    <Rectangle Height="1" Fill="{DynamicResource AppBorder}" />
+                                </DataTemplate>
+                            </ComboBox.DataTemplates>
+                        </ComboBox>
                         <TextBlock Text="{l:Tr 'Size'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
-                        <NumericUpDown Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
+                        <NumericUpDown IsEnabled="{Binding !Paint.IsShape}" Value="{Binding Paint.Size, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="1" Maximum="1000"
                                        FormatString="0.#" Width="64" ShowButtonSpinner="False" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="{l:Tr 'Brush size ([ / ])'}" />
                         <TextBlock Text="{l:Tr 'Opacity'}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
                         <NumericUpDown Value="{Binding Paint.Opacity, Converter={x:Static c:DoubleToDecimalConverter.Instance}}" Minimum="0" Maximum="100"

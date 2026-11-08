@@ -39,13 +39,26 @@ public sealed partial class PaintViewModel : ObservableObject
         _editor = editor;
     }
 
-    public static IReadOnlyList<BrushKind> BrushKinds { get; } = Enum.GetValues<BrushKind>();
+    /// <summary>The brush dropdown: the brushes, a divider, then the shape tools.</summary>
+    public static IReadOnlyList<object> BrushMenu { get; } = new object[]
+    {
+        BrushKind.Hard, BrushKind.Soft, BrushKind.Airbrush, BrushKind.Blur,
+        BrushMenuDivider.Instance,
+        BrushKind.Rectangle, BrushKind.Circle, BrushKind.Lasso, BrushKind.Polyline,
+    };
     /// <summary>Blending modes of the dropdown (erasing is the separate Erase option).</summary>
     public static IReadOnlyList<PaintBlendMode> BlendModes { get; } = Enum.GetValues<PaintBlendMode>().Where(m => m != PaintBlendMode.Erase).ToList();
 
     // ================= SETTINGS ================= //
 
-    [ObservableProperty] private BrushKind _kind = BrushKind.Hard;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsShape))]
+    private BrushKind _kind = BrushKind.Hard;
+
+    /// <summary>A shape tool (Rectangle, Circle, Lasso, Polyline) is picked: the brush size does not apply.</summary>
+    public bool IsShape => Kind.IsShape();
+
+    partial void OnKindChanged(BrushKind value) => _editor.InvalidateScene();
 
     /// <summary>Brush diameter in level pixels.</summary>
     [ObservableProperty] private double _size = 40;
@@ -382,6 +395,20 @@ public sealed partial class PaintViewModel : ObservableObject
         _editor.InvalidateScene();
     }
 
+    /// <summary>Shape tools: fills (or erases) a closed shape given in level space. One undo step, like a stroke.</summary>
+    public void FillShape(IReadOnlyList<Point> level)
+    {
+        if (Canvas == null || level.Count < 3)
+            return;
+        if (IsStroking)
+            EndStroke();
+        Canvas.ClipToOriginal = ClipToBounds && !IsNew;
+        var toCanvas = Canvas.CanvasToLevel.Invert();
+        Canvas.FillShape(Settings, level.Select(p => toCanvas.Transform(p)).ToList());
+        OnPropertyChanged(nameof(SessionTitle));
+        _editor.InvalidateScene();
+    }
+
     /// <summary>Ctrl+Z while painting: takes back the last stroke.</summary>
     public bool Undo()
     {
@@ -558,5 +585,15 @@ public sealed partial class PaintViewModel : ObservableObject
         if (!IsNew)
             dialog.Buttons.Add(new DialogButton(Loc.T("Save as Duplicate"), ApplyChoice.Duplicate));
         return await AppServices.Dialogs.ShowAsync(dialog) is ApplyChoice choice ? choice : ApplyChoice.Cancel;
+    }
+}
+
+/// <summary>The line between the brushes and the shape tools in the brush dropdown (not selectable).</summary>
+public sealed class BrushMenuDivider
+{
+    public static readonly BrushMenuDivider Instance = new();
+
+    private BrushMenuDivider()
+    {
     }
 }

@@ -36,6 +36,8 @@ public partial class EditorView : UserControl
         AddHandler(PointerPressedEvent, OnAnyPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerReleasedEvent, OnAnyPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         Scene.ContextMenuRequested += (element, level) => HierarchyPanel.ShowContextMenu(element, Scene, level);
+        BrushKindBox.ContainerPrepared += OnBrushKindContainerPrepared;
+        BrushKindBox.SelectionChanged += OnBrushKindSelectionChanged;
         _infoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) => UpdateInfo());
     }
 
@@ -161,6 +163,37 @@ public partial class EditorView : UserControl
             GameFull.IsVisible = full;
         }
         FocusGame();
+    }
+
+    // ================= BRUSH DROPDOWN ================= //
+
+    /// <summary>The divider between the brushes and the shape tools is a line, not an entry.</summary>
+    private static void OnBrushKindContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is not ComboBoxItem item)
+            return;
+        if (item.Content is BrushMenuDivider)
+        {
+            item.IsEnabled = false;
+            item.IsHitTestVisible = false;
+            item.MinHeight = 0;
+            item.Padding = new Thickness(0, 3);
+        }
+        else
+        {
+            // Containers are recycled: a former divider becomes an entry again.
+            item.ClearValue(IsEnabledProperty);
+            item.ClearValue(IsHitTestVisibleProperty);
+            item.ClearValue(MinHeightProperty);
+            item.ClearValue(PaddingProperty);
+        }
+    }
+
+    /// <summary>The keyboard can step onto the divider: the selection goes back to the brush it came from.</summary>
+    private static void OnBrushKindSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox box && box.SelectedItem is BrushMenuDivider)
+            box.SelectedItem = e.RemovedItems.Count > 0 ? e.RemovedItems[0] : Vectorier.Services.Assets.BrushKind.Hard;
     }
 
     private void KeepSceneHeaderClear()
@@ -450,6 +483,13 @@ public partial class EditorView : UserControl
                 return;
             }
             _vm.DeleteCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Polyline (Brush): Enter closes the shape and fills it.
+        if (e.Key == Key.Enter && mods == KeyModifiers.None && Scene.FinishPolyline())
+        {
             e.Handled = true;
             return;
         }

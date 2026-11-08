@@ -39,18 +39,7 @@ public partial class SceneView
                     else if (_mode == InteractionMode.ModalMove && _axis == 'Y') delta = new Vector(0, delta.Y);
                     else if (_mode == InteractionMode.Move && _gizmoHandle is GizmoHandle.MoveX or GizmoHandle.MoveY) delta = ConstrainMove(delta);
                     else if (shift && _mode == InteractionMode.Move) delta = Math.Abs(delta.X) >= Math.Abs(delta.Y) ? new Vector(delta.X, 0) : new Vector(0, delta.Y);
-                    foreach (var t in _targets)
-                    {
-                        double k = PixelsToLevel(t);
-                        var (sx, sy) = _memento.StartPosition(t);
-                        t.X = sx + delta.X * k;
-                        t.Y = sy + delta.Y * k;
-                        if (t.IntegerTransform)
-                        {
-                            t.X = Math.Round(t.X);
-                            t.Y = Math.Round(t.Y);
-                        }
-                    }
+                    MoveTargets(delta, ctrl);
                     break;
                 }
 
@@ -82,6 +71,8 @@ public partial class SceneView
                     if (_mode == InteractionMode.Scale && _gizmoHandle is GizmoHandle.ScaleX or GizmoHandle.ScaleY or GizmoHandle.ScaleUniform)
                     {
                         (sx, sy) = GizmoScale(pos);
+                        if (ctrl)
+                            (sx, sy) = SnapScale(sx, sy);
                         if (!ScaleLocal(sx, sy))
                             ScaleTargets(_pivotScreen, sx, sy, ctrl);
                         _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
@@ -94,6 +85,8 @@ public partial class SceneView
                         sx = Math.Abs(d0.X) > 2 ? Math.Abs(d1.X / d0.X) : 1;
                         sy = Math.Abs(d0.Y) > 2 ? Math.Abs(d1.Y / d0.Y) : 1;
                     }
+                    if (ctrl)
+                        (sx, sy) = SnapScale(sx, sy);
                     ScaleTargets(_pivotScreen, sx, sy, ctrl);
                     _editor.StatusText = Loc.F("Scale {0:0.###} × {1:0.###}", sx, sy);
                     break;
@@ -116,6 +109,80 @@ public partial class SceneView
                 }
         }
         InvalidateVisual();
+    }
+
+    // ================= CTRL SNAPPING ================= //
+
+    /// <summary>Ctrl while moving, resizing or scaling: steps of 10 level units (rotation snaps by 15°).</summary>
+    private const double SnapStep = 10;
+
+    /// <summary>Moves the targets by a screen delta; with <paramref name="snap"/> the level delta goes in steps of 10.</summary>
+    private void MoveTargets(Vector delta, bool snap)
+    {
+        foreach (var t in _targets)
+        {
+            double k = PixelsToLevel(t);
+            var move = delta * k;
+            if (snap)
+            {
+                // A gizmo arrow (maybe rotated, Local): steps along it; otherwise on each axis.
+                if (_mode == InteractionMode.Move && _gizmoHandle is GizmoHandle.MoveX or GizmoHandle.MoveY)
+                {
+                    var axis = _gizmoHandle == GizmoHandle.MoveX ? _gizmoAx : _gizmoAy;
+                    move = axis * Snap(move.X * axis.X + move.Y * axis.Y);
+                }
+                else
+                {
+                    move = new Vector(Snap(move.X), Snap(move.Y));
+                }
+            }
+            var (x0, y0) = _memento!.StartPosition(t);
+            t.X = x0 + move.X;
+            t.Y = y0 + move.Y;
+            if (t.IntegerTransform)
+            {
+                t.X = Math.Round(t.X);
+                t.Y = Math.Round(t.Y);
+            }
+        }
+    }
+
+    private static double Snap(double value) => Math.Round(value / SnapStep) * SnapStep;
+
+    /// <summary>Scale factors that change the width and the height of what is scaled by whole steps of 10.</summary>
+    private (double Sx, double Sy) SnapScale(double sx, double sy)
+    {
+        var (width, height) = ScaledSize();
+        return (SnapFactor(sx, width), SnapFactor(sy, height));
+    }
+
+    private static double SnapFactor(double factor, double size)
+    {
+        if (size < 1e-6)
+            return factor;
+        double target = size * factor;
+        double snapped = size + Snap(target - size);
+        if (Math.Abs(snapped) < 1e-6)
+            snapped = target >= 0 ? SnapStep : -SnapStep; // never down to nothing
+        return snapped / size;
+    }
+
+    /// <summary>
+    /// Level size of what is being scaled (called with the targets as they were when the drag began): a rotated
+    /// image scaled along its own axes (Local) has its own width and height, anything else the selection's box.
+    /// </summary>
+    private (double Width, double Height) ScaledSize()
+    {
+        if (_editor is { IsLocalMode: true } && _targets is [ImageElement { IsAxisAligned: false } image])
+        {
+            var (a, b, c, d) = image.GetBasis();
+            return (Math.Sqrt(a * a + b * b), Math.Sqrt(c * c + d * d));
+        }
+        if (Renderer == null || _targets.Count == 0)
+            return (0, 0);
+        var box = Renderer.ScreenBounds(Viewport, _targets);
+        double k = PixelsToLevel(_targets[0]);
+        return (box.Width * k, box.Height * k);
     }
 
     private void RotateTargets(double angle)
@@ -172,18 +239,7 @@ public partial class SceneView
         {
             Vector delta = new(pos.X - _pressScreen.X, pos.Y - _pressScreen.Y);
             if (shift) delta = Math.Abs(delta.X) >= Math.Abs(delta.Y) ? new Vector(delta.X, 0) : new Vector(0, delta.Y);
-            foreach (var t in _targets)
-            {
-                double k = PixelsToLevel(t);
-                var (sx0, sy0) = _memento!.StartPosition(t);
-                t.X = sx0 + delta.X * k;
-                t.Y = sy0 + delta.Y * k;
-                if (t.IntegerTransform)
-                {
-                    t.X = Math.Round(t.X);
-                    t.Y = Math.Round(t.Y);
-                }
-            }
+            MoveTargets(delta, ctrl);
             return;
         }
 
@@ -226,6 +282,8 @@ public partial class SceneView
             sx = sy = k;
             anchor = horizontal ? new Point(anchor.X, r.Center.Y) : new Point(r.Center.X, anchor.Y);
         }
+        if (ctrl)
+            (sx, sy) = SnapScale(sx, sy);
         ScaleTargets(anchor, sx, sy, ctrl);
     }
 

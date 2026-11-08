@@ -15,6 +15,17 @@ public enum BrushKind
     Airbrush,
     /// <summary>Softens what is already painted (soft edge); color, blending and Erase do not apply.</summary>
     Blur,
+    // Shape tools: the shape drawn in the Scene is filled with the color (or erased).
+    Rectangle,
+    Circle,
+    Lasso,
+    Polyline,
+}
+
+public static class BrushKindExtensions
+{
+    /// <summary>Fills a drawn shape instead of painting strokes.</summary>
+    public static bool IsShape(this BrushKind kind) => kind >= BrushKind.Rectangle;
 }
 
 public enum PaintBlendMode
@@ -287,7 +298,7 @@ public sealed class PaintCanvas
         }
         _pixels = Cut(_pixels, 4);
         _base = Cut(_base, 4);
-        _blurred = null; // only used during a Blur stroke, which never resizes the canvas
+        _blurred = null; // only used during a Blur stroke, and undo never runs during one
         _mask = Cut(_mask, 1);
         if (_clipAlpha != null)
             _clipAlpha = Cut(_clipAlpha, 1);
@@ -497,17 +508,126 @@ public sealed class PaintCanvas
 
     private static byte ToByte(float v) => (byte)Math.Clamp((int)(v * 255f + 0.5f), 0, 255);
 
+    // ================= SHAPES ================= //
+
+    /// <summary>
+    /// Shape tools: fills a closed polygon (canvas pixels, self-intersections filled too) with the brush's color,
+    /// opacity and blending, or erases it. One undo step.
+    /// </summary>
+    public void FillShape(BrushSettings brush, IReadOnlyList<Point> polygon)
+    {
+        if (polygon.Count < 3)
+            return;
+        if (_inStroke)
+            EndStroke();
+        _brush = brush;
+        _inStroke = true;
+        _strokeFrame = (Width, Height, _grownLeft, _grownTop);
+        _strokeRect = default;
+
+        var points = new Point[polygon.Count];
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        for (int i = 0; i < points.Length; i++)
+        {
+            var p = points[i] = polygon[i];
+            minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X);
+            minY = Math.Min(minY, p.Y); maxY = Math.Max(maxY, p.Y);
+        }
+        var shift = EnsureRoom(new Rect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2));
+        for (int i = 0; i < points.Length; i++)
+            points[i] += shift;
+        Buffer.BlockCopy(_pixels, 0, _base, 0, _pixels.Length); // undo keeps the area from before
+
+        var limit = ClipToOriginal ? Original : new PixelRect(0, 0, Width, Height);
+        int x0 = Math.Max(limit.X, (int)Math.Floor(minX + shift.X)), x1 = Math.Min(limit.Right, (int)Math.Ceiling(maxX + shift.X));
+        int y0 = Math.Max(limit.Y, (int)Math.Floor(minY + shift.Y)), y1 = Math.Min(limit.Bottom, (int)Math.Ceiling(maxY + shift.Y));
+        if (x1 > x0 && y1 > y0)
+        {
+            float opacity = (float)Math.Clamp(brush.Opacity, 0, 1);
+            var color = brush.Color;
+            float sr = color.R / 255f, sg = color.G / 255f, sb = color.B / 255f;
+            int width = x1 - x0;
+            System.Threading.Tasks.Parallel.For(y0, y1, () => new float[width], (y, _, coverage) =>
+            {
+                RowCoverage(points, y, x0, coverage);
+                for (int x = x0; x < x1; x++)
+                {
+                    float a = Math.Min(1f, coverage[x - x0]) * opacity;
+                    if (a <= 0)
+                        continue;
+                    int i = y * Width + x;
+                    if (ClipToOriginal && _clipAlpha != null)
+                        a *= _clipAlpha[i] / 255f;
+                    if (a > 0)
+                        Composite(i * 4, a, sr, sg, sb, brush.Blend);
+                }
+                return coverage;
+            }, _ => { });
+            _strokeRect = new PixelRect(x0, y0, width, y1 - y0);
+            MarkBitmapDirty(_strokeRect);
+        }
+        EndStroke();
+    }
+
+    /// <summary>
+    /// How much of each pixel of row <paramref name="y"/> (from <paramref name="x0"/>) the polygon covers: exact
+    /// across, four samples down (non-zero winding).
+    /// </summary>
+    private static void RowCoverage(Point[] points, int y, int x0, float[] coverage)
+    {
+        const int Samples = 4;
+        Array.Clear(coverage);
+        int x1 = x0 + coverage.Length;
+        var crossings = new List<(double X, int Dir)>();
+        for (int s = 0; s < Samples; s++)
+        {
+            double sy = y + (s + 0.5) / Samples;
+            crossings.Clear();
+            for (int i = 0; i < points.Length; i++)
+            {
+                var a = points[i];
+                var b = points[(i + 1) % points.Length];
+                if ((a.Y <= sy) == (b.Y <= sy))
+                    continue;
+                crossings.Add((a.X + (sy - a.Y) * (b.X - a.X) / (b.Y - a.Y), b.Y > a.Y ? 1 : -1));
+            }
+            crossings.Sort((l, r) => l.X.CompareTo(r.X));
+            int winding = 0;
+            double start = 0;
+            foreach (var (x, dir) in crossings)
+            {
+                int before = winding;
+                winding += dir;
+                if (before == 0)
+                    start = x;
+                else if (winding == 0)
+                {
+                    // Span [start, x): each pixel gets the part of it the span covers.
+                    double from = Math.Max(start, x0), to = Math.Min(x, x1);
+                    for (int px = (int)Math.Floor(from); px < to; px++)
+                        coverage[px - x0] += (float)((Math.Min(px + 1, to) - Math.Max(px, from)) / Samples);
+                }
+            }
+        }
+    }
+
     // ================= GROWTH ================= //
 
     /// <summary>Grows the canvas so a dab at <paramref name="c"/> fits (free painting). Returns the content shift.</summary>
-    private Vector EnsureRoom(Point c, double r)
+    private Vector EnsureRoom(Point c, double r) => EnsureRoom(new Rect(c.X - r - 1, c.Y - r - 1, 2 * r + 2, 2 * r + 2));
+
+    /// <summary>
+    /// Grows the canvas so <paramref name="area"/> fits (free painting; the Blur spreads past the image's edges too).
+    /// Returns the content shift.
+    /// </summary>
+    private Vector EnsureRoom(Rect area)
     {
-        if (!CanGrow || ClipToOriginal || _brush.Kind == BrushKind.Blur) // nothing to blur outside
+        if (!CanGrow || ClipToOriginal)
             return default;
-        int needLeft = (int)Math.Ceiling(r + 1 - c.X);
-        int needTop = (int)Math.Ceiling(r + 1 - c.Y);
-        int needRight = (int)Math.Ceiling(c.X + r + 1 - Width);
-        int needBottom = (int)Math.Ceiling(c.Y + r + 1 - Height);
+        int needLeft = (int)Math.Ceiling(-area.Left);
+        int needTop = (int)Math.Ceiling(-area.Top);
+        int needRight = (int)Math.Ceiling(area.Right - Width);
+        int needBottom = (int)Math.Ceiling(area.Bottom - Height);
         if (needLeft <= 0 && needTop <= 0 && needRight <= 0 && needBottom <= 0)
             return default;
 
@@ -551,6 +671,13 @@ public sealed class PaintCanvas
         for (int y = 0; y < Height; y++)
             Array.Copy(_mask, y * Width, mask, (y + top) * w + left, Width);
         _mask = mask;
+        if (_blurred != null)
+        {
+            // Blurred again tile by tile from the moved starting pixels (the same values).
+            _blurred = new byte[w * h * 4];
+            _blurTilesX = (w + BlurTile - 1) / BlurTile;
+            _blurTiles = new bool[_blurTilesX * ((h + BlurTile - 1) / BlurTile)];
+        }
         if (_clipAlpha != null)
         {
             var clip = new byte[w * h];

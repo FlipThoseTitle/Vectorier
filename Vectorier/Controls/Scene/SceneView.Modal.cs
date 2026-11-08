@@ -57,6 +57,8 @@ public partial class SceneView
     {
         if (_editor == null)
             return false;
+        if (CancelShape())
+            return true;
         if (_mode is InteractionMode.ModalMove or InteractionMode.ModalRotate or InteractionMode.ModalScale or InteractionMode.Stamp)
         {
             _mode = InteractionMode.None;
