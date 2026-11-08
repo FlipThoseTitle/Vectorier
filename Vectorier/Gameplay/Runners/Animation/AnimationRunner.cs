@@ -34,6 +34,13 @@ public class AnimationRunner : AnimationRendering
             Name = _oldAnimationNames[Name];
         }
         base.Init(pivotX, pivotY);
+        // The editor's change: drawn at the element's Width / Height (times ScaleX / ScaleY), as the editor shows it,
+        // not at the sprite sheet's frame size. Without a size, the frame size.
+        if (_Width > 0 && _Height > 0)
+        {
+            Animator.Width = _Width;
+            Animator.Height = _Height;
+        }
         IsEnabled = false;
     }
 
