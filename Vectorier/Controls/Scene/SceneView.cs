@@ -140,6 +140,11 @@ public sealed partial class SceneView : Control, IInternalDropTarget
     {
         if (e.PropertyName is nameof(EditorViewModel.PlacementType) or nameof(EditorViewModel.ActiveTool))
         {
+            // The placement preview goes (or changes) at once, without waiting for the pointer to move.
+            if (_editor?.PlacementType == null)
+                ClearGhost();
+            else if (IsPointerOver)
+                UpdatePlacementGhost(_lastPointer);
             UpdateCursor(_lastPointer);
             InvalidateVisual();
         }

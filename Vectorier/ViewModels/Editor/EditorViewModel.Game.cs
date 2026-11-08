@@ -15,7 +15,12 @@ namespace Vectorier.ViewModels.Editor;
 public partial class EditorViewModel
 {
     /// <summary>A level is being played in the Game View.</summary>
-    [ObservableProperty] private bool _isGameRunning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPlayButtons))]
+    private bool _isGameRunning;
+
+    /// <summary>Play and Hunter Mode are shown: no game running, and no object being edited.</summary>
+    public bool ShowPlayButtons => !IsGameRunning && ObjectEdit == null;
 
     /// <summary>The Game View fills the editor's window (the game's F11).</summary>
     [ObservableProperty] private bool _isGameFullScreen;

@@ -75,7 +75,7 @@ public sealed partial class SceneView
         context.DrawRectangle(null, CameraFramePen, frame);
 
         string label = follow != null ? Loc.T("Game View: following the runner's Camera node")
-            : camera == null ? Loc.T("No Camera in this level: showing the Scene's center") : Loc.T("Game View (read-only)");
+            : camera == null ? Loc.T("No Camera in this level: showing the Scene's center") : Loc.T("Game View");
         var text = new FormattedText(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, 11, Brushes.White);
         context.DrawRectangle(new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0)), null, new Rect(6, 6, text.Width + 12, text.Height + 6), 3, 3);
         context.DrawText(text, new Point(12, 9));

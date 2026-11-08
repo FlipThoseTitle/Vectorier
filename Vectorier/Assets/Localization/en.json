@@ -11,7 +11,6 @@
     "Camera (Hunter)": "Camera (Hunter)",
     "Camera": "Camera",
     "No Camera in this level: showing the Scene's center": "No Camera in this level: showing the Scene's center",
-    "Game View (read-only)": "Game View (read-only)",
     "Rotate {0:0.##}°": "Rotate {0:0.##}°",
     "Scale {0:0.###} × {1:0.###}": "Scale {0:0.###} × {1:0.###}",
     "Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)": "Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)",
@@ -1494,7 +1493,6 @@
     "On: paint only on visible pixels\nOff: paint anywhere, the image grows": "On: paint only on visible pixels\nOff: paint anywhere, the image grows",
     "Show / hide\nDrag across to change several": "Show / hide\nDrag across to change several",
     "Game View\nSee what the Camera sees, or play the level": "Game View\nSee what the Camera sees, or play the level",
-    "Editing an object definition\nSwitch to Scene to save and return": "Editing an object definition\nSwitch to Scene to save and return",
     "Save as a 512 × 340 thumbnail": "Save as a 512 × 340 thumbnail",
     "Add a trigger that plays these transformations": "Add a trigger that plays these transformations",
     "Stop editing\nRestores the elements": "Stop editing\nRestores the elements",
@@ -1570,6 +1568,9 @@
     "Saved without a name": "Saved without a name",
     "Added before the template's variable names\ne.g. 1Sound instead of Sound": "Added before the template's variable names\ne.g. 1Sound instead of Sound",
     "Pick a move": "Pick a move",
-    "Preview on the character": "Preview on the character"
+    "Preview on the character": "Preview on the character",
+    "Save the changes to the object '{0}'?": "Save the changes to the object '{0}'?",
+    "Editing an object definition": "Editing an object definition",
+    "Game View": "Game View"
   }
 }

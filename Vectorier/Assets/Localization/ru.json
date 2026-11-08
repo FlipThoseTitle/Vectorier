@@ -11,7 +11,6 @@
     "Camera (Hunter)": "Камера (Охотника)",
     "Camera": "Камера",
     "No Camera in this level: showing the Scene's center": "На уровне нет камеры: показан центр сцены",
-    "Game View (read-only)": "Вид игры (только просмотр)",
     "Rotate {0:0.##}°": "Поворот {0:0.##}°",
     "Scale {0:0.###} × {1:0.###}": "Масштаб {0:0.###} × {1:0.###}",
     "Move: click to confirm, right click or Esc to cancel (X / Y lock an axis)": "Перемещение: клик — подтвердить, правый клик или Esc — отмена (X / Y фиксируют ось)",
@@ -1494,7 +1493,6 @@
     "On: paint only on visible pixels\nOff: paint anywhere, the image grows": "Вкл: рисовать только по видимым пикселям\nВыкл: рисовать где угодно, изображение растёт",
     "Show / hide\nDrag across to change several": "Показать / скрыть\nПроведите, чтобы изменить несколько",
     "Game View\nSee what the Camera sees, or play the level": "Вид игры\nТо, что видит камера, или игра уровня",
-    "Editing an object definition\nSwitch to Scene to save and return": "Редактирование определения объекта\nПерейдите на сцену, чтобы сохранить и вернуться",
     "Save as a 512 × 340 thumbnail": "Сохранить как миниатюру 512 × 340",
     "Add a trigger that plays these transformations": "Добавить триггер, который проигрывает эти трансформации",
     "Stop editing\nRestores the elements": "Закончить редактирование\nВозвращает элементы",
@@ -1570,6 +1568,9 @@
     "Saved without a name": "Сохраняется без имени",
     "Added before the template's variable names\ne.g. 1Sound instead of Sound": "Добавляется перед именами переменных шаблона\nнапример, 1Sound вместо Sound",
     "Pick a move": "Выбрать движение",
-    "Preview on the character": "Просмотреть на персонаже"
+    "Preview on the character": "Просмотреть на персонаже",
+    "Save the changes to the object '{0}'?": "Сохранить изменения объекта «{0}»?",
+    "Editing an object definition": "Редактирование определения объекта",
+    "Game View": "Вид игры"
   }
 }

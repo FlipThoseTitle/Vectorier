@@ -351,10 +351,14 @@
                                         </StackPanel>
                                     </RadioButton>
                                     <RadioButton Classes="tab" GroupName="SceneTabs" IsChecked="{Binding IsObjectTab}" IsVisible="{Binding IsEditingObject}"
-                                                 ToolTip.Tip="{l:Tr 'Editing an object definition&#10;Switch to Scene to save and return'}">
+                                                 ToolTip.Tip="{l:Tr 'Editing an object definition'}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource Icon.Object}" Foreground="#E65100" />
                                             <TextBlock Text="{Binding ObjectTabTitle}" />
+                                            <Button Classes="tab-close" Command="{Binding CloseObjectEditCommand}" Padding="2" Margin="2,-2,-4,-2"
+                                                    Background="Transparent" BorderThickness="0" VerticalAlignment="Center" ToolTip.Tip="{l:Tr 'Close'}">
+                                                <PathIcon Data="{StaticResource Icon.Close}" Width="9" Height="9" />
+                                            </Button>
                                         </StackPanel>
                                     </RadioButton>
                                 </StackPanel>
@@ -367,13 +371,13 @@
                                             <TextBlock Text="{l:Tr 'Stop'}" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" IsVisible="{Binding !IsGameRunning}" ToolTip.Tip="{l:Tr 'Play Level (F5)'}">
+                                    <Button Classes="tool" Command="{Binding PlayLevelCommand}" IsVisible="{Binding ShowPlayButtons}" ToolTip.Tip="{l:Tr 'Play Level (F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Play}" Foreground="#2E7D32" />
                                             <TextBlock Text="{l:Tr 'Play'}" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" IsVisible="{Binding !IsGameRunning}" ToolTip.Tip="{l:Tr 'Play Level in Hunter Mode (Shift+F5)'}">
+                                    <Button Classes="tool" Command="{Binding PlayLevelHunterCommand}" IsVisible="{Binding ShowPlayButtons}" ToolTip.Tip="{l:Tr 'Play Level in Hunter Mode (Shift+F5)'}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <PathIcon Data="{StaticResource Icon.Hunter}" Foreground="#C62828" />
                                             <TextBlock Text="{l:Tr 'Hunter Mode'}" />

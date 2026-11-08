@@ -11,6 +11,7 @@ using Vectorier.Services;
 using Vectorier.Services.IO;
 using Vectorier.Services.Xml;
 using Vectorier.Services.Localization;
+using Vectorier.ViewModels.Dialogs;
 
 namespace Vectorier.ViewModels.Editor;
 
@@ -35,7 +36,8 @@ public sealed partial class EditorViewModel
 {
     /// <summary>The definition being edited in the Object tab, or null.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditingObject), nameof(IsEditingBuilding), nameof(ObjectTabTitle), nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(IsEditingObject), nameof(IsEditingBuilding), nameof(ObjectTabTitle), nameof(Title), nameof(ShowPlayButtons), nameof(CanPlay))]
+    [NotifyCanExecuteChangedFor(nameof(PlayLevelCommand), nameof(PlayLevelHunterCommand))]
     private ObjectEditSession? _objectEdit;
 
     public bool IsEditingObject => ObjectEdit != null;
@@ -53,9 +55,45 @@ public sealed partial class EditorViewModel
         if (oldValue != newValue)
             StatusText = string.Empty;
         OnCenterTabChangedForGame(oldValue, newValue);
-        // Leaving the Object tab ends Edit Object mode (its changes are saved to the object's file).
+        // Leaving the Object tab ends Edit Object mode (asking first whether to save its changes).
         if (oldValue == CenterTab.Object && newValue != CenterTab.Object && ObjectEdit != null && !_switchingTab)
-            _ = LeaveObjectEditAsync(save: true);
+            _ = CloseObjectEditAsync();
+    }
+
+    /// <summary>
+    /// Closes the Object tab (its X, or switching to another tab): unsaved changes are saved or dropped as the user
+    /// chooses; Cancel stays in the Object tab. False when it stayed.
+    /// </summary>
+    [RelayCommand]
+    public async Task<bool> CloseObjectEditAsync()
+    {
+        if (ObjectEdit is not { } session)
+            return true;
+        CommitPending();
+        bool save = false;
+        if (IsDirty)
+        {
+            var vm = new MessageDialogViewModel(Loc.T("Edit Object"),
+                Loc.F("Save the changes to the object '{0}'?", session.Name), MessageKind.Question);
+            vm.Buttons.Add(new DialogButton(Loc.T("Save"), "save", isDefault: true));
+            vm.Buttons.Add(new DialogButton(Loc.T("Don't Save"), "discard"));
+            vm.Buttons.Add(new DialogButton(Loc.T("Cancel"), null, isCancel: true));
+            switch (await AppServices.Dialogs.ShowAsync(vm))
+            {
+                case "save":
+                    save = true;
+                    break;
+                case "discard":
+                    break;
+                default:
+                    // Stays on the object.
+                    _switchingTab = true;
+                    CenterTab = CenterTab.Object;
+                    _switchingTab = false;
+                    return false;
+            }
+        }
+        return await LeaveObjectEditAsync(save);
     }
 
     // ================= UNGROUP ================= //

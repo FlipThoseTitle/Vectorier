@@ -116,7 +116,8 @@ public sealed partial class EditorViewModel : ViewModelBase, IScreen
     public DefinitionTable Definitions { get; private set; } = new();
 
     /// <summary>The game is part of the editor: a level can always be played (desktop and browser).</summary>
-    public bool CanPlay => true;
+    /// <summary>The level can be played: not while an object is being edited (the Object tab shows its content).</summary>
+    public bool CanPlay => ObjectEdit == null;
 
     // ================= SCREEN ================= //
 
