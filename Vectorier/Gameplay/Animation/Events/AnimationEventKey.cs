@@ -17,7 +17,7 @@ public class AnimationEventKey : AnimationEvent
         if (string.IsNullOrEmpty(key))
         {
             Key = KeyboardKey.Null;
-            System.Console.WriteLine($"moves.xml: <Keys> without a Key attribute in {node.ParentNode?.ParentNode?.Name ?? "?"}: ignored.");
+            Diagnostics.GameLog.Warning("Loading the moves", "A <Keys> event has no Key attribute: it never fires.", node: node, attribute: "Key");
             return;
         }
         Key = KeyVariables.Parse(key);

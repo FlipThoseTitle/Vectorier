@@ -74,6 +74,16 @@ public class TriggerRunner : QuadRunner
 
     public void Init()
     {
+        // An error while the trigger is read names it (and its line) in the error report.
+        try
+        {
+            InitCore();
+        }
+        catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, _rawNode)) { throw; }
+    }
+
+    private void InitCore()
+    {
         parseVariable(_xmlNode["Init"]);
         SetTriggerCollisionType();
         XmlNode xmlNode = _xmlNode["Template"];
@@ -257,6 +267,15 @@ public class TriggerRunner : QuadRunner
     }
 
     public void CheckEvent(TriggerEvent @event, ModelHuman model)
+    {
+        try
+        {
+            CheckEventCore(@event, model);
+        }
+        catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, _rawNode)) { throw; }
+    }
+
+    private void CheckEventCore(TriggerEvent @event, ModelHuman model)
     {
         if (!IsEnabled || (!IsActive && !@event.IsTimeOutOrActivate()) || (model != null && model.IsPhysics && !@event.IsCollision()))
         {

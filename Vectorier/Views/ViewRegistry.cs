@@ -21,6 +21,7 @@ public static class ViewRegistry
         ViewLocator.Register<MessageDialogViewModel>(() => new MessageDialogView());
         ViewLocator.Register<TutorialWelcomeViewModel>(() => new TutorialWelcomeView());
         ViewLocator.Register<KeybindsViewModel>(() => new KeybindsView());
+        ViewLocator.Register<GameErrorLogViewModel>(() => new GameErrorLogView());
         ViewLocator.Register<ImportDialogViewModel>(() => new ImportDialogView());
         ViewLocator.Register<ImageCropViewModel>(() => new ImageCropView());
         ViewLocator.Register<CollabStartViewModel>(() => new CollabStartView());

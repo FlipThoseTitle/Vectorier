@@ -1,4 +1,5 @@
 #nullable disable warnings
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -131,6 +132,18 @@ public class AnimationInterval
     {
         foreach (XmlNode item in pNode)
         {
+            // An error in the event names it (and its line) in the error report.
+            try
+            {
+                ParseEvent(item);
+            }
+            catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, item)) { throw; }
+        }
+    }
+
+    private void ParseEvent(XmlNode item)
+    {
+        {
             string p_GroupNames = item.Attributes["Groups"].ParseString();
             switch (item.Name)
             {
@@ -187,7 +200,11 @@ public class AnimationInterval
         {
             foreach (XmlNode item in xmlNode)
             {
-                list.Add(new AnimationReaction(item));
+                try
+                {
+                    list.Add(new AnimationReaction(item));
+                }
+                catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, item)) { throw; }
             }
         }
         if (groupNames != null)
@@ -195,7 +212,8 @@ public class AnimationInterval
             string[] array = groupNames.Split('|');
             foreach (string name in array)
             {
-                AnimationGroup group = AnimationGroup.GetGroup(name);
+                AnimationGroup group = AnimationGroup.GetGroup(name)
+                    ?? throw new Diagnostics.GameDataException($"The reaction group \"{name}\" does not exist in <ReactionGroups>.", node: node, attribute: "Groups");
                 list.AddRange(group.Reactions);
             }
         }

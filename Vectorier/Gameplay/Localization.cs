@@ -41,7 +41,7 @@ public static class Localization
         }
         catch (Exception ex)
         {
-            Console.WriteLine("localization_all.xml: " + ex.Message);
+            Diagnostics.GameLog.Add(Diagnostics.GameErrorReport.From(ex, "Reading the localization (localization_all.xml)", Diagnostics.GameErrorSeverity.Warning));
         }
         return texts;
     }

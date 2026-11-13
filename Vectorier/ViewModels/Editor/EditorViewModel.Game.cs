@@ -2,8 +2,10 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Vectorier.Gameplay.Diagnostics;
 using Vectorier.Services;
 using Vectorier.Services.Game;
+using Vectorier.ViewModels.Dialogs;
 using Vectorier.Services.Localization;
 
 namespace Vectorier.ViewModels.Editor;
@@ -71,9 +73,13 @@ public partial class EditorViewModel
 
     private bool _startingGame;
 
-    // Raised while the Game View draws: the message waits until the drawing is done.
-    private void OnGameFailed(string message) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        _ = AppServices.Dialogs.ShowMessageAsync(Loc.T("Play Level"), Loc.T("The game stopped because of an error:\n") + message, MessageKind.Error));
+    // Raised while the Game View draws: the report waits until the drawing is done.
+    private void OnGameFailed(GameErrorReport report) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        _ = AppServices.Dialogs.ShowAsync(new GameErrorLogViewModel(Loc.T("Play Level"), Loc.T("The game stopped because of an error."), report)));
+
+    /// <summary>File &gt; Game Error Log: the game's errors of this session, and the crash log.</summary>
+    [RelayCommand]
+    private Task OpenGameErrorLog() => AppServices.Dialogs.ShowAsync(new GameErrorLogViewModel());
 
     private void OnGameFullScreenToggled() => IsGameFullScreen = IsGameRunning && !IsGameFullScreen;
 
@@ -86,7 +92,7 @@ public partial class EditorViewModel
         MoveVisualizer.StopPlacement();
         CenterTab = CenterTab.Game;
         StatusText = Loc.F("Loading {0}...", levelName);
-        string? error;
+        GameErrorReport? error;
         _startingGame = true;
         try
         {
@@ -101,7 +107,7 @@ public partial class EditorViewModel
             StatusText = string.Empty;
             if (CenterTab == CenterTab.Game)
                 CenterTab = CenterTab.Scene;
-            await AppServices.Dialogs.ShowMessageAsync(title, Loc.T("The level could not be played:\n") + error, MessageKind.Error);
+            await AppServices.Dialogs.ShowAsync(new GameErrorLogViewModel(title, Loc.T("The level could not be played."), error));
             return false;
         }
         Services.Tutorial.TutorialSignals.GameLaunches++;

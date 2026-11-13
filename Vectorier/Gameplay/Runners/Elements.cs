@@ -1,3 +1,4 @@
+using System;
 #nullable disable warnings
 using System.Collections.Generic;
 using System.Linq;
@@ -53,6 +54,9 @@ public class Elements
         for (int i = 0; i < mainNode.ChildNodes.Count; i++)
         {
             XmlNode node = mainNode.ChildNodes[i];
+            // An error while this element is read names it (and its line) in the error report.
+            try
+            {
             if (node["Properties"] != null && node["Properties"]["Static"] != null && node["Properties"]["Static"]["Selection"] != null)
             {
                 var selection = node["Properties"]["Static"]["Selection"];
@@ -136,6 +140,8 @@ public class Elements
             {
                 Runners.Add(runner);
             }
+            }
+            catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, node)) { throw; }
         }
 
         Init();

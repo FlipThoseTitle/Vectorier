@@ -49,14 +49,8 @@ public class Location
         {
             xmlPath += ".xml";
         }
-        var doc = XmlUtils.OpenXMLDocument(xmlPath);
-        if (doc != null)
-        {
-            Sets = new Sets(doc);
-            return;
-        }
-
-        Console.WriteLine("Can't open location file " + xmlPath);
+        // The level must be there and be XML: the error names the file (and the line where the XML breaks).
+        Sets = new Sets(XmlUtils.ReadXmlDocument(xmlPath));
 
     }
 

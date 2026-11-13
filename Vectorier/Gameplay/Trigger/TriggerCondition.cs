@@ -91,7 +91,7 @@ public abstract class TriggerCondition
             default:
                 if (triggerRunnerCondition == null)
                 {
-                    Console.WriteLine("Unknown condition " + name);
+                    Diagnostics.GameLog.Warning("Loading the level's triggers", $"Unknown trigger condition <{name}>: it is ignored.", node: node);
                 }
                 return triggerRunnerCondition;
         }

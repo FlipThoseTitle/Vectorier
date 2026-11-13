@@ -291,9 +291,10 @@ public class ModelObject
         ModelRender modelRender2 = modelRender;
         if (xmlNode == null)
         {
+            Diagnostics.GameLog.Warning("Loading the models", "The model (skin) file could not be read: the model is drawn without it.", VectorPaths.Models + "/" + file);
             return;
         }
-        xmlNode = xmlNode["Scene"];
+        xmlNode = Diagnostics.XmlSource.RequiredChild(xmlNode, "Scene");
         ParseNodes(xmlNode["Nodes"], modelRender2);
         ParseEdges(xmlNode["Edges"], modelRender2);
         ParseCapsules(xmlNode["Figures"], modelRender2);
@@ -308,7 +309,12 @@ public class ModelObject
         }
         foreach (XmlNode childNode in nodes.ChildNodes)
         {
-            ModelNode modelNode = ParseNode(childNode);
+            ModelNode modelNode;
+            try
+            {
+                modelNode = ParseNode(childNode);
+            }
+            catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, childNode)) { throw; }
             switch (modelNode.Type)
             {
                 case "Node":
@@ -388,7 +394,12 @@ public class ModelObject
         }
         foreach (XmlNode childNode in node.ChildNodes)
         {
-            ModelLine modelLine = ParseEdge(childNode);
+            ModelLine modelLine;
+            try
+            {
+                modelLine = ParseEdge(childNode);
+            }
+            catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, childNode)) { throw; }
             switch (modelLine.Type)
             {
                 case "Edge":
@@ -431,7 +442,11 @@ public class ModelObject
         }
         foreach (XmlNode childNode in node.ChildNodes)
         {
-            ParseCapsule(childNode, render);
+            try
+            {
+                ParseCapsule(childNode, render);
+            }
+            catch (Exception ex) when (Diagnostics.XmlSource.Note(ex, childNode)) { throw; }
         }
     }
 

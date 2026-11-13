@@ -34,7 +34,7 @@ public static class GameAudio
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Game audio could not start: " + ex.Message);
+            Vectorier.Gameplay.Diagnostics.GameLog.Warning("Starting the game's audio", "The game's audio could not start (the game is silent): " + ex.Message);
             _output = null;
         }
     }

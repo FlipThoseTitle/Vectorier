@@ -86,7 +86,7 @@ public class AnimationSprite : IDrawable, IUpdatable
             return;
         }
 
-        Console.WriteLine("ANIMATION DOESNT EXISTS: " + name);
+        Diagnostics.GameLog.Warning("Loading the level", $"The animated texture \"{name}\" does not exist: it is not drawn.");
     }
 
     public void Play()

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using Vectorier.Gameplay.Camera;
 using Vectorier.Gameplay.Controllers;
+using Vectorier.Gameplay.Diagnostics;
 using Vectorier.Gameplay.Utilities;
 
 namespace Vectorier.Gameplay.Animation;
@@ -65,13 +66,11 @@ public class AnimationLoader
         {
             // Read on its own first: a broken file reports its line and column instead of failing half-way.
             // Same reading as the game's (the text, so the file's encoding declaration is not used).
-            string text = GameFiles.ReadAllText(PathCase.Resolve(Path.Combine(_xmlPath, "moves.xml")));
-            using var reader = XmlReader.Create(new StringReader(text), new XmlReaderSettings { IgnoreComments = true });
-            new XmlDocument().Load(reader);
+            XmlUtils.ReadXmlDocument(_xmlPath, "moves.xml");
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            error = GameLog.Error(ex, "Reloading the moves").Summary;
             return false;
         }
         try
@@ -91,7 +90,7 @@ public class AnimationLoader
             AnimationReaction.Reactions.AddRange(reactions);
             AnimationTrickInfo.TricksLoaded.Clear();
             AnimationTrickInfo.TricksLoaded.AddRange(tricks);
-            error = ex.Message;
+            error = GameLog.Error(ex, "Reloading the moves").Summary;
             return false;
         }
     }
@@ -105,47 +104,58 @@ public class AnimationLoader
 
     public void ParseAnimations()
     {
+        // Every element is noted while it is read (XmlSource.Note): an error in it names the move, interval,
+        // group or reaction it is in, with its line in moves.xml.
         Dictionary<string, XmlNode> dictionary = new Dictionary<string, XmlNode>();
-        XmlNode xmlNode = XmlUtils.OpenXMLDocument(_xmlPath, "moves.xml")["root"];
-        ParseConfigs(xmlNode["Config"]);
-        foreach (XmlNode childNode in xmlNode["EventGroups"].ChildNodes)
+        XmlDocument document = XmlUtils.ReadXmlDocument(_xmlPath, "moves.xml");
+        XmlNode xmlNode = XmlSource.RequiredChild(document, "root");
+        ParseConfigs(XmlSource.RequiredChild(xmlNode, "Config"));
+        foreach (XmlNode childNode in XmlSource.RequiredChild(xmlNode, "EventGroups").ChildNodes)
         {
-            dictionary[childNode.Attributes["Name"].Value] = childNode;
+            dictionary[XmlSource.Required(childNode, "Name")] = childNode;
         }
-        ParseGroups(xmlNode["ReactionGroups"]);
-        XmlNode xmlNode3 = xmlNode["Moves"];
+        ParseGroups(XmlSource.RequiredChild(xmlNode, "ReactionGroups"));
+        XmlNode xmlNode3 = XmlSource.RequiredChild(xmlNode, "Moves");
         foreach (XmlNode childNode2 in xmlNode3.ChildNodes)
         {
-            AnimationInfo animationInfo;
-            animationInfo = childNode2.Attributes["Trick"] != null && childNode2.Attributes["Trick"].ParseInt() != 0 ? new AnimationTrickInfo(childNode2) : new AnimationInfo(childNode2);
-            foreach (XmlNode childNode3 in childNode2.ChildNodes)
+            try
             {
-                if (childNode3.Name != "Interval")
+                AnimationInfo animationInfo;
+                animationInfo = childNode2.Attributes["Trick"] != null && childNode2.Attributes["Trick"].ParseInt() != 0 ? new AnimationTrickInfo(childNode2) : new AnimationInfo(childNode2);
+                foreach (XmlNode childNode3 in childNode2.ChildNodes)
                 {
-                    continue;
-                }
-                AnimationInterval animationInterval = null;
-                if (childNode3.Attributes["Groups"] == null)
-                {
-                    animationInterval = new AnimationInterval(childNode3);
-                }
-                else
-                {
-                    List<XmlNode> list = new List<XmlNode>();
-                    string[] array = childNode3.Attributes["Groups"].Value.Split('|');
-                    foreach (string key in array)
+                    if (childNode3.Name != "Interval")
                     {
-                        if (!dictionary.ContainsKey(key))
-                        {
-                            continue;
-                        }
-                        list.Add(dictionary[key]);
+                        continue;
                     }
-                    animationInterval = new AnimationInterval(childNode3, list);
+                    try
+                    {
+                        AnimationInterval animationInterval = null;
+                        if (childNode3.Attributes["Groups"] == null)
+                        {
+                            animationInterval = new AnimationInterval(childNode3);
+                        }
+                        else
+                        {
+                            List<XmlNode> list = new List<XmlNode>();
+                            string[] array = childNode3.Attributes["Groups"].Value.Split('|');
+                            foreach (string key in array)
+                            {
+                                if (!dictionary.ContainsKey(key))
+                                {
+                                    continue;
+                                }
+                                list.Add(dictionary[key]);
+                            }
+                            animationInterval = new AnimationInterval(childNode3, list);
+                        }
+                        animationInfo.Intervals.Add(animationInterval);
+                    }
+                    catch (Exception ex) when (XmlSource.Note(ex, childNode3)) { throw; }
                 }
-                animationInfo.Intervals.Add(animationInterval);
+                Animations.Animation[animationInfo.Name] = animationInfo;
             }
-            Animations.Animation[animationInfo.Name] = animationInfo;
+            catch (Exception ex) when (XmlSource.Note(ex, childNode2)) { throw; }
         }
         AnimationBinaryParser.ClearCachedBinary();
     }
@@ -154,15 +164,23 @@ public class AnimationLoader
     {
         foreach (XmlNode childNode in node.ChildNodes)
         {
-            List<AnimationReaction> list = new List<AnimationReaction>();
-            foreach (XmlNode childNode2 in childNode.ChildNodes)
+            try
             {
-                list.Add(new AnimationReaction(childNode2));
+                List<AnimationReaction> list = new List<AnimationReaction>();
+                foreach (XmlNode childNode2 in childNode.ChildNodes)
+                {
+                    try
+                    {
+                        list.Add(new AnimationReaction(childNode2));
+                    }
+                    catch (Exception ex) when (XmlSource.Note(ex, childNode2)) { throw; }
+                }
+                AnimationGroup animationGroup = new AnimationGroup();
+                animationGroup.Reactions = list;
+                animationGroup.Name = XmlSource.Required(childNode, "Name");
+                AnimationGroup.Add(animationGroup);
             }
-            AnimationGroup animationGroup = new AnimationGroup();
-            animationGroup.Reactions = list;
-            animationGroup.Name = childNode.Attributes["Name"].Value;
-            AnimationGroup.Add(animationGroup);
+            catch (Exception ex) when (XmlSource.Note(ex, childNode)) { throw; }
         }
     }
 
@@ -199,7 +217,7 @@ public class AnimationLoader
         LocationCamera.MaxSpeed = LocationCamera.Config.MaxSpeed;
         LocationCamera.FluencyCurrent = LocationCamera.Config.Fluency;
 
-        XmlNode taserNode = xmlNode["Taser"];
+        XmlNode taserNode = XmlSource.RequiredChild(xmlNode, "Taser");
         ControllerCatching.DistanceFactor = taserNode.Attributes["Distance"].ParseFloat();
         ControllerCatching.Timeout = taserNode.Attributes["Time"].ParseFloat();
         ControllerCatching.HeightFactor = taserNode.Attributes["HeightFactor"].ParseFloat();

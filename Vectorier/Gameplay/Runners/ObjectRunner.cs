@@ -117,6 +117,10 @@ public class ObjectRunner
                 Console.WriteLine($"Object \"{name}\" contains itself: the inner copy is skipped.");
             else
                 data = Sets.ObjectNode(name);
+            // Named without content of its own: it is a reference, and what it refers to is not there.
+            if (!nested && data == null && mainNode["Content"] == null)
+                Diagnostics.GameLog.Warning("Loading the level",
+                    $"The object \"{name}\" is not defined in the level or in its object sets: it is left out.", node: mainNode, attribute: "Name");
         }
 
         var objectRunner1 = new ObjectRunner(this);

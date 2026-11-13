@@ -29,9 +29,19 @@ public static class AnimationBinaryParser
         var bytes = ResourceManager.GetBinary(fileName);
         if (bytes == null)
         {
+            Diagnostics.GameLog.Warning("Loading the moves", "The move's animation file does not exist: the move has no frames.", fileName);
             return new Provider(0);
         }
-        var provider = Parse(bytes);
+        Provider provider;
+        try
+        {
+            provider = Parse(bytes);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or IndexOutOfRangeException or OverflowException or OutOfMemoryException)
+        {
+            throw new Diagnostics.GameDataException(
+                $"The animation file is cut short or is not a move animation (.bin, {bytes.Length} bytes).", fileName, inner: ex);
+        }
         if (useCache)
         {
             CachedBinary.TryAdd(fileName, provider);

@@ -83,7 +83,7 @@ public class TriggerEvent
         }
         if (triggerRunnerEvent == null)
         {
-            Console.WriteLine("No Event type =" + node.Name);
+            Diagnostics.GameLog.Warning("Loading the level's triggers", $"Unknown trigger event <{node.Name}>: it is ignored.", node: node);
             return null;
         }
         triggerRunnerEvent._Parent = parent;

@@ -7,6 +7,7 @@ using System.Xml.Linq;
 using Avalonia.Media;
 using Vectorier.Gameplay;
 using Vectorier.Gameplay.Animation;
+using Vectorier.Gameplay.Diagnostics;
 using Vectorier.Gameplay.Rl;
 using Vectorier.Services.IO;
 using Vectorier.Services.Projects;
@@ -75,12 +76,16 @@ public sealed class GameHost
 
     /// <summary>
     /// Plays <paramref name="levelXml"/> (the level as the editor writes it) in the Game View. Null when it started,
-    /// otherwise why it could not.
+    /// otherwise the report of why it could not (also in the game's error log).
     /// </summary>
-    public async Task<string?> StartAsync(ProjectInfo project, string levelName, byte[] levelXml, bool hunterMode)
+    public async Task<GameErrorReport?> StartAsync(ProjectInfo project, string levelName, byte[] levelXml, bool hunterMode)
     {
         Stop();
         Taken?.Invoke();
+        // What the start is doing, for the report when it fails.
+        string stage = "Reading the project's game files";
+        GameLog.ForgetWarnings();
+        GameLog.BeginCount();
         try
         {
             bool projectChanged;
@@ -89,6 +94,7 @@ public sealed class GameHost
             {
                 projectChanged = await PrepareAsync(project) | _projectChangedPending;
                 _projectChangedPending = false;
+                stage = "Loading the moves (moves.xml and the animation files)";
                 await PrepareMovesAsync(project);
                 await ParseMovesAsync();
             }
@@ -98,6 +104,7 @@ public sealed class GameHost
             }
             GameFiles.Set(VPath.Combine("xmlroot", "levels", levelName + ".xml"), levelXml);
 
+            stage = $"Loading the level \"{levelName}\"";
             using (Invariant())
             {
                 GameState.ResetForNewGame(projectChanged);
@@ -118,7 +125,22 @@ public sealed class GameHost
                 await Task.WhenAll(effects.Select(async name => { try { await _context.Textures.GetAsync(name); } catch { } }));
             if (missing.Length > 0 && _context != null)
             {
-                await Task.WhenAll(missing.Select(name => _context.Textures.GetAsync(name)));
+                stage = "Loading the level's textures";
+                var context = _context;
+                await Task.WhenAll(missing.Select(async name =>
+                {
+                    // A texture that cannot be read: the level plays without it (it is logged).
+                    try
+                    {
+                        if (await context.Textures.GetAsync(name) == null)
+                            GameLog.Warning(stage, $"The texture \"{name}\" is not in the project's textures: it is not drawn.");
+                    }
+                    catch (Exception ex)
+                    {
+                        GameLog.Warning(stage, $"The texture \"{name}\" could not be read: {ex.Message}");
+                    }
+                }));
+                stage = $"Loading the level \"{levelName}\"";
                 using (Invariant())
                 {
                     GameState.ResetForNewGame(false);
@@ -132,13 +154,25 @@ public sealed class GameHost
             _faulted = false;
             IsRunning = true;
             RunningChanged?.Invoke();
+            // The level plays, but something was wrong while loading it: said in the game, detailed in the log.
+            int warnings = GameLog.WarningsSinceMark;
+            if (warnings > 0)
+                VectorGame.ShowNotice($"{warnings} problem(s) while loading. See File > Game Error Log.", true);
             return null;
         }
         catch (Exception ex)
         {
-            Release();
+            var report = GameLog.Error(ex, stage);
+            try
+            {
+                Release();
+            }
+            catch (Exception releaseError)
+            {
+                Console.WriteLine("The game could not let go of the level: " + releaseError.Message);
+            }
             Stop();
-            return ex.Message;
+            return report;
         }
     }
 
@@ -343,12 +377,22 @@ public sealed class GameHost
             // the Game View's drawing: the views change after it.
             Raylib.PopAllStates();
             Raylib.SetTarget(null!, width, height);
-            Console.WriteLine("The game stopped: " + ex);
             _faulted = true;
+            var report = GameLog.Crash(ex, $"Running the level \"{LevelName}\"");
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                Stop();
-                Failed?.Invoke(ex.Message);
+                try
+                {
+                    Stop();
+                }
+                catch (Exception stopError)
+                {
+                    Console.WriteLine("The game could not stop cleanly: " + stopError.Message);
+                    IsRunning = false;
+                    LevelName = null;
+                    RunningChanged?.Invoke();
+                }
+                Failed?.Invoke(report);
             });
         }
     }
@@ -363,16 +407,28 @@ public sealed class GameHost
         {
             var texture = await context.Textures.GetAsync(name);
             if (texture?.Bitmap is { } bitmap)
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => Gameplay.AtlasDecoder.Resolve(name, bitmap));
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        Gameplay.AtlasDecoder.Resolve(name, bitmap);
+                    }
+                    catch (Exception ex)
+                    {
+                        GameLog.Warning("Running the level", $"The texture \"{name}\" could not be used: {ex.Message}");
+                    }
+                });
+            else
+                GameLog.Warning("Running the level", $"The texture \"{name}\" is not in the project's textures: it is not drawn.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Game texture {name}: {ex.Message}");
+            GameLog.Warning("Running the level", $"The texture \"{name}\" could not be read: {ex.Message}");
         }
     }
 
-    /// <summary>The game stopped on an error (the message is shown to the user).</summary>
-    public event Action<string>? Failed;
+    /// <summary>The game stopped on an error (its report is shown to the user).</summary>
+    public event Action<GameErrorReport>? Failed;
 
     // ================= INPUT (from the Game View) ================= //
 
@@ -523,6 +579,13 @@ public sealed class GameHost
             _movesSignature = null;
             await PrepareMovesAsync(project);
         }
+        catch (Exception ex)
+        {
+            // The game keeps the moves it has; why they could not be read is said in the game and logged.
+            var report = GameLog.Error(ex, "Reloading the moves");
+            VectorGame.ShowNotice("moves.xml could not be reloaded (the previous moves are kept): " + report.Summary, true);
+            return;
+        }
         finally
         {
             _prepareLock.Release();
@@ -573,7 +636,7 @@ public sealed class GameHost
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Music " + name + ": " + ex.Message);
+            GameLog.Warning("Playing music", $"The music \"{name}\" could not be read: {ex.Message}");
         }
     }
 

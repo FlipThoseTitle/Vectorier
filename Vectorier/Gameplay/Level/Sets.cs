@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
+using Vectorier.Gameplay.Diagnostics;
 using Vectorier.Gameplay.Rl;
 using Vectorier.Gameplay.Runners;
 using Vectorier.Gameplay.Runners.Animation;
@@ -96,11 +97,11 @@ public class Sets
             {
                 if (set.Name == "City")
                 {
-                    _filesBuilds.Add(set.Attributes["FileName"].Value);
+                    _filesBuilds.Add(XmlSource.Required(set, "FileName"));
                 }
                 else
                 {
-                    _filesObjects.Add(set.Attributes["FileName"].Value);
+                    _filesObjects.Add(XmlSource.Required(set, "FileName"));
                 }
             }
         }
@@ -133,8 +134,9 @@ public class Sets
             {
                 foreach (XmlNode set in document["Root"]["Sets"])
                 {
-                    if (!_filesObjects.Contains(set.Attributes["FileName"].Value))
-                        _filesObjects.Add(set.Attributes["FileName"].Value);
+                    string fileName = XmlSource.Required(set, "FileName");
+                    if (!_filesObjects.Contains(fileName))
+                        _filesObjects.Add(fileName);
                 }
             }
         }
@@ -152,6 +154,8 @@ public class Sets
             if (root == null)
             {
                 Console.WriteLine("Empty node from file \"" + file + "\"!");
+                if (document != null) // a file missing or not XML is logged when it is read
+                    GameLog.Warning("Loading the level", "The object set has no <Root> element: its objects are not loaded.", XmlSource.FileOf(document) ?? file);
                 continue;
             }
             _xmlObjects.Add(root["Objects"]);
@@ -175,7 +179,7 @@ public class Sets
         {
             foreach (XmlNode node in nodes)
             {
-                _ChoisesDictionary[node.Attributes["Name"].Value] = node.Attributes["Variant"].Value;
+                _ChoisesDictionary[XmlSource.Required(node, "Name")] = XmlSource.Required(node, "Variant");
             }
         }
         string mode = "CommonMode";
@@ -205,7 +209,7 @@ public class Sets
         {
             foreach (XmlNode build in node)
             {
-                _ObjectsNodes[build.Attributes["Name"].Value] = build;
+                _ObjectsNodes[XmlSource.Required(build, "Name")] = build;
             }
         }
 
@@ -214,9 +218,9 @@ public class Sets
     public void ParseLevel()
     {
         var root = _document["Root"];
-        TotalCoins = root["Coins"].Attributes["Value"].ParseInt();
+        TotalCoins = XmlSource.RequiredChild(root, "Coins").Attributes["Value"].ParseInt();
         ParseModels(root);
-        AddMusics(root["Music"]);
+        AddMusics(XmlSource.RequiredChild(root, "Music"));
         CreateObjects();
         GetElements(_Objects);
         InitRunners();
@@ -244,9 +248,11 @@ public class Sets
                 return;
             }
             string choice = node.Attributes["Choice"].Value;
-            string variant = node.Attributes["Variant"].Value;
+            string variant = XmlSource.Required(node, "Variant");
 
-            if (_ChoisesDictionary[choice] == variant)
+            if (!_ChoisesDictionary.TryGetValue(choice, out var chosen))
+                throw new GameDataException($"The choice \"{choice}\" is not defined in the level's <Choises>.", node: node, attribute: "Choice");
+            if (chosen == variant)
             {
                 AddModels(node);
             }
@@ -255,18 +261,22 @@ public class Sets
 
     public void AddMusics(XmlNode node)
     {
-        _music = node.Attributes["Name"].Value;
+        _music = XmlSource.Required(node, "Name");
     }
 
     public void CreateObjects()
     {
-        XmlNode root = _document["Root"]["Track"];
+        XmlNode root = XmlSource.RequiredChild(XmlSource.RequiredChild(_document, "Root"), "Track");
         List<float> factors = new List<float>();
         foreach (XmlNode xmlNode in root)
         {
             if (xmlNode.Attributes["Factor"] != null)
             {
-                factors.Add(float.Parse(xmlNode.Attributes["Factor"].Value, CultureInfo.InvariantCulture.NumberFormat));
+                try
+                {
+                    factors.Add(float.Parse(xmlNode.Attributes["Factor"].Value, CultureInfo.InvariantCulture.NumberFormat));
+                }
+                catch (Exception ex) when (XmlSource.Note(ex, xmlNode)) { throw; }
             }
         }
         factors.Sort();
@@ -281,8 +291,12 @@ public class Sets
             }
 
             objectRunner = new ObjectRunner(null);
-            objectRunner.Parse(childNode, null, _ChoisesDictionary);
-            objectRunner.Init();
+            try
+            {
+                objectRunner.Parse(childNode, null, _ChoisesDictionary);
+                objectRunner.Init();
+            }
+            catch (Exception ex) when (XmlSource.Note(ex, childNode)) { throw; }
 
             _Objects.Add(objectRunner);
             VisualContainer visualContainer = null;
@@ -313,7 +327,11 @@ public class Sets
     {
         foreach (XmlNode node in Nodes.ChildNodes)
         {
-            _UserData.Add(GetUserData(node));
+            try
+            {
+                _UserData.Add(GetUserData(node));
+            }
+            catch (Exception ex) when (XmlSource.Note(ex, node)) { throw; }
         }
     }
 

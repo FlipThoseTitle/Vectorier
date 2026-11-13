@@ -28,7 +28,7 @@ public class TA_AppendValue : TriggerAction
             _valueVar = _ParentLoop.GetParentVar(value2);
             if (_valueVar == null)
             {
-                Console.WriteLine("Error create Action SetVariable not found" + value2, true);
+                Diagnostics.GameLog.Warning("Loading the level's triggers", $"AppendValue: the variable \"{value2}\" does not exist.", node: node, attribute: "Value");
             }
         }
         else
@@ -45,7 +45,7 @@ public class TA_AppendValue : TriggerAction
         }
         if (_setVar == null)
         {
-            Console.WriteLine("Error create Action SetVariable not found = " + value);
+            Diagnostics.GameLog.Warning("Loading the level's triggers", $"AppendValue: the variable \"{value}\" does not exist.", node: node, attribute: "Name");
         }
     }
 

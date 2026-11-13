@@ -329,17 +329,16 @@ public class VectorGame
         Buttons.Clear();
         ButtonKeys.Clear();
 
-        const float width = 200, gap = 4, margin = 10, sectionGap = 12;
-        float x = ScreenWidth - width - margin;
-        float y = margin;
+        // The buttons are listed first, then placed: the panel is in the Game View's units, which with Windows
+        // display scaling above 100% (or a small editor window) can be too short for it at full size. It then
+        // shrinks to fit, down to MinScale, and continues in another column to the left when it still does not.
+        var specs = new List<(KeyboardKey? Key, string Label, string Text, Action OnClick, Func<bool>? IsOn, Func<bool>? IsEnabled, bool NewSection)>();
+        bool newSection = false;
 
         void Add(KeyboardKey? key, string label, string text, Action onClick, Func<bool>? isOn = null, Func<bool>? isEnabled = null)
         {
-            var button = new Button(x, y, width, label, text, onClick) { IsOn = isOn, IsEnabled = isEnabled };
-            Buttons.Add(button);
-            if (key is KeyboardKey k)
-                ButtonKeys[k] = button;
-            y += Button.Height + gap;
+            specs.Add((key, label, text, onClick, isOn, isEnabled, newSection));
+            newSection = false;
         }
 
         // What is drawn over the level.
@@ -347,16 +346,14 @@ public class VectorGame
         Add(KeyboardKey.A, "A", "Areas", () => RenderAreas = !RenderAreas, () => RenderAreas);
         Add(KeyboardKey.P, "P", "Platforms", () => RenderPlatforms = !RenderPlatforms, () => RenderPlatforms);
         Add(KeyboardKey.N, "N", "Nodes", () => NodeMode = (NodeDisplay)(((int)NodeMode + 1) % NodeModeNames.Length), () => NodeMode != NodeDisplay.None);
-        Buttons[^1].DynamicText = () => "Nodes: " + NodeModeNames[(int)NodeMode];
         Add(KeyboardKey.E, "E", "Edges", () => RenderEdges = !RenderEdges, () => RenderEdges);
         Add(KeyboardKey.D, "D", "Detectors", () => RenderDetectors = !RenderDetectors, () => RenderDetectors);
         Add(KeyboardKey.B, "B", "Bounding", () => RenderBoxes = !RenderBoxes, () => RenderBoxes);
         Add(KeyboardKey.I, "I", "Moves Info", () => MovesInfo = (MovesInfoMode)(((int)MovesInfo + 1) % MovesInfoNames.Length), () => MovesInfo != MovesInfoMode.None);
-        Buttons[^1].DynamicText = () => "Moves: " + MovesInfoNames[(int)MovesInfo];
         Add(KeyboardKey.G, "G", "Center Line", () => ShowGrid = !ShowGrid, () => ShowGrid);
 
         // Playback.
-        y += sectionGap - gap;
+        newSection = true;
         Add(KeyboardKey.Escape, "Esc", "Pause", () => pause = !pause, () => pause);
         Add(KeyboardKey.F, "F", "Next Frame", () => stepOneFrame = true, isEnabled: () => pause);
         Add(KeyboardKey.S, "S", "Slow Mode", ToggleSlowMode, () => LevelMainController.current?.slowModeFrames == 10);
@@ -372,11 +369,44 @@ public class VectorGame
         Add(KeyboardKey.Z, "Z", "Force Blaster", ForceBlast, isEnabled: () => ForceBlastTarget() != null);
 
         // Display.
-        y += sectionGap - gap;
+        newSection = true;
         Add(KeyboardKey.Q, "Q", "Anti-alias", ToggleAntiAlias);
-        Buttons[^1].DynamicText = () => "Anti-alias: " + AntiAliasNames[AntiAlias];
         Add(KeyboardKey.F11, "F11", "Full Screen", ToggleFullScreen, () => Raylib.IsWindowState(ConfigFlags.BorderlessWindowMode));
         Add(KeyboardKey.M, "M", "Mute Music", SoundsManager.ToggleMusicMute, () => SoundsManager.MusicMuted);
+
+        // Sizes at scale 1 (the panel as designed).
+        const float width = 200, gap = 4, margin = 10, sectionGap = 12, MinScale = 0.7f;
+        float full = margin * 2;
+        for (int i = 0; i < specs.Count; i++)
+            full += Button.BaseHeight + (i > 0 ? (specs[i].NewSection ? sectionGap : gap) : 0);
+        float scale = Math.Clamp(ScreenHeight / full, MinScale, 1f);
+
+        float bottom = ScreenHeight - margin * scale;
+        float x = ScreenWidth - (width + margin) * scale;
+        float y = margin * scale;
+        bool columnStart = true;
+        foreach (var spec in specs)
+        {
+            if (!columnStart)
+                y += (spec.NewSection ? sectionGap : gap) * scale;
+            // Past the bottom: a new column on the left of this one (a section never starts with its gap there).
+            if (!columnStart && y + Button.BaseHeight * scale > bottom)
+            {
+                x -= (width + gap) * scale;
+                y = margin * scale;
+            }
+            var button = new Button(x, y, width * scale, spec.Label, spec.Text, spec.OnClick, scale) { IsOn = spec.IsOn, IsEnabled = spec.IsEnabled };
+            Buttons.Add(button);
+            if (spec.Key is KeyboardKey k)
+                ButtonKeys[k] = button;
+            y += Button.BaseHeight * scale;
+            columnStart = false;
+        }
+
+        // Buttons whose text shows their current state.
+        Buttons[specs.FindIndex(s => s.Key == KeyboardKey.N)].DynamicText = () => "Nodes: " + NodeModeNames[(int)NodeMode];
+        Buttons[specs.FindIndex(s => s.Key == KeyboardKey.I)].DynamicText = () => "Moves: " + MovesInfoNames[(int)MovesInfo];
+        Buttons[specs.FindIndex(s => s.Key == KeyboardKey.Q)].DynamicText = () => "Anti-alias: " + AntiAliasNames[AntiAlias];
     }
 
     // ================= FORCE BLASTER ================= //

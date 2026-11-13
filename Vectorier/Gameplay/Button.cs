@@ -7,13 +7,22 @@ namespace Vectorier.Gameplay;
 
 /// <summary>
 /// A small debug panel button: "[Key] Name". Dark and translucent so it stays out of the way; a lit marker shows
-/// whether a toggle is on, and a disabled button is dimmed.
+/// whether a toggle is on, and a disabled button is dimmed. <see cref="Scale"/> sizes it (the debug panel shrinks
+/// to fit a Game View that is short, e.g. with Windows display scaling above 100%).
 /// </summary>
 class Button
 {
-    public const float Height = 24;
-    const float FontSize = 15;
-    const float Pad = 8;
+    /// <summary>The height at scale 1.</summary>
+    public const float BaseHeight = 24;
+    const float BaseFontSize = 15;
+    const float BasePad = 8;
+
+    /// <summary>Size factor of the button (its rectangle, text and marker).</summary>
+    public readonly float Scale;
+
+    float Height => BaseHeight * Scale;
+    float FontSize => BaseFontSize * Scale;
+    float Pad => BasePad * Scale;
 
     public Vectorier.Gameplay.Rl.Rectangle Rectangle;
 
@@ -41,9 +50,10 @@ class Button
     static readonly Color OnColor = new(90, 200, 120, 255);
     static readonly Color OffColor = new(110, 110, 120, 255);
 
-    public Button(float x, float y, float width, string key, string text, Action onClick)
+    public Button(float x, float y, float width, string key, string text, Action onClick, float scale = 1)
     {
-        Rectangle = new Vectorier.Gameplay.Rl.Rectangle(x, y, width, Height);
+        Scale = scale;
+        Rectangle = new Vectorier.Gameplay.Rl.Rectangle(x, y, width, BaseHeight * scale);
         Key = key;
         Text = text;
         OnClick = onClick;
@@ -89,15 +99,15 @@ class Button
         {
             bool on = IsOn();
             var dot = on ? OnColor : OffColor;
-            Raylib.DrawCircleV(new Vector2(x + 3, Rectangle.Y + Height / 2), 3.5f, new Color(dot.R, dot.G, dot.B, alpha));
+            Raylib.DrawCircleV(new Vector2(x + 3 * Scale, Rectangle.Y + Height / 2), 3.5f * Scale, new Color(dot.R, dot.G, dot.B, alpha));
         }
-        x += 13; // action buttons keep the same text column as the toggles
+        x += 13 * Scale; // action buttons keep the same text column as the toggles
 
         string key = Key;
         if (key.Length > 0) // a button without a key shows only its name
         {
             GameFont.DrawUi(key, x, textY, FontSize, new Color(KeyColor.R, KeyColor.G, KeyColor.B, alpha));
-            x += GameFont.UiWidth(key, FontSize) + 7;
+            x += GameFont.UiWidth(key, FontSize) + 7 * Scale;
         }
         GameFont.DrawUi(DynamicText?.Invoke() ?? Text, x, textY, FontSize, new Color((byte)235, (byte)235, (byte)235, alpha));
     }

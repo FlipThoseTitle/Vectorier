@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using Vectorier.Gameplay.Diagnostics;
 
 namespace Vectorier.Gameplay.Utilities;
 
@@ -55,29 +56,54 @@ public static class XmlUtils
 
     public static XmlDocument OpenXMLDocument(string path, string file = "", OpenXmlType openType = OpenXmlType.Normal, bool pIgnoreComments = true, bool dialog = true)
     {
-        string fullPath = PathCase.Resolve(Path.Combine(path, file));
-        var xmlReaderSettings = new XmlReaderSettings();
-        xmlReaderSettings.IgnoreComments = pIgnoreComments;
-        XmlDocument document = null;
-
-        if (!GameFiles.FileExists(fullPath))
+        try
         {
-            if (dialog)
-                Console.WriteLine("FILE DOESNT EXIST: " + fullPath, true, true);
-
+            return ReadXmlDocument(path, file, pIgnoreComments);
+        }
+        catch (GameDataException ex)
+        {
+            // The game goes on without the file, as before; the problem is logged where it can be seen
+            // (the editor's warm-up reads ahead silently: Play reports it).
+            if (dialog || ex.Line > 0)
+                GameLog.Add(GameErrorReport.From(ex, "Reading XML", GameErrorSeverity.Warning));
             return null;
         }
+    }
+
+    /// <summary>
+    /// The file's XML (parsed once while its bytes do not change). A <see cref="GameDataException"/> when the file
+    /// does not exist or is not valid XML, naming the file and the line and column of the error.
+    /// </summary>
+    public static XmlDocument ReadXmlDocument(string path, string file = "", bool pIgnoreComments = true)
+    {
+        string fullPath = PathCase.Resolve(Path.Combine(path, file));
+        string key0 = GameFiles.Key(fullPath);
+
+        if (!GameFiles.FileExists(fullPath))
+            throw new GameDataException("The file does not exist.", key0);
+
         // In the editor: a file read before and unchanged since (the same bytes in GameFiles) is not parsed again
         // (object sets, trigger templates and models are read on every start; the game only reads them).
         var bytes = GameFiles.ReadAllBytes(fullPath);
-        var key = (GameFiles.Key(fullPath), pIgnoreComments);
+        var key = (key0, pIgnoreComments);
         if (bytes != null && ParsedCache.TryGetValue(key, out var cached) && ReferenceEquals(cached.Bytes, bytes))
         {
             return cached.Document;
         }
-        var text0 = GameFiles.ReadAllText(fullPath);
-        document = OpenXMLDocFromString(text0, xmlReaderSettings);
-        if (bytes != null && document != null)
+        var text0 = GameFiles.ReadAllText(fullPath) ?? string.Empty;
+        XmlDocument document;
+        try
+        {
+            using var reader = XmlReader.Create(new StringReader(text0), new XmlReaderSettings { IgnoreComments = pIgnoreComments });
+            document = new XmlDocument();
+            document.Load(reader);
+        }
+        catch (XmlException ex)
+        {
+            throw new GameDataException("The file is not valid XML: " + ex.Message, key0, line: ex.LineNumber, column: ex.LinePosition, inner: ex);
+        }
+        XmlSource.Register(document, key0, text0);
+        if (bytes != null)
         {
             ParsedCache[key] = (bytes, document);
         }
@@ -96,31 +122,4 @@ public static class XmlUtils
 
     /// <summary>The parsed files are dropped (another project).</summary>
     public static void ClearParsedCache() => ParsedCache.Clear();
-
-    private static XmlDocument OpenXMLDocFromString(string pData, XmlReaderSettings pSettings)
-    {
-        using (XmlReader p_reader = XmlReader.Create(new StringReader(pData), pSettings))
-        {
-            XmlDocument xmlDocument = OpenXMLDocument(p_reader);
-            if (xmlDocument == null)
-            {
-                Console.WriteLine("Error read XML", true);
-            }
-            return xmlDocument;
-        }
-    }
-
-    private static XmlDocument OpenXMLDocument(XmlReader pReader)
-    {
-        try
-        {
-            XmlDocument xmlDocument = new XmlDocument();
-            xmlDocument.Load(pReader);
-            return xmlDocument;
-        }
-        catch
-        {
-            return null;
-        }
-    }
 }

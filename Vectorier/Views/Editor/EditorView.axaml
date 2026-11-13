@@ -52,6 +52,9 @@
                 <MenuItem Header="{l:Tr '_Level Settings...'}" Command="{Binding OpenLevelSettingsCommand}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Tune}" /></MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="{l:Tr 'Game _Error Log...'}" Command="{Binding OpenGameErrorLogCommand}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Alert}" /></MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="{l:Tr 'Live _Collaboration'}" Command="{Binding OpenCollabDropdownCommand}" IsVisible="{Binding CanCollaborateHere}">
                     <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Collab}" /></MenuItem.Icon>

@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Vectorier.Services.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Vectorier.ViewModels.Dialogs"
+             x:Class="Vectorier.Views.Dialogs.GameErrorLogView"
+             x:DataType="vm:GameErrorLogViewModel">
+    <UserControl.Styles>
+        <Style Selector="SelectableTextBlock.mono">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="Grid.fields > TextBlock.label">
+            <Setter Property="Margin" Value="0,2,12,2" />
+        </Style>
+        <Style Selector="Grid.fields > SelectableTextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,2" />
+        </Style>
+    </UserControl.Styles>
+    <DockPanel>
+        <!-- Buttons -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource AppToolbarBackground}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0" Padding="12,8">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" DockPanel.Dock="Right">
+                    <Button Content="{l:Tr 'Copy Details'}" MinWidth="80" HorizontalContentAlignment="Center"
+                            Command="{Binding CopyCommand}" IsEnabled="{Binding HasSelection}" />
+                    <Button Content="{l:Tr 'Copy All'}" MinWidth="80" HorizontalContentAlignment="Center"
+                            Command="{Binding CopyAllCommand}" />
+                    <Button Content="{l:Tr 'Open Log Folder'}" MinWidth="80" HorizontalContentAlignment="Center"
+                            Command="{Binding OpenFolderCommand}" IsVisible="{Binding CanOpenFolder}" />
+                    <Button Content="{l:Tr 'Clear'}" MinWidth="80" HorizontalContentAlignment="Center"
+                            Command="{Binding ClearCommand}" ToolTip.Tip="{l:Tr 'Clears this list (the log files keep every entry)'}" />
+                    <Button Classes="accent" Content="{l:Tr 'Close'}" MinWidth="80" HorizontalContentAlignment="Center"
+                            Command="{Binding CloseDialogCommand}" IsDefault="True" IsCancel="True" />
+                </StackPanel>
+                <TextBlock Classes="dim" Text="{Binding LogLocation}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+            </DockPanel>
+        </Border>
+
+        <!-- What happened (when opened for a failure) -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding HasHeadline}" Padding="16,12"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*">
+                <PathIcon Data="{StaticResource Icon.Alert}" Width="28" Height="28" Foreground="{DynamicResource AppDanger}"
+                          VerticalAlignment="Top" Margin="0,0,14,0" />
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="{Binding Headline}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <SelectableTextBlock Text="{Binding Selected.Summary}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabControl Padding="0">
+            <TabItem Header="{l:Tr 'Errors'}">
+                <Grid ColumnDefinitions="300,*">
+                    <!-- This session's reports, newest first -->
+                    <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,1,0">
+                        <Panel>
+                            <TextBlock Classes="dim" Text="{l:Tr 'No game errors in this session.'}" IsVisible="{Binding IsEmpty}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="12" />
+                            <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Background="Transparent"
+                                     BorderThickness="0" Margin="4">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GameErrorItem">
+                                        <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                                            <Panel Width="16" Height="16" VerticalAlignment="Top" Margin="0,1,8,0">
+                                                <PathIcon Data="{StaticResource Icon.Alert}" Width="14" Height="14" Foreground="{DynamicResource AppWarning}" IsVisible="{Binding IsWarning}" />
+                                                <PathIcon Data="{StaticResource Icon.Alert}" Width="14" Height="14" Foreground="{DynamicResource AppDanger}" IsVisible="{Binding IsError}" />
+                                                <PathIcon Data="{StaticResource Icon.Alert}" Width="14" Height="14" Foreground="{DynamicResource AppDanger}" IsVisible="{Binding IsCrash}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" Spacing="1">
+                                                <TextBlock Classes="dim" FontSize="11">
+                                                    <Run Text="{Binding Time}" /><Run Text="  " /><Run Text="{Binding Kind}" /><Run Text=" · " /><Run Text="{Binding Stage}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Panel>
+                    </Border>
+
+                    <!-- The selected report: where it comes from, then the technical details -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasSelection}">
+                        <StackPanel Margin="16,12" Spacing="10" DataContext="{Binding Selected}" x:DataType="vm:GameErrorItem">
+                            <Grid Classes="fields" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Classes="label" Text="{l:Tr 'Problem'}" />
+                                <SelectableTextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Problem}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Row="1" Classes="label" Text="{l:Tr 'While'}" />
+                                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Stage}" />
+                                <TextBlock Grid.Row="2" Classes="label" Text="{l:Tr 'File'}" IsVisible="{Binding HasFile}" />
+                                <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding File}" IsVisible="{Binding HasFile}" />
+                                <TextBlock Grid.Row="3" Classes="label" Text="{l:Tr 'Position'}" IsVisible="{Binding HasPosition}" />
+                                <SelectableTextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Position}" IsVisible="{Binding HasPosition}" />
+                                <TextBlock Grid.Row="4" Classes="label" Text="{l:Tr 'Element'}" IsVisible="{Binding HasElement}" />
+                                <SelectableTextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Element}" IsVisible="{Binding HasElement}" />
+                                <TextBlock Grid.Row="5" Classes="label" Text="{l:Tr 'Attribute'}" IsVisible="{Binding HasAttribute}" />
+                                <SelectableTextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Attribute}" IsVisible="{Binding HasAttribute}" />
+                                <TextBlock Grid.Row="6" Classes="label" Text="{l:Tr 'Used by'}" IsVisible="{Binding HasUsedBy}" />
+                                <SelectableTextBlock Grid.Row="6" Grid.Column="1" Text="{Binding UsedBy}" IsVisible="{Binding HasUsedBy}" />
+                                <TextBlock Grid.Row="7" Classes="label" Text="{l:Tr 'Code'}" IsVisible="{Binding HasCode}" />
+                                <SelectableTextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Code}" IsVisible="{Binding HasCode}" />
+                            </Grid>
+                            <Expander Header="{l:Tr 'Technical details'}" IsVisible="{Binding HasDetails}" HorizontalAlignment="Stretch">
+                                <SelectableTextBlock Classes="mono" Text="{Binding Details}" TextWrapping="Wrap" />
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="{l:Tr 'Crash Log'}">
+                <Panel>
+                    <TextBlock Classes="dim" Text="{l:Tr 'No crashes have been logged.'}" IsVisible="{Binding !HasCrashLog}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <ScrollViewer IsVisible="{Binding HasCrashLog}">
+                        <SelectableTextBlock Classes="mono" Text="{Binding CrashLog}" Margin="12,8" />
+                    </ScrollViewer>
+                </Panel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

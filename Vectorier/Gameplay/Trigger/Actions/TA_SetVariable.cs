@@ -27,7 +27,7 @@ public class TA_SetVariable : TriggerAction
             _valueVar = _ParentLoop.GetParentVar(value2);
             if (_valueVar == null)
             {
-                Console.WriteLine("Error create Action SetVariable no found : " + value2);
+                Diagnostics.GameLog.Warning("Loading the level's triggers", $"SetVariable: the variable \"{value2}\" does not exist.", node: node, attribute: "Value");
             }
         }
         else
@@ -44,7 +44,7 @@ public class TA_SetVariable : TriggerAction
         }
         if (_setVar == null)
         {
-            Console.WriteLine("Error create Action SetVariable not found =" + value);
+            Diagnostics.GameLog.Warning("Loading the level's triggers", $"SetVariable: the variable \"{value}\" does not exist.", node: node, attribute: "Name");
         }
     }
 
