@@ -627,7 +627,7 @@ public sealed partial class EditorViewModel
             var copy = element.Clone(keepIds: false);
             var siblings = Document.SiblingsOf(element);
             Document.Insert(copy, element.Parent, siblings.IndexOf(element) + 1);
-            if (!EditorPreferences.RenameDuplicate && copy.NameEditable && copy is not SpawnElement && !string.IsNullOrEmpty(copy.Name))
+            if (!EditorPreferences.RenameDuplicate && copy.NameEditable && copy is not SpawnElement && copy is not AreaElement { IsTrick: true } && !string.IsNullOrEmpty(copy.Name))
                 copy.Name = UniqueName(copy.Name, siblings.Where(s => !ReferenceEquals(s, copy)).Select(s => s.Name));
             copies.Add(copy);
         }

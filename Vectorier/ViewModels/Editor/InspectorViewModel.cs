@@ -308,7 +308,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public string NameTip => Target switch
     {
-        AreaElement { IsTrick: true } => Loc.T("Named after its trick (set automatically)"),
+        AreaElement { IsTrick: true } => Loc.T("Set from its trick when the trick changes; can be edited"),
         _ => Loc.T("Rename it in the Project Window"),
     };
 

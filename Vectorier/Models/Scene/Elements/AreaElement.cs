@@ -23,9 +23,11 @@ public sealed partial class AreaElement : SceneElement
 
     public bool IsTrick => AreaType == "Trick";
 
-    /// <summary>Trick Areas have a fixed size, and their name comes from moves.xml's TrickGroup (picked, not typed).</summary>
+    /// <summary>
+    /// Trick Areas have a fixed size. Their name is set from the trick when it (or the type) changes, and can then
+    /// be edited like any other name.
+    /// </summary>
     public override bool CanResize => !IsTrick;
-    public override bool NameEditable => !IsTrick;
 
     partial void OnAreaTypeChanged(string value)
     {
